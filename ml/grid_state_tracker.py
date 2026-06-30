@@ -20,6 +20,17 @@ from ml.incidents import (
 N_STATES = 5
 MODEL_PATH = Path("ml/models/markov_state.npz")
 
+# Prior experto fila-estocástico. Codifica conocimiento de dominio sobre la dinámica
+# de la red: el sistema tiende a permanecer/relajarse; escalar a mayor severidad es raro.
+# Filas: estado origen S0..S4. Columnas: estado destino S0..S4.
+PRIOR_MATRIX = np.array([
+    [0.90, 0.09, 0.009, 0.0009, 0.0001],  # S0 → casi siempre normal
+    [0.40, 0.50, 0.090, 0.0090, 0.0010],  # S1 → relaja o persiste
+    [0.10, 0.40, 0.450, 0.0450, 0.0050],  # S2 → mayormente baja/persiste
+    [0.05, 0.15, 0.350, 0.4000, 0.0500],  # S3 → P(escalar a apagón) ≈ 5%
+    [0.30, 0.30, 0.200, 0.1500, 0.0500],  # S4 → recuperación gradual
+], dtype=np.float64)
+
 
 def estimate_transition_matrix(
     states: pd.Series, n_states: int = N_STATES, alpha: float = 1.0,
@@ -33,3 +44,13 @@ def estimate_transition_matrix(
     for a, b in zip(s[:-1], s[1:]):
         counts[a, b] += 1.0
     return counts / counts.sum(axis=1, keepdims=True)
+
+
+def blend_with_prior(empirical_counts: np.ndarray, kappa: float = 5.0) -> np.ndarray:
+    """Mezcla bayesiana (Dirichlet): conteos empíricos + kappa·prior como pseudo-conteos.
+
+    Donde hay muchos datos, dominan los conteos; donde son escasos (S2→S3→S4), domina el prior.
+    """
+    pseudo = kappa * PRIOR_MATRIX
+    blended = empirical_counts + pseudo
+    return blended / blended.sum(axis=1, keepdims=True)
