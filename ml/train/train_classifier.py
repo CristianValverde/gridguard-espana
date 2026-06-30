@@ -91,30 +91,8 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     return out.dropna()
 
 
-def walk_forward_splits(index: pd.DatetimeIndex, n_folds: int = 4, val_months: int = 12):
-    """Idéntico a train_forecast.py — walk-forward expansiva."""
-    total_months = (index[-1].year - index[0].year) * 12 + (index[-1].month - index[0].month)
-    usable_months = total_months - val_months
-    fold_size = usable_months // (n_folds + 1)
-
-    splits = []
-    for fold in range(n_folds):
-        val_end_offset = usable_months - fold * fold_size
-        val_start_offset = val_end_offset - val_months
-        cutoff_val_start = index[0] + pd.DateOffset(months=val_start_offset)
-        cutoff_val_end = index[0] + pd.DateOffset(months=val_end_offset)
-        train_mask = index < cutoff_val_start
-        val_mask = (index >= cutoff_val_start) & (index < cutoff_val_end)
-        if train_mask.sum() > 0 and val_mask.sum() > 0:
-            splits.append((train_mask, val_mask))
-
-    cutoff_holdout = index[-1] - pd.DateOffset(months=val_months)
-    holdout_mask = index >= cutoff_holdout
-    return splits[::-1], holdout_mask
-
-
 # ---------------------------------------------------------------------------
-# Optuna objective con walk-forward y AUC-ROC
+# Optuna objective LOEO + AUC-ROC
 # ---------------------------------------------------------------------------
 
 def make_objective(X_full: np.ndarray, y_full: np.ndarray, w_full: np.ndarray,
@@ -152,6 +130,7 @@ def make_objective(X_full: np.ndarray, y_full: np.ndarray, w_full: np.ndarray,
 
             model = xgb.XGBClassifier(**params)
             model.fit(X_tr, y_tr, sample_weight=w_tr, eval_set=[(X_vl, y_vl)], verbose=False)
+            model.set_params(device="cpu")
             proba = model.predict_proba(X_vl)[:, 1]
             fold_aucs.append(roc_auc_score(y_vl, proba))
 
@@ -175,6 +154,8 @@ class _IsotonicCalibrated:
         self._ir = ir
 
     def predict_proba(self, X):
+        # Asegurar que la inferencia ocurre en CPU (el modelo pudo haberse entrenado en CUDA)
+        self._base.set_params(device="cpu")
         raw = self._base.predict_proba(X)[:, 1]
         cal = self._ir.predict(raw)
         return np.column_stack([1.0 - cal, cal])
@@ -288,6 +269,8 @@ def run(n_trials: int = 100) -> None:
         random_state=42,
     )
     final_model.fit(X_train, y_train, sample_weight=w_all[train_idx], verbose=False)
+    # Forzar CPU para inferencia: evita warning de device mismatch en predict_proba
+    final_model.set_params(device="cpu")
 
     # Calibración isotónica sobre el hold-out temporal
     if y_holdout.sum() > 0:

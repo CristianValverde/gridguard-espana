@@ -22,6 +22,9 @@ def test_run_uses_graded_labels_and_weights(monkeypatch, tmp_path):
     """run() debe construir labels+weights con build_graded_labels y pasar sample_weight al fit."""
     import ml.train.train_classifier as tc
 
+    # Redirigir la salida a tmp_path para no sobreescribir el artefacto real
+    monkeypatch.setattr(tc, "CANDIDATES_DIR", tmp_path)
+
     captured = {}
     real_split = tc.leave_one_event_out_splits
 
@@ -33,3 +36,5 @@ def test_run_uses_graded_labels_and_weights(monkeypatch, tmp_path):
     # Ejecutar con 1 trial para que sea rápido; requiere el dataset real presente.
     tc.run(n_trials=1)
     assert captured.get("n_pos", 0) >= 12  # >= las 12 horas-evento graduadas
+    # Confirmar que el modelo se guardó en tmp_path y no en el directorio real
+    assert (tmp_path / "blackout_classifier.pkl").exists()
