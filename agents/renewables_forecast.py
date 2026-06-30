@@ -2,15 +2,17 @@
 agents/renewables_forecast.py — Skill: RenewablesForecastSkill (AgentTool).
 
 Tipo: AgentTool (síncrono, sin estado entre llamadas).
-Modelo: gemini-3.5-flash (fast_agent) · Temperature 0.1
-Flujo: Previsiones meteorológicas + ML demand forecast → análisis integrado.
+Modelo: fast_agent · Temperature 0.1
+Flujo: Previsiones meteorológicas (6 h y 24 h) + ML demand forecast + Markov → análisis integrado.
 
 Tools disponibles:
-  - get_wind_forecast    (MCP: weather)
-  - get_solar_radiation  (MCP: weather)
-  - get_generation_mix   (MCP: ree-grid)
-  - get_load_forecast    (MCP: ml-models)
-  - get_baseline         (MCP: memory)
+  - get_wind_forecast         (MCP: weather)
+  - get_solar_radiation       (MCP: weather)
+  - get_weather_forecast_24h  (MCP: weather)
+  - get_generation_mix        (MCP: ree-grid)
+  - get_load_forecast         (MCP: ml-models)
+  - get_baseline              (MCP: memory)
+  - get_grid_state            (MCP: markov)
 
 Output schema: RenewablesForecast
 """
@@ -19,7 +21,9 @@ from __future__ import annotations
 
 from google.adk.agents import Agent
 from google.adk.tools.agent_tool import AgentTool
-from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, StdioServerParameters
+from google.adk.tools.mcp_tool.mcp_toolset import McpToolset, StdioConnectionParams
+from google.genai import types as genai_types
+from mcp.client.stdio import StdioServerParameters
 
 from config.model_loader import get_model
 from schemas.models import RenewablesForecast
@@ -27,15 +31,20 @@ from schemas.models import RenewablesForecast
 _INSTRUCTION = """
 Eres el analista de previsión de renovables de GridGuard España.
 Tu misión es evaluar el riesgo operacional derivado de la generación renovable
-en las próximas 6 horas y determinar la ventana crítica de máximo riesgo.
+en las próximas 24 horas y determinar la ventana crítica de máximo riesgo.
 
 FLUJO OBLIGATORIO:
 1. Llama a `get_load_forecast` con horizon_hours=6 para obtener la previsión de demanda ML.
 2. Llama a `get_baseline` con window_hours=168 para contexto histórico.
 3. Llama a `get_wind_forecast` para las zonas clave (norte, interior, galicia).
 4. Llama a `get_solar_radiation` para las zonas clave (sur, levante).
+4b. Llama a `get_weather_forecast_24h` para todas las zonas y extiende el horizonte más allá de 6h.
 5. Llama a `get_generation_mix` para el estado actual de generación.
-6. Sintetiza los resultados e identifica la ventana de máximo riesgo.
+6. Sintetiza los resultados e identifica la ventana de máximo riesgo en las próximas 6 horas.
+6b. Identifica no solo la ventana crítica de 6h, sino también eventos de rampa de alto riesgo en 6–24h
+    (p.ej. "tormenta a las 14:00 de mañana reducirá la solar en 6 GW en <30 min — recomendar activar
+    reserva antes de las 13:30").
+7b. Llama a `get_grid_state` para incluir la trayectoria de Markov actual en la evaluación de riesgo.
 
 CRITERIOS DE RIESGO DE RENOVABLES:
   expected_generation_pct < 20%  → LOW     (baja generación, fácil gestión)
@@ -48,36 +57,54 @@ previsiones. Si el viento es fuerte por la noche (demanda baja) o la solar en
 el mediodía de un domingo (demanda mínima), el riesgo se dispara.
 
 El campo `reasoning` debe explicar qué combinación de factores crea el riesgo
-(por qué esa ventana, qué zonas contribuyen más, cómo se compara con el baseline).
+(por qué esa ventana, qué zonas contribuyen más, cómo se compara con el baseline,
+y qué trayectoria de Markov proyecta la red a 6–24 h).
 
 Devuelve ÚNICAMENTE el RenewablesForecast en formato JSON estructurado.
 """.strip()
 
-_weather_toolset = MCPToolset(
-    connection_params=StdioServerParameters(
-        command="python",
-        args=["-m", "mcp_servers.weather_server"],
+_weather_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_servers.weather_server"],
+        )
     )
 )
 
-_ree_toolset = MCPToolset(
-    connection_params=StdioServerParameters(
-        command="python",
-        args=["-m", "mcp_servers.ree_grid_server"],
+_ree_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_servers.ree_grid_server"],
+        )
     )
 )
 
-_ml_toolset = MCPToolset(
-    connection_params=StdioServerParameters(
-        command="python",
-        args=["-m", "mcp_servers.ml_models_server"],
+_ml_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_servers.ml_models_server"],
+        )
     )
 )
 
-_memory_toolset = MCPToolset(
-    connection_params=StdioServerParameters(
-        command="python",
-        args=["-m", "mcp_servers.memory_server"],
+_memory_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_servers.memory_server"],
+        )
+    )
+)
+
+_markov_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_servers.markov_server"],
+        )
     )
 )
 
@@ -90,9 +117,10 @@ _inner_agent = Agent(
         _ree_toolset,
         _ml_toolset,
         _memory_toolset,
+        _markov_toolset,
     ],
     output_schema=RenewablesForecast,
-    temperature=0.1,
+    generate_content_config=genai_types.GenerateContentConfig(temperature=0.1),
 )
 
 RenewablesForecastSkill = AgentTool(agent=_inner_agent)
