@@ -58,3 +58,23 @@ def documented_incidents_utc() -> list[dict]:
         item["ts"] = pd.Timestamp(inc["ts"], tz="UTC")
         out.append(item)
     return out
+
+
+def build_graded_labels(index: pd.DatetimeIndex) -> tuple[pd.Series, pd.Series]:
+    """Etiqueta binaria de evento mayor con ventanas graduadas y pesos por severidad (D3).
+
+    Returns:
+        labels:  pd.Series[int] ∈ {0,1}; 1 en las `window_h` horas previas a cada evento.
+        weights: pd.Series[float]; 3.0 en ventana de apagón (S4), 2.0 en ventana S3, 1.0 resto.
+    """
+    labels = pd.Series(0, index=index, dtype=int, name="event_label")
+    weights = pd.Series(1.0, index=index, dtype=float, name="sample_weight")
+
+    for inc in documented_incidents_utc():
+        ts = inc["ts"]
+        window_start = ts - pd.Timedelta(hours=inc["window_h"])
+        mask = (index >= window_start) & (index < ts)
+        labels[mask] = 1
+        weights[mask] = 3.0 if inc["severity"] == S4_BLACKOUT else 2.0
+
+    return labels, weights
