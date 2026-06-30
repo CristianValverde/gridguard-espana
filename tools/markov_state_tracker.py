@@ -12,7 +12,7 @@ from pathlib import Path
 
 import numpy as np
 
-from ml.incidents import S0_NORMAL, S1_STRESS, S2_NOTABLE, S3_MAJOR, S4_BLACKOUT
+from ml.incidents import S0_NORMAL, S1_STRESS, S2_NOTABLE
 
 N_STATES = 5
 MODEL_PATH = Path("ml/models/markov_state.npz")
