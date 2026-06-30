@@ -32,6 +32,21 @@ def test_forecast_24h_unknown_zone_is_skipped():
     assert out == {}
 
 
+def test_forecast_24h_truncates_48_to_24():
+    """Test que verifica que 48 entradas se truncan a 24 (regresión del [:24] slice)."""
+    def _fake_fetch_48(zone, coords):
+        return {
+            "timestamps": [f"2026-06-30T{h:02d}:00:00Z" for h in range(24)] + [f"2026-07-01T{h:02d}:00:00Z" for h in range(24)],
+            "wind_speed_ms": [1.0] * 48,
+            "radiation_wm2": [100.0] * 48,
+        }
+    out = ws._forecast_24h_impl(["norte"], fetch_fn=_fake_fetch_48)
+    assert out["norte"]["forecast_hours"] == 24
+    assert len(out["norte"]["timestamps"]) == 24
+    assert len(out["norte"]["wind_speed_ms"]) == 24
+    assert len(out["norte"]["radiation_wm2"]) == 24
+
+
 @pytest.mark.integration
 def test_forecast_24h_real_openmeteo():
     """Integration test: live Open-Meteo call for zone 'norte'. No token needed."""

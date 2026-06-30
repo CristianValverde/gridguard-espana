@@ -36,6 +36,7 @@ mcp = FastMCP("gridguard-weather")
 AEMET_BASE = "https://opendata.aemet.es/opendata/api"
 OPEN_METEO_BASE = "https://api.open-meteo.com/v1/forecast"
 CACHE_TTL = 1800  # 30 min — datos meteorológicos cambian más despacio
+REQUEST_TIMEOUT = 30  # segundos para llamadas HTTP a Open-Meteo y AEMET
 
 _cache: dict[str, tuple[Any, float]] = {}
 
@@ -81,7 +82,7 @@ def _open_meteo_wind(lat: float, lon: float, hours: int) -> dict:
         "forecast_days": max(1, hours // 24 + 1),
         "timezone": "UTC",
     }
-    resp = requests.get(OPEN_METEO_BASE, params=params, timeout=30)
+    resp = requests.get(OPEN_METEO_BASE, params=params, timeout=REQUEST_TIMEOUT)
     resp.raise_for_status()
     return resp.json()
 
@@ -94,7 +95,7 @@ def _open_meteo_radiation(lat: float, lon: float, hours: int) -> dict:
         "forecast_days": max(1, hours // 24 + 1),
         "timezone": "UTC",
     }
-    resp = requests.get(OPEN_METEO_BASE, params=params, timeout=30)
+    resp = requests.get(OPEN_METEO_BASE, params=params, timeout=REQUEST_TIMEOUT)
     resp.raise_for_status()
     return resp.json()
 
@@ -208,7 +209,7 @@ def get_aemet_alerts() -> list[dict]:
             meta_resp = requests.get(
                 f"{AEMET_BASE}/avisos_cap/ultimoelaborado/area/P",
                 params={"api_key": api_key},
-                timeout=30,
+                timeout=REQUEST_TIMEOUT,
             )
             meta_resp.raise_for_status()
             meta = meta_resp.json()
@@ -216,7 +217,7 @@ def get_aemet_alerts() -> list[dict]:
             if meta.get("estado") != 200 or not meta.get("datos"):
                 return []
 
-            data_resp = requests.get(meta["datos"], timeout=60)
+            data_resp = requests.get(meta["datos"], timeout=REQUEST_TIMEOUT)
             data_resp.raise_for_status()
             raw_alerts = data_resp.json()
 
@@ -279,9 +280,18 @@ def _fetch_openmeteo_hourly(zone: str, coords: dict) -> dict:
         "forecast_days": 2,
         "timezone": "UTC",
     }
-    resp = requests.get(OPEN_METEO_BASE, params=params, timeout=30)
+    resp = requests.get(OPEN_METEO_BASE, params=params, timeout=REQUEST_TIMEOUT)
     resp.raise_for_status()
     data = resp.json()
+
+    # Verificar errores en Open-Meteo (HTTP 200 con body {"error": true, "reason": "..."})
+    if isinstance(data, dict) and data.get("error"):
+        raise ValueError(f"Open-Meteo error para zona {zone}: {data.get('reason', 'desconocido')}")
+
+    # Verificar que la respuesta contiene la clave 'hourly'
+    if "hourly" not in data:
+        raise ValueError(f"Respuesta Open-Meteo sin 'hourly' para zona {zone}: {str(data)[:200]}")
+
     hourly = data["hourly"]
     return {
         "timestamps": hourly["time"],
