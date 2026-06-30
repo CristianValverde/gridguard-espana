@@ -23,6 +23,12 @@ def test_minor_change_is_noop():
     assert result["trigger"] is None
 
 
+def test_s1_to_s0_is_noop():
+    """S1→S0 is a noop (not a notable recovery)."""
+    result = hooks.on_state_transition(prev_state=1, curr_state=0)
+    assert result["action"] == "none"
+
+
 def test_forecast_risk_horizon_logs_window():
     """Forecast risk horizon should log window and return advance_warning."""
     result = hooks.on_forecast_risk_horizon("14:00-14:30 UTC", "HIGH")
