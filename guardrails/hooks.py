@@ -266,7 +266,9 @@ def after_tool_callback(
                       tool_name)
             if isinstance(output, dict):
                 output["_warning"] = "CREDENTIAL_REDACTED: output contenía posible credencial"
-            return output
+                return output
+            # string/list: bloquear por completo en vez de dejar pasar la credencial
+            return {"error": "CREDENTIAL_REDACTED: output de tool contenía una credencial"}
 
     # ── Validar rangos físicos ────────────────────────────────────────────────
     modified = False
@@ -281,17 +283,16 @@ def after_tool_callback(
                     output["_clamped"] = output.get("_clamped", []) + [field]
                     modified = True
 
-    # ── Truncar si supera el límite de tokens ─────────────────────────────────
-    if len(output_str) > _MAX_OUTPUT_CHARS:
+    # ── Truncar si supera el límite de tokens (solo para dicts) ────────────────
+    if isinstance(output, dict) and len(output_str) > _MAX_OUTPUT_CHARS:
         log.warning("[GUARDRAIL] after_tool: output de %s truncado (%d → %d chars)",
                     tool_name, len(output_str), _MAX_OUTPUT_CHARS)
-        if isinstance(output, dict):
-            output["_truncated"] = True
-            # Truncar campos de texto largos
-            for k, v in output.items():
-                if isinstance(v, str) and len(v) > 2000:
-                    output[k] = v[:2000] + "... [TRUNCADO]"
-            modified = True
+        output["_truncated"] = True
+        # Truncar campos de texto largos
+        for k, v in output.items():
+            if isinstance(v, str) and len(v) > 2000:
+                output[k] = v[:2000] + "... [TRUNCADO]"
+        modified = True
 
     # Return modified dict or None (ADK will keep original if None)
     return output if modified else None
@@ -500,6 +501,7 @@ def after_agent_callback(
 
     if not agent_output:
         # No domain output in state yet — nothing to validate
+        log.warning("[GUARDRAIL] after_agent: sin claves de dominio en state — validación omitida (el agente puede no haber escrito su output a state).")
         return None
 
     # Run validation (mutates agent_output in-place, logging errors)

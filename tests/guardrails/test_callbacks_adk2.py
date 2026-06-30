@@ -223,6 +223,38 @@ class TestAfterToolCallback:
         assert result.get("_truncated") is True
         assert "[TRUNCADO]" in result["report"]
 
+    def test_credential_in_string_output_is_blocked(self):
+        """String output containing a credential must be blocked (return error dict).
+        The raw credential string must NOT flow through.
+        """
+        tool = make_tool("ree_poller")
+        ctx = make_tool_context()
+        # A bare string output containing an API key
+        tool_response = "token: AIzaABCDEF1234567890123456789012345678"
+        result = after_tool_callback(tool, {}, ctx, tool_response)
+        assert result is not None
+        assert isinstance(result, dict)
+        assert "error" in result
+        assert "CREDENTIAL_REDACTED" in result["error"]
+        # Ensure the raw credential string is NOT returned
+        assert result != tool_response
+
+    def test_credential_in_list_output_is_blocked(self):
+        """List output containing a credential must be blocked (return error dict).
+        The raw list must NOT flow through.
+        """
+        tool = make_tool("get_wind_forecast")
+        ctx = make_tool_context()
+        # A list output containing an API key pattern (sk- needs 32+ alphanumerics)
+        tool_response = ["wind_speed: 25", "secret: sk-abcd1234efgh5678ijkl9012mnop1234"]
+        result = after_tool_callback(tool, {}, ctx, tool_response)
+        assert result is not None
+        assert isinstance(result, dict)
+        assert "error" in result
+        assert "CREDENTIAL_REDACTED" in result["error"]
+        # Ensure the raw list is NOT returned
+        assert result != tool_response
+
 
 # ---------------------------------------------------------------------------
 # before_model_callback
