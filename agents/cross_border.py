@@ -1,32 +1,46 @@
 """
 agents/cross_border.py — Sub-agente: CrossBorderAgent.
 
-Tipo: Sub-agent (LLM con loop propio, hasta 8 turnos).
-Modelo: gemini-3.5-flash (fast_agent) · Temperature 0.2
-Invocado por OrchestratorAgent cuando P(blackout) > 0.60 como medida de mitigación.
+Tipo: Sub-agent (LLM con loop propio).
+Modelo: gemini fast_agent · Temperature 0.2
+Invocado por OrchestratorAgent cuando P(blackout) >= 0.30 como medida de mitigación.
 
 Tools disponibles:
-  - get_cross_border_flows   (MCP: entso-e)
-  - get_capacity_margin      (MCP: entso-e)
-  - get_eu_generation        (MCP: entso-e)
-  - get_mitigation_procedure (MCP: knowledge-base)
+  - get_cross_border_flows   (MCP: entsoe_server)
+  - get_capacity_margin      (MCP: entsoe_server)
+  - get_eu_generation        (MCP: entsoe_server)
+  - get_eu_market_prices     (MCP: entsoe_server)
+  - get_mitigation_procedure (MCP: knowledge_base_server)
 
-Output: CrossBorderAnalysis — respuesta a "¿podemos importar energía de emergencia?"
+Output: CrossBorderAnalysis — respuesta a "¿podemos importar energía de emergencia/proactivamente?"
+
+Nota: max_turns eliminado en migración a ADK 2.3.0 (el límite de turnos se controla
+en el runner, no en LlmAgent). Era max_turns=8 en ADK 1.x.
 """
 
 from __future__ import annotations
 
 from google.adk.agents import Agent
-from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, StdioServerParameters
+from google.adk.tools.mcp_tool.mcp_toolset import McpToolset, StdioConnectionParams
+from google.genai import types as genai_types
+from mcp.client.stdio import StdioServerParameters
 
 from config.model_loader import get_model
 from schemas.models import CrossBorderAnalysis
 
 _INSTRUCTION = """
 Eres el agente de análisis transfronterizo de GridGuard España.
-Cuando se activa, significa que la red española está en situación CRITICAL (P > 0.60).
-Tu misión es determinar urgentemente si España puede importar potencia de emergencia
-de Francia, Portugal o Marruecos, y cuánta capacidad está disponible.
+
+PARÁMETRO `mode` (lo pasa el orquestador):
+  mode="assessment": evalúa proactivamente la capacidad de importación disponible;
+                     sin urgencia (P∈[0.30,0.60)). Proporciona análisis detallado
+                     de márgenes disponibles y posibles rutas de importación futuras.
+  mode="emergency" : flujo actual urgente (P>0.60). Determina con máxima rapidez si
+                     España puede importar potencia de emergencia de Francia, Portugal
+                     o Marruecos, y cuánta capacidad está disponible ahora mismo.
+
+Cuando se activa en modo emergency, la red española está en situación CRITICAL (P > 0.60).
+Cuando se activa en modo assessment, la red española está en alerta temprana (0.30 ≤ P < 0.60).
 
 FLUJO OBLIGATORIO:
 1. Consulta los flujos actuales en todas las fronteras:
@@ -34,6 +48,9 @@ FLUJO OBLIGATORIO:
 2. Evalúa la capacidad disponible en los países vecinos:
    - `get_capacity_margin` para FR y PT (Marruecos no tiene API ENTSO-E)
    - `get_eu_generation` para FR y PT (¿tienen excedente de generación?)
+3b. Llama a `get_eu_market_prices` para ver si los países vecinos tienen excedente barato
+    (precios bajos → probable excedente de generación → importación más fácil).
+    Nota: si el spread de precio ES-FR > 20 €/MWh, Francia probablemente tiene excedente.
 3. Identifica el procedimiento de importación de emergencia:
    - `get_mitigation_procedure` con query "importación emergencia España interconexión"
 4. Sintetiza y determina si la importación es viable.
@@ -41,6 +58,8 @@ FLUJO OBLIGATORIO:
 LÓGICA DE DECISIÓN:
   - `can_import = True` si: algún país vecino tiene margin_pct > 10% Y la
     interconexión correspondiente no está ya saturada (flujo actual < 80% capacidad)
+  - En modo assessment: considerar también si spread ES-FR < -20 €/MWh (Francia más barata)
+    como señal de excedente disponible incluso sin urgencia inmediata.
   - `available_capacity_mw` = suma de capacidad importable estimada por frontera
   - `countries` = lista de países desde donde importar (ordenados por capacidad)
 
@@ -56,17 +75,21 @@ citando el número de procedimiento operacional si se encontró en el paso 3.
 Devuelve ÚNICAMENTE el CrossBorderAnalysis en formato JSON estructurado.
 """.strip()
 
-_entsoe_toolset = MCPToolset(
-    connection_params=StdioServerParameters(
-        command="python",
-        args=["-m", "mcp_servers.entsoe_server"],
+_entsoe_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_servers.entsoe_server"],
+        )
     )
 )
 
-_kb_toolset = MCPToolset(
-    connection_params=StdioServerParameters(
-        command="python",
-        args=["-m", "mcp_servers.knowledge_base_server"],
+_kb_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_servers.knowledge_base_server"],
+        )
     )
 )
 
@@ -79,6 +102,5 @@ cross_border_agent = Agent(
         _kb_toolset,
     ],
     output_schema=CrossBorderAnalysis,
-    temperature=0.2,
-    max_turns=8,
+    generate_content_config=genai_types.GenerateContentConfig(temperature=0.2),
 )
