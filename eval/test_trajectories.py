@@ -17,10 +17,16 @@ Para integración real (requiere ESIOS_TOKEN + modelos entrenados):
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+_requires_live_llm = pytest.mark.skipif(
+    not os.environ.get("GEMINI_API_KEY"),
+    reason="requires GEMINI_API_KEY / live Gemini LLM",
+)
 
 GOLDEN_DIR = Path("eval/golden_dataset")
 
@@ -171,6 +177,7 @@ class TestBlackoutTrajectory:
         assert alert["severity"] == "CRITICAL"
 
     @pytest.mark.integration
+    @_requires_live_llm
     def test_run_scenario_critical(self, blackout_scenario):
         """
         Test de integración end-to-end: ejecuta el Orchestrator con el escenario completo.
@@ -255,6 +262,7 @@ class TestNormalTrajectory:
         assert proxies["composite_pressure"] < 0.55  # sin baseline, interchange_delta infla el score
 
     @pytest.mark.integration
+    @_requires_live_llm
     def test_run_scenario_normal_no_escalation(self, normal_scenario):
         """No debe activar CrossBorderAgent ni ReportAgent en condiciones normales."""
         from agents.orchestrator import run_scenario

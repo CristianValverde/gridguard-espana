@@ -35,6 +35,7 @@ Skills (como AgentTools): AnomalyDetectorSkill, RenewablesForecastSkill, Regulat
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -234,16 +235,24 @@ def run(region: str = "peninsular") -> dict[str, Any]:
         app_name="gridguard",
         session_service=session_service,
     )
-    session = session_service.create_session(
-        app_name="gridguard",
-        user_id="gridguard-system",
+    # ADK 2.3.0: create_session is a coroutine — must be awaited via asyncio.run.
+    session = asyncio.run(
+        session_service.create_session(
+            app_name="gridguard",
+            user_id="gridguard-system",
+        )
     )
-    result = runner.run(
+    message = genai_types.Content(
+        role="user",
+        parts=[genai_types.Part(text=f"Ejecuta ciclo de monitorizacion para region: {region}")],
+    )
+    # ADK 2.3.0: runner.run() returns a Generator[Event, None, None] — consume it.
+    events = list(runner.run(
         session_id=session.id,
         user_id="gridguard-system",
-        new_message={"role": "user", "content": f"Ejecuta ciclo de monitorizacion para region: {region}"},
-    )
-    return _extract_result(result)
+        new_message=message,
+    ))
+    return _extract_result(events)
 
 
 def run_scenario(scenario: dict) -> dict[str, Any]:
@@ -261,58 +270,85 @@ def run_scenario(scenario: dict) -> dict[str, Any]:
         app_name="gridguard_eval",
         session_service=session_service,
     )
-    session = session_service.create_session(
-        app_name="gridguard_eval",
-        user_id="eval-runner",
+    # ADK 2.3.0: create_session is a coroutine — must be awaited via asyncio.run.
+    session = asyncio.run(
+        session_service.create_session(
+            app_name="gridguard_eval",
+            user_id="eval-runner",
+        )
     )
 
     # Serializar el snapshot mas reciente como contexto de entrada
     snapshot = scenario.get("snapshots", [{}])[-1]
     scenario_name = scenario.get("scenario_name", "unknown")
-    message = (
+    message_text = (
         f"[EVAL] Escenario: {scenario_name}. "
         f"Analiza este snapshot de red y ejecuta el protocolo completo: "
         f"{json.dumps(snapshot)}"
+    )
+    message = genai_types.Content(
+        role="user",
+        parts=[genai_types.Part(text=message_text)],
     )
 
     result = runner.run(
         session_id=session.id,
         user_id="eval-runner",
-        new_message={"role": "user", "content": message},
+        new_message=message,
     )
 
-    output = _extract_result(result)
+    # ADK 2.3.0: runner.run() returns a Generator[Event, None, None] — consume it.
+    events = list(result)
+    output = _extract_result(events)
     # Agregar trayectoria de tools para los tests de eval
-    output["trajectory"] = _extract_trajectory(result)
+    output["trajectory"] = _extract_trajectory(events)
     return output
 
 
-def _extract_result(runner_result) -> dict:
-    """Extrae el dict de resultado del runner de ADK."""
+def _extract_result(events: list) -> dict:
+    """Extrae el dict de resultado de la lista de Events de ADK 2.3.0.
+
+    Busca el último evento de respuesta final del agente orquestador y
+    extrae el JSON del texto de su contenido.
+    """
     try:
-        last_message = runner_result.messages[-1] if runner_result.messages else {}
-        content = last_message.get("content", "")
-        if isinstance(content, str):
-            stripped = content.strip()
-            if stripped.startswith("{"):
-                return json.loads(stripped)
-        return {"raw": content}
+        # Iterar en reversa para encontrar la última respuesta del agente
+        for event in reversed(events):
+            if not event.is_final_response():
+                continue
+            content = getattr(event, "content", None)
+            if content is None:
+                continue
+            parts = getattr(content, "parts", None) or []
+            for part in parts:
+                text = getattr(part, "text", None) or ""
+                stripped = text.strip()
+                if stripped.startswith("{"):
+                    return json.loads(stripped)
+                elif stripped:
+                    return {"raw": stripped}
+        return {"raw": ""}
     except Exception as exc:
         log.error("Error extrayendo resultado: %s", exc)
         return {"error": str(exc)}
 
 
-def _extract_trajectory(runner_result) -> list[dict]:
-    """Extrae la lista de tool calls del resultado del runner."""
+def _extract_trajectory(events: list) -> list[dict]:
+    """Extrae la lista de tool calls de la lista de Events de ADK 2.3.0."""
     trajectory = []
     try:
-        for msg in getattr(runner_result, "messages", []):
-            tool_calls = msg.get("tool_calls") or []
-            for tc in tool_calls:
-                trajectory.append({
-                    "tool": tc.get("name") or tc.get("function", {}).get("name", "unknown"),
-                    "args": tc.get("args") or tc.get("function", {}).get("arguments", {}),
-                })
+        for event in events:
+            content = getattr(event, "content", None)
+            if content is None:
+                continue
+            parts = getattr(content, "parts", None) or []
+            for part in parts:
+                fc = getattr(part, "function_call", None)
+                if fc is not None:
+                    trajectory.append({
+                        "tool": getattr(fc, "name", "unknown"),
+                        "args": getattr(fc, "args", {}),
+                    })
     except Exception as exc:
         log.warning("Error extrayendo trayectoria: %s", exc)
     return trajectory
