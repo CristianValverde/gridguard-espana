@@ -30,6 +30,7 @@ PRIOR_MATRIX = np.array([
     [0.05, 0.15, 0.350, 0.4000, 0.0500],  # S3 → P(escalar a apagón) ≈ 5%
     [0.30, 0.30, 0.200, 0.1500, 0.0500],  # S4 → recuperación gradual
 ], dtype=np.float64)
+PRIOR_MATRIX.flags.writeable = False
 
 
 def estimate_transition_matrix(
@@ -51,6 +52,8 @@ def blend_with_prior(empirical_counts: np.ndarray, kappa: float = 5.0) -> np.nda
 
     Donde hay muchos datos, dominan los conteos; donde son escasos (S2→S3→S4), domina el prior.
     """
+    if kappa <= 0:
+        raise ValueError(f"kappa must be > 0, got {kappa}")
     pseudo = kappa * PRIOR_MATRIX
     blended = empirical_counts + pseudo
     return blended / blended.sum(axis=1, keepdims=True)

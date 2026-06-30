@@ -24,8 +24,8 @@ def test_prior_matrix_is_row_stochastic():
 
 
 def test_blend_pulls_rare_transition_toward_prior():
-    # Sin observaciones de 3->4, la probabilidad mezclada debe acercarse al prior,
-    # no a 1/5 (uniforme de Laplace).
+    # Sin observaciones DESDE S3 (toda la fila 3 a cero), la probabilidad mezclada
+    # debe acercarse al prior, no a 1/5 (uniforme de Laplace).
     counts = np.zeros((5, 5))
     counts[0, 0] = 1000  # mucha masa en S0->S0
     A = gst.blend_with_prior(counts, kappa=5.0)
