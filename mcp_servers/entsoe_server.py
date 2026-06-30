@@ -26,7 +26,7 @@ from typing import Any
 import pandas as pd
 from mcp.server.fastmcp import FastMCP
 
-from schemas.models import CapacityMargin, CrossBorderFlow, EUGenerationSnapshot
+from schemas.models import CapacityMargin, CrossBorderFlow, EUGenerationSnapshot, MarketPrice
 
 mcp = FastMCP("gridguard-entso-e")
 
@@ -200,6 +200,73 @@ def get_capacity_margin(country: str = "ES") -> dict:
             return {"error": f"Error ENTSO-E capacity margin {country}: {exc}"}
 
     return _cached(f"margin_{country}", build)
+
+
+# ---------------------------------------------------------------------------
+# get_eu_market_prices — precios day-ahead A44
+#
+# get_eu_market_prices: ENTSO-E day-ahead (A44) via entsoe-py EntsoePandasClient.query_day_ahead_prices.
+# Confirmado via api-probe 2026-06-30: devuelve pd.Series €/MWh, resolución 15-min (96-97 valores/día),
+# índice tz-aware Europe/Paris (FR). CONVERTIR el índice a UTC antes de devolver.
+# ---------------------------------------------------------------------------
+
+def _market_prices_impl(countries: list[str], date: str, fetch_fn) -> dict:
+    """Lógica pura (sin I/O): precios day-ahead por país para la fecha dada (€/MWh).
+
+    Args:
+        countries:  Lista de códigos ISO2. Países no en AREA_CODES se ignoran.
+        date:       Fecha en formato YYYY-MM-DD.
+        fetch_fn:   Callable(country, date) → pd.Series con índice tz-aware UTC.
+
+    Returns:
+        Dict[country → MarketPrice.model_dump(mode='json')].
+        Resolución real ENTSO-E: 15-min (96 valores/día), NO horaria.
+    """
+    out: dict = {}
+    for country in countries:
+        if country not in AREA_CODES:
+            continue
+        series = fetch_fn(country, date)
+        out[country] = MarketPrice(
+            country=country,
+            timestamps=list(series.index.to_pydatetime()),
+            price_eur_mwh=[float(v) for v in series.values],
+        ).model_dump(mode="json")
+    return out
+
+
+def _fetch_day_ahead(country: str, day: str):
+    """Transporte real: ENTSO-E A44 via entsoe-py query_day_ahead_prices.
+
+    Probe 2026-06-30: devuelve 96-97 valores/día a resolución 15-min.
+    El índice viene en zona local del país (e.g. Europe/Paris para FR);
+    se convierte a UTC antes de devolver.
+    """
+    client = _client()
+    start = pd.Timestamp(day, tz="Europe/Madrid")
+    end = start + pd.Timedelta(days=1)
+    series = client.query_day_ahead_prices(AREA_CODES[country], start=start, end=end)
+    # Probe confirmed: index is tz-aware in country local zone → convert to UTC
+    series.index = series.index.tz_convert("UTC")
+    return series
+
+
+@mcp.tool()
+def get_eu_market_prices(countries: list[str], date: str) -> dict:
+    """Precios day-ahead ENTSO-E (€/MWh) para los países indicados en la fecha dada.
+
+    Args:
+        countries:  Lista de códigos ISO2 ('ES', 'FR', 'PT').
+        date:       Fecha en formato YYYY-MM-DD (ej. '2026-06-30').
+
+    Returns:
+        Dict con un MarketPrice por país (timestamps en UTC, price_eur_mwh en €/MWh).
+        Resolución: 15-min (96 valores/día), índice UTC.
+
+    Heurística spread: ES-FR > 20 €/MWh → Francia probablemente tiene excedente
+    de generación (importación más fácil hacia España).
+    """
+    return _market_prices_impl(countries, date, fetch_fn=_fetch_day_ahead)
 
 
 if __name__ == "__main__":

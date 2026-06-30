@@ -235,6 +235,18 @@ class CapacityMargin(BaseModel):
     margin_pct: float = Field(..., description="(available - peak) / peak × 100")
 
 
+class MarketPrice(BaseModel):
+    """Precio day-ahead por país. Salida de get_eu_market_prices().
+
+    Resolución real ENTSO-E (A44): 15-min (96 valores/día), NO horaria.
+    Confirmado via api-probe 2026-06-30. Índice convertido a UTC.
+    """
+
+    country: str
+    timestamps: list[datetime]
+    price_eur_mwh: list[float]
+
+
 # ---------------------------------------------------------------------------
 # Capa 2 — MCP: memory (SQLite)
 # ---------------------------------------------------------------------------
