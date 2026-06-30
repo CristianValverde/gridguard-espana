@@ -51,3 +51,37 @@ def test_graded_labels_have_more_positives_than_old_single_window():
     labels, _ = incidents.build_graded_labels(index)
     # 6h (S4) + 3h + 3h (2×S3) = 12 horas-evento positivas
     assert labels.sum() == 12
+
+
+def _synthetic_df():
+    idx = pd.date_range("2024-01-01", periods=1000, freq="h", tz="UTC")
+    rng = np.random.default_rng(42)
+    return pd.DataFrame({
+        "composite_pressure": rng.uniform(0, 1, size=1000),
+        "renewables_pct": rng.uniform(0, 90, size=1000),
+        "balance_mw": rng.normal(0, 4000, size=1000),
+    }, index=idx)
+
+
+def test_derive_states_returns_values_in_0_4():
+    states = incidents.derive_stress_states(_synthetic_df())
+    assert set(states.unique()).issubset({0, 1, 2, 3, 4})
+    assert len(states) == 1000
+
+
+def test_derive_states_s2_is_rarer_than_s1():
+    states = incidents.derive_stress_states(_synthetic_df())
+    n_s1 = (states == incidents.S1_STRESS).sum()
+    n_s2 = (states == incidents.S2_NOTABLE).sum()
+    # S2 usa un percentil más estricto (P97) que S1 (P90) → debe ser más raro
+    assert 0 < n_s2 <= n_s1
+
+
+def test_derive_states_overrides_with_documented_events():
+    # Un df que cubre el apagón debe marcar S4 en su ventana
+    idx = pd.date_range("2025-04-28 00:00", "2025-04-28 12:00", freq="h", tz="UTC")
+    df = pd.DataFrame({
+        "composite_pressure": 0.1, "renewables_pct": 30.0, "balance_mw": 0.0,
+    }, index=idx)
+    states = incidents.derive_stress_states(df)
+    assert (states == incidents.S4_BLACKOUT).any()

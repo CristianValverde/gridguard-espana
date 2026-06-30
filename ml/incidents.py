@@ -78,3 +78,39 @@ def build_graded_labels(index: pd.DatetimeIndex) -> tuple[pd.Series, pd.Series]:
         weights[mask] = 3.0 if inc["severity"] == S4_BLACKOUT else 2.0
 
     return labels, weights
+
+
+def derive_stress_states(df: pd.DataFrame) -> pd.Series:
+    """Asigna estados S0–S4 por fila (shift-left, sin LLM; D2).
+
+    - S0/S1/S2 se derivan por umbrales de percentil sobre proxies físicos del propio df.
+    - S3/S4 se sobreescriben desde los eventos documentados (tienen prioridad sobre los umbrales).
+
+    Requiere columnas: composite_pressure, renewables_pct, balance_mw.
+    """
+    states = pd.Series(S0_NORMAL, index=df.index, dtype=int, name="grid_state")
+
+    cp = df["composite_pressure"]
+    ren = df["renewables_pct"]
+    bal = df["balance_mw"].abs()
+
+    p90_cp, p97_cp = cp.quantile(0.90), cp.quantile(0.97)
+    p90_ren = ren.quantile(0.90)
+    p85_bal = bal.quantile(0.85)
+
+    # S1 — estrés: alta renovable junto a desequilibrio, o presión compuesta alta
+    s1_mask = ((ren > p90_ren) & (bal > p85_bal)) | (cp > p90_cp)
+    states[s1_mask] = S1_STRESS
+
+    # S2 — notable: presión compuesta severa (umbral más estricto que S1)
+    s2_mask = cp > p97_cp
+    states[s2_mask] = S2_NOTABLE
+
+    # S3/S4 — eventos documentados: prioridad absoluta sobre los umbrales
+    for inc in documented_incidents_utc():
+        ts = inc["ts"]
+        window_start = ts - pd.Timedelta(hours=inc["window_h"])
+        mask = (df.index >= window_start) & (df.index <= ts)
+        states[mask] = inc["severity"]
+
+    return states
