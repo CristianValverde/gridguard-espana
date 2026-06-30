@@ -22,10 +22,10 @@ def _get_grid_state_impl(features: dict) -> dict:
     A = mst.get_transition_matrix()
     confidence = float(A[state].max())  # masa de la transición dominante
     return {
-        "state": state,
+        "state": int(state),
         "label": STATE_LABELS.get(state, "?"),
         "confidence": confidence,
-        "trajectory_6h": traj,
+        "trajectory_6h": [int(s) for s in traj],
     }
 
 
@@ -37,9 +37,9 @@ def _get_transition_probabilities_impl() -> dict:
 def _get_markov_trajectory_impl(features: dict, horizon_hours: int) -> dict:
     state = mst.compute_state(features)
     return {
-        "trajectory": mst.get_trajectory(state, horizon_hours),
-        "prob_reach_s3": mst.prob_reach_severity(state, S3_MAJOR, horizon_hours),
-        "prob_reach_s4": mst.prob_reach_severity(state, S4_BLACKOUT, horizon_hours),
+        "trajectory": [int(s) for s in mst.get_trajectory(state, horizon_hours)],
+        "prob_reach_s3": float(mst.prob_reach_severity(state, S3_MAJOR, horizon_hours)),
+        "prob_reach_s4": float(mst.prob_reach_severity(state, S4_BLACKOUT, horizon_hours)),
     }
 
 

@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import pytest
 from mcp_servers import markov_server as srv
@@ -21,6 +22,11 @@ def test_get_grid_state_shape():
     assert set(out) == {"state", "label", "confidence", "trajectory_6h"}
     assert out["state"] == 0
     assert len(out["trajectory_6h"]) == 6
+    # Defensive JSON serialization: all types must be native Python (int, float, str)
+    json.dumps(out)  # raises TypeError if any numpy types leak
+    assert isinstance(out["state"], int)
+    assert isinstance(out["confidence"], float)
+    assert all(isinstance(s, int) for s in out["trajectory_6h"])
 
 
 def test_transition_probabilities_shape():
@@ -35,3 +41,8 @@ def test_markov_trajectory_probs_in_range():
     assert 0.0 <= out["prob_reach_s3"] <= 1.0
     assert 0.0 <= out["prob_reach_s4"] <= 1.0
     assert len(out["trajectory"]) == 6
+    # Defensive JSON serialization: all types must be native Python
+    json.dumps(out)  # raises TypeError if any numpy types leak
+    assert all(isinstance(s, int) for s in out["trajectory"])
+    assert isinstance(out["prob_reach_s3"], float)
+    assert isinstance(out["prob_reach_s4"], float)
