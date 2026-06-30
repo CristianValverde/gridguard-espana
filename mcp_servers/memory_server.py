@@ -30,6 +30,7 @@ from typing import Generator
 
 from mcp.server.fastmcp import FastMCP
 
+from ml.incidents import STATE_LABELS
 from schemas.models import Baseline, Incident, RiskScore
 
 mcp = FastMCP("gridguard-memory")
@@ -94,6 +95,14 @@ def _init_db() -> None:
                 risk_score_at_onset  INTEGER DEFAULT 0,
                 created_at           TEXT    DEFAULT (datetime('now'))
             );
+
+            CREATE TABLE IF NOT EXISTS grid_states (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp  TEXT    NOT NULL,
+                state      INTEGER NOT NULL,
+                created_at TEXT    DEFAULT (datetime('now'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_grid_states_ts ON grid_states(timestamp);
         """)
 
 
@@ -289,6 +298,89 @@ def get_risk_history(hours: int = 24) -> list[dict]:
         return results
     except Exception as exc:
         return [{"error": str(exc)}]
+
+
+# ---------------------------------------------------------------------------
+# Estado de Markov — helpers _impl + tools
+# ---------------------------------------------------------------------------
+
+def _init_db_at(db_path) -> None:
+    """Versión de _init_db parametrizada por ruta (para tests)."""
+    con = sqlite3.connect(str(db_path))
+    con.executescript("""
+        CREATE TABLE IF NOT EXISTS grid_states (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp  TEXT    NOT NULL,
+            state      INTEGER NOT NULL,
+            created_at TEXT    DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_grid_states_ts ON grid_states(timestamp);
+    """)
+    con.commit()
+    con.close()
+
+
+def _store_grid_state_impl(timestamp: str, state: int, db_path) -> dict:
+    con = sqlite3.connect(str(db_path))
+    try:
+        con.execute(
+            "INSERT INTO grid_states (timestamp, state) VALUES (?, ?)",
+            (timestamp, int(state)),
+        )
+        con.commit()
+        return {"ok": True}
+    finally:
+        con.close()
+
+
+def _get_state_transitions_impl(
+    hours: int, db_path, now: str | None = None
+) -> list[dict]:
+    ref = (
+        datetime.fromisoformat(now.replace("Z", "+00:00"))
+        if now
+        else datetime.now(timezone.utc)
+    )
+    cutoff = (ref - timedelta(hours=hours)).isoformat()
+    con = sqlite3.connect(str(db_path))
+    con.row_factory = sqlite3.Row
+    try:
+        rows = con.execute(
+            "SELECT timestamp, state FROM grid_states "
+            "WHERE timestamp >= ? ORDER BY timestamp",
+            (cutoff,),
+        ).fetchall()
+        return [
+            {
+                "timestamp": r["timestamp"],
+                "state": r["state"],
+                "label": STATE_LABELS.get(r["state"], "?"),
+            }
+            for r in rows
+        ]
+    finally:
+        con.close()
+
+
+@mcp.tool()
+def store_grid_state(timestamp: str, state: int) -> dict:
+    """Persiste el estado de Markov S0–S4 en un instante (UTC ISO 8601).
+
+    Args:
+        timestamp: Instante UTC en formato ISO 8601, ej. '2026-06-30T10:00:00Z'
+        state:     Estado de Markov (0=normal, 1=estrés, 2=notable, 3=mayor, 4=apagón)
+    """
+    return _store_grid_state_impl(timestamp, state, db_path=_db_path())
+
+
+@mcp.tool()
+def get_state_transitions(hours: int = 24) -> list[dict]:
+    """Historial de estados de las últimas N horas: [{timestamp, state, label}].
+
+    Args:
+        hours: Horas hacia atrás (default 24)
+    """
+    return _get_state_transitions_impl(hours, db_path=_db_path())
 
 
 # Inicializar BD al importar el módulo
