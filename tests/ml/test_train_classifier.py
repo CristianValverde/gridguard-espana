@@ -1,8 +1,10 @@
 # tests/ml/test_train_classifier.py
+import joblib
 import numpy as np
 import pandas as pd
 from ml import incidents
 from ml.train import train_classifier
+from ml.train.calibration import _IsotonicCalibrated
 
 
 def test_loeo_every_val_fold_has_a_positive():
@@ -38,3 +40,40 @@ def test_run_uses_graded_labels_and_weights(monkeypatch, tmp_path):
     assert captured.get("n_pos", 0) >= 12  # >= las 12 horas-evento graduadas
     # Confirmar que el modelo se guardó en tmp_path y no en el directorio real
     assert (tmp_path / "blackout_classifier.pkl").exists()
+
+
+def test_bundle_serialization_module(monkeypatch, tmp_path):
+    """El bundle debe desserializarse con __class__.__module__ == 'ml.train.calibration'.
+
+    Reproduce el bug original: cuando _IsotonicCalibrated se definía en __main__,
+    pickle registraba 'ml.train.calibration._IsotonicCalibrated' debería ser correcto
+    pero cualquier consumer que no sea el proceso de entrenamiento fallaba con
+    AttributeError: module '__main__' has no attribute '_IsotonicCalibrated'.
+    """
+    import ml.train.train_classifier as tc
+
+    monkeypatch.setattr(tc, "CANDIDATES_DIR", tmp_path)
+    tc.run(n_trials=1)
+
+    pkl_path = tmp_path / "blackout_classifier.pkl"
+    assert pkl_path.exists(), "El bundle no se guardó en tmp_path"
+
+    # Cargar desde disco — simula exactamente lo que hacen validate_models, ml_models_server, etc.
+    bundle = joblib.load(pkl_path)
+    model = bundle["model"]
+
+    # La aserción clave: el módulo debe ser el módulo importable, NO '__main__'
+    assert model.__class__.__module__ == "ml.train.calibration", (
+        f"Módulo incorrecto: {model.__class__.__module__!r}. "
+        "Indica que _IsotonicCalibrated fue serializado desde __main__ "
+        "y no puede ser deserializado por consumidores externos."
+    )
+    assert isinstance(model, _IsotonicCalibrated)
+
+    # Verificar que predict_proba funciona sobre un array dummy del ancho correcto
+    # Usar feature_cols del bundle (incluye lag features, más ancho que FEATURE_COLS base)
+    n_features = len(bundle["feature_cols"])
+    X_dummy = np.zeros((3, n_features), dtype=np.float32)
+    proba = model.predict_proba(X_dummy)
+    assert proba.shape == (3, 2), f"predict_proba shape inesperado: {proba.shape}"
+    assert np.allclose(proba.sum(axis=1), 1.0, atol=1e-6), "Las probabilidades no suman 1"
