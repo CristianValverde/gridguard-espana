@@ -212,6 +212,30 @@ class TestBlackoutTrajectory:
 # Tests de trayectoria — escenario NORMAL (no debe escalar)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
+def test_markov_trajectory_escalates_on_blackout_scenario():
+    """Sobre los snapshots pre-apagón, P(alcanzar S4 en 6h) no debe decrecer hacia el colapso."""
+    from tools import markov_state_tracker as mst
+    from ml.incidents import S4_BLACKOUT
+    from ml.train.validate_models import _snapshot_to_row
+
+    scenario = json.loads(Path("eval/golden_dataset/blackout_apr_2025.json").read_text(encoding="utf-8"))
+    prev_flow = None
+    probs = []
+    for snap in scenario["snapshots"]:
+        row, prev_flow = _snapshot_to_row(snap, prev_flow)
+        features = {k: row[k] for k in ("composite_pressure", "renewables_pct", "balance_mw")}
+        state = mst.compute_state(features)
+        probs.append(mst.prob_reach_severity(state, S4_BLACKOUT, horizon_hours=6))
+
+    # La P de escalada en el último snapshot (pre-colapso) ≥ la del primero del escenario
+    assert probs[-1] >= probs[0]
+
+
+# ---------------------------------------------------------------------------
+# Tests de trayectoria — escenario NORMAL (no debe escalar)
+# ---------------------------------------------------------------------------
+
 class TestNormalTrajectory:
     """El Orchestrator NO debe escalar en condiciones normales."""
 
