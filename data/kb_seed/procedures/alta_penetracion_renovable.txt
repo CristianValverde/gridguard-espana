@@ -1,0 +1,59 @@
+PROCEDIMIENTO OPERACIONAL — GESTIÓN DE ALTA PENETRACIÓN RENOVABLE
+REE — Protocolo Interno de Vigilancia Reforzada
+Referencia: PO 7.1 §6.4 / Circular Técnica REE 2024-03
+
+DEFINICIÓN DE UMBRALES
+Nivel 1 (Vigilancia): Renovables > 50% de demanda instantánea
+Nivel 2 (Alerta): Renovables > 70% de demanda instantánea
+Nivel 3 (Emergencia Renovable): Renovables > 85% de demanda instantánea
+Nivel 4 (Crítico): Renovables > 90% + balance negativo + CCGT = 0 MW online
+
+NIVEL 1 — VIGILANCIA REFORZADA (Renovables > 50%)
+Acciones del operador:
+1. Activar supervisión especial de la sala de control
+2. Verificar disponibilidad de unidades de regulación sincrónica
+3. Publicar AAPR (Alerta de Alta Penetración Renovable) al mercado
+4. Confirmar disponibilidad de reserva terciaria (> 2000 MW disponibles)
+5. Revisar previsión meteorológica para las próximas 6 horas
+
+NIVEL 2 — ALERTA (Renovables > 70%)
+Acciones adicionales:
+1. Solicitar arranque de al menos 1 CCGT en modo de espera caliente
+2. Verificar disponibilidad de importación ES-FR (no superada > 60% de capacidad)
+3. Activar respuesta de demanda voluntaria si contratos disponibles
+4. Aumentar frecuencia de monitorización de ACE a cada 5 minutos
+5. Preparar activación del mecanismo de restricciones técnicas si necesario
+6. Coordinar con RTE (Francia) previsión de flujos de intercambio
+
+NIVEL 3 — EMERGENCIA RENOVABLE (Renovables > 85%)
+Acciones críticas:
+1. Obligar arranque de CCGT suficientes para cubrir reserva terciaria requerida
+2. Limitar exportaciones para preservar inercia sincrónica doméstica
+3. Activar restricciones técnicas en parques renovables si el balance lo requiere
+4. Maximizar generación hidráulica regulable
+5. Contactar proactivamente con RTE y REN para preparar importación de emergencia
+6. Alertar a Ministerio y CECOEL
+
+NIVEL 4 — CRÍTICO (Renovables > 90% + balance negativo + CCGT = 0)
+Este nivel combina los factores que precedieron al apagón del 28-Abr-2025:
+ACCIONES INMEDIATAS (< 5 minutos):
+1. Instrucción urgente: arranque de CCGT más próximos (Ciclo de Vida de Arranque Rápido)
+2. Maximizar importación ES-FR al máximo disponible
+3. Reducción de exports vía ES-PT si los hay
+4. Activar Plan de Defensa del Sistema (PO 8.1)
+5. Preparar deslastrado controlado de carga si balance < -2000 MW
+6. Comunicar situación de emergencia a CECOEL y ENTSO-E EOC
+
+RELACIÓN CON INDICADORES GRIDGUARD
+- composite_pressure > 0.65 → activar Nivel 2
+- composite_pressure > 0.80 → activar Nivel 3
+- composite_pressure > 0.90 + P(blackout) > 0.40 → activar Nivel 4
+- P(blackout_1h) > 0.60 → activar procedimiento de importación de emergencia
+
+LECCIÓN DEL APAGÓN DE ABRIL 2025
+El error operacional crítico fue no activar el Nivel 3 cuando se detectó que
+todos los CCGT estaban offline a las 09:30 UTC con renovables > 85%.
+La inercia del sistema cayó por debajo del mínimo seguro de 120 GVAs durante
+más de 1 hora antes del colapso. Un sistema de monitorización con ML como
+GridGuard habría detectado composite_pressure > 0.80 a las 09:15 UTC,
+con margen de 75 minutos para activar el protocolo de emergencia.

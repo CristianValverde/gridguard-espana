@@ -1,0 +1,180 @@
+{
+  "scenario_name": "blackout_apr_2025",
+  "description": "Apagón eléctrico España 28 de abril de 2025. Alta penetración renovable (solar + viento fuerte del SW), demanda de lunes de primavera, desbalance progresivo que derivó en colapso de frecuencia a las 12:33 CET.",
+  "metadata": {
+    "date": "2025-04-28",
+    "event_time_utc": "2025-04-28T10:33:00Z",
+    "region": "peninsular",
+    "root_cause": "Pérdida súbita de generación convencional + muy alta penetración renovable sin suficiente inercia sincrónica",
+    "max_affected_mw": 15000,
+    "duration_hours": 6.5
+  },
+  "snapshots": [
+    {
+      "timestamp": "2025-04-28T06:00:00Z",
+      "region": "peninsular",
+      "demand_mw": 26800,
+      "generation_by_tech": {
+        "nuclear_mw": 7100,
+        "hydro_mw": 2200,
+        "wind_mw": 9500,
+        "solar_pv_mw": 1200,
+        "solar_thermal_mw": 400,
+        "gas_cc_mw": 4200,
+        "coal_mw": 800,
+        "cogeneration_mw": 1800
+      },
+      "interchange_flows": {
+        "es_fr_mw": -1200,
+        "es_pt_mw": -300,
+        "es_ma_mw": 200
+      },
+      "reserve_mw": 320,
+      "programmed_generation_mw": 27100,
+      "label": "PRE-EVENTO (6h antes) — operación normal con viento fuerte"
+    },
+    {
+      "timestamp": "2025-04-28T07:00:00Z",
+      "region": "peninsular",
+      "demand_mw": 28200,
+      "generation_by_tech": {
+        "nuclear_mw": 7100,
+        "hydro_mw": 2100,
+        "wind_mw": 11200,
+        "solar_pv_mw": 3800,
+        "solar_thermal_mw": 1100,
+        "gas_cc_mw": 2500,
+        "coal_mw": 600,
+        "cogeneration_mw": 1800
+      },
+      "interchange_flows": {
+        "es_fr_mw": -2100,
+        "es_pt_mw": -450,
+        "es_ma_mw": 180
+      },
+      "reserve_mw": 480,
+      "programmed_generation_mw": 28500,
+      "label": "PRE-EVENTO (5h antes) — solar subiendo, exportación a FR elevada"
+    },
+    {
+      "timestamp": "2025-04-28T08:00:00Z",
+      "region": "peninsular",
+      "demand_mw": 29800,
+      "generation_by_tech": {
+        "nuclear_mw": 7100,
+        "hydro_mw": 1900,
+        "wind_mw": 13100,
+        "solar_pv_mw": 7400,
+        "solar_thermal_mw": 1900,
+        "gas_cc_mw": 1100,
+        "coal_mw": 200,
+        "cogeneration_mw": 1800
+      },
+      "interchange_flows": {
+        "es_fr_mw": -2650,
+        "es_pt_mw": -510,
+        "es_ma_mw": 160
+      },
+      "reserve_mw": 680,
+      "programmed_generation_mw": 30000,
+      "label": "PRE-EVENTO (4h antes) — renovables >75% demanda, despacho convencional casi cero"
+    },
+    {
+      "timestamp": "2025-04-28T09:00:00Z",
+      "region": "peninsular",
+      "demand_mw": 30100,
+      "generation_by_tech": {
+        "nuclear_mw": 7100,
+        "hydro_mw": 1600,
+        "wind_mw": 14500,
+        "solar_pv_mw": 10800,
+        "solar_thermal_mw": 2400,
+        "gas_cc_mw": 400,
+        "coal_mw": 0,
+        "cogeneration_mw": 1800
+      },
+      "interchange_flows": {
+        "es_fr_mw": -2780,
+        "es_pt_mw": -520,
+        "es_ma_mw": 100
+      },
+      "reserve_mw": 820,
+      "programmed_generation_mw": 30400,
+      "label": "PRE-EVENTO (3h antes) — >90% renovable, inercia sincrónica mínima, reserva activada"
+    },
+    {
+      "timestamp": "2025-04-28T10:00:00Z",
+      "region": "peninsular",
+      "demand_mw": 30400,
+      "generation_by_tech": {
+        "nuclear_mw": 7100,
+        "hydro_mw": 1200,
+        "wind_mw": 15800,
+        "solar_pv_mw": 13200,
+        "solar_thermal_mw": 2800,
+        "gas_cc_mw": 0,
+        "coal_mw": 0,
+        "cogeneration_mw": 1800
+      },
+      "interchange_flows": {
+        "es_fr_mw": -2800,
+        "es_pt_mw": -520,
+        "es_ma_mw": 80
+      },
+      "reserve_mw": 1050,
+      "programmed_generation_mw": 30600,
+      "label": "EVENTO INMINENTE — 100% renovable+nuclear, CCGT desconectados, balance crítico"
+    },
+    {
+      "timestamp": "2025-04-28T10:30:00Z",
+      "region": "peninsular",
+      "demand_mw": 30200,
+      "generation_by_tech": {
+        "nuclear_mw": 7100,
+        "hydro_mw": 800,
+        "wind_mw": 14200,
+        "solar_pv_mw": 13500,
+        "solar_thermal_mw": 2800,
+        "gas_cc_mw": 0,
+        "coal_mw": 0,
+        "cogeneration_mw": 1800
+      },
+      "interchange_flows": {
+        "es_fr_mw": -1800,
+        "es_pt_mw": -310,
+        "es_ma_mw": 60
+      },
+      "reserve_mw": 1240,
+      "programmed_generation_mw": 30500,
+      "label": "T-3min — descenso viento, balance negativo -4200 MW, sistema en oscilaciones"
+    }
+  ],
+  "expected_trajectory": {
+    "tools_that_must_be_called": [
+      "get_blackout_probability",
+      "get_anomaly_score",
+      "search_regulations",
+      "AnomalyDetectorSkill",
+      "RenewablesForecastSkill",
+      "CrossBorderAgent"
+    ],
+    "tools_that_must_not_be_called_before_ml": [
+      "alert_formatter"
+    ],
+    "final_output": {
+      "severity": "CRITICAL",
+      "scope": "nacional",
+      "risk_score_min": 80,
+      "blackout_probability_min": 0.60
+    }
+  },
+  "baseline_reference": {
+    "demand_mean_mw": 28500,
+    "demand_std_mw": 3200,
+    "balance_mean_mw": -150,
+    "balance_std_mw": 800,
+    "renewables_pct_mean": 35.2,
+    "renewables_pct_std": 18.4,
+    "composite_pressure_p95": 0.62
+  }
+}

@@ -1,0 +1,60 @@
+INFORME DE INCIDENTE: APAGÓN ELÉCTRICO ESPAÑA — 28 DE ABRIL DE 2025
+Clasificación: CRÍTICO — Fallo generalizado de suministro peninsular
+Fuente: Datos públicos REE / Investigación postincidente
+
+RESUMEN EJECUTIVO
+El 28 de abril de 2025 a las 12:33 CET (10:33 UTC), el sistema eléctrico peninsular
+español experimentó un colapso de frecuencia que provocó la pérdida súbita de
+aproximadamente 15 GW de carga y afectó al suministro durante un período de entre
+6 y 10 horas según la zona geográfica.
+
+CONTEXTO PREVIO AL EVENTO
+- Lunes de primavera con demanda moderada (~30 GW)
+- Viento fuerte del suroeste (Tramontana): generación eólica > 14 GW
+- Radiación solar intensa: fotovoltaica > 13 GW
+- Penetración renovable instantánea: >90% de la demanda
+- Generación convencional (CCGT, carbón) casi en cero por precio negativo en mercado
+- Inercia sincrónica del sistema: estimada en <100 GVAs (muy por debajo del mínimo seguro)
+- REE había emitido Alerta de Alta Penetración Renovable (AAPR) a las 08:15 CET
+
+SECUENCIA DEL EVENTO
+10:33:12 UTC — Desconexión intempestiva de 2 GW de generación nuclear (parada automática)
+10:33:14 UTC — Frecuencia cae a 49.4 Hz; reserva primaria se activa automáticamente
+10:33:18 UTC — Frecuencia cae a 49.1 Hz; reserva secundaria (AGC) comienza ajuste
+10:33:22 UTC — Oscilaciones de potencia en la interconexión ES-FR; RTE desconecta
+10:33:28 UTC — Pérdida de la interconexión ES-FR (-2800 MW); frecuencia cae a 48.7 Hz
+10:33:31 UTC — Activación deslastrado automático primer escalón (48.8 Hz)
+10:33:45 UTC — Frecuencia cae a 47.8 Hz a pesar del deslastrado; sistema inestable
+10:34:10 UTC — Separación en islas eléctricas; colapso en cascada
+
+CAUSA RAÍZ IDENTIFICADA
+1. INMEDIATA: Pérdida súbita de generación sincrónica en sistema con inercia mínima
+2. SUBYACENTE: Exceso de penetración renovable sin garantía de inercia equivalente
+3. CONTRIBUYENTE: Pérdida de la interconexión con Francia en el momento crítico
+4. SISTÉMICA: Ausencia de requisitos obligatorios de inercia sintética para inversores
+
+DATOS CLAVE DEL SNAPSHOT T-3min (10:30 UTC)
+- Demanda: 30,200 MW
+- Generación eólica: 14,200 MW
+- Generación solar FV: 13,500 MW
+- Generación solar térmica: 2,800 MW
+- Nuclear: 7,100 MW
+- Hidro: 800 MW
+- CCGT online: 0 MW (todos detenidos)
+- Balance generación-demanda: -4,200 MW (déficit)
+- Flujo ES-FR: -1,800 MW (exportación hacia Francia)
+- Reserva secundaria activada: 1,240 MW (100% de capacidad disponible)
+- Presión compuesta estimada: 0.89/1.00
+
+INDICADORES PREDICTIVOS QUE DEBERÍAN HABER ALERTADO (ANÁLISIS POSTMORTEM)
+- composite_pressure > 0.70 desde las 09:00 UTC (3h antes)
+- renewables_pct > 80% desde las 08:30 UTC
+- balance_mw negativo desde las 10:15 UTC
+- reserve_activated_pct > 80% desde las 09:30 UTC
+
+LECCIONES APRENDIDAS
+1. El sistema necesita herramientas de monitorización en tiempo real de inercia equivalente
+2. Los modelos ML de predicción de colapso deben entrenarse con datos de 2006 y 2025
+3. Requisito urgente: obligatoriedad de inercia sintética para parques eólicos y solares >50 MW
+4. Protocolo de importación de emergencia con Francia debe activarse antes (P > 0.40)
+5. Los operadores necesitan alertas automatizadas cuando composite_pressure > 0.65

@@ -1,0 +1,51 @@
+PROCEDIMIENTO DE OPERACIÓN 7.1
+CRITERIOS DE SEGURIDAD PARA EL FUNCIONAMIENTO DEL SISTEMA ELÉCTRICO ESPAÑOL
+Red Eléctrica de España (REE) — Operador del Sistema
+
+OBJETO
+El presente procedimiento establece los criterios de seguridad que deben aplicarse
+en el funcionamiento del sistema eléctrico español para garantizar la continuidad
+del suministro eléctrico con niveles de calidad y fiabilidad adecuados.
+
+CRITERIO N-1 (SECCIÓN 3.1)
+El sistema debe ser capaz de soportar el fallo de cualquier elemento singular
+(generador, línea, transformador o interconexión) sin que se produzca la pérdida
+del suministro a ningún consumidor conectado a la red de transporte, ni se superen
+los límites operativos establecidos en los elementos restantes.
+
+NIVELES DE RESERVA OBLIGATORIA (SECCIÓN 4.2)
+- Reserva primaria: ±1.5% de la carga instantánea (activación automática en <30 s)
+- Reserva secundaria: ±3% de la carga (activación en <15 min mediante AGC)
+- Reserva terciaria: ±5% de la carga (activación en <15-30 min por despacho)
+
+LÍMITES DE FRECUENCIA (SECCIÓN 5.1)
+- Frecuencia nominal: 50 Hz
+- Banda normal de operación: 49.8 – 50.2 Hz
+- Banda de alerta: 49.5 – 50.5 Hz (activa respuesta de reserva primaria)
+- Banda de emergencia: < 49.0 Hz o > 51.0 Hz (activa deslastrado/desconexión)
+- Umbral de deslastrado automático de carga: 48.8 Hz (primer escalón)
+
+PENETRACIÓN RENOVABLE Y GESTIÓN DE INERCIA (SECCIÓN 6.4, MODIFICADO 2023)
+Con el incremento de generación renovable no sincrónica (fotovoltaica y eólica),
+el operador del sistema debe:
+a) Mantener suficiente generación sincrónica en línea para garantizar la inercia
+   del sistema (mínimo 120 GVAs equivalente de inercia cinética).
+b) Cuando la penetración instantánea de renovables supere el 60% de la demanda,
+   activar el protocolo de vigilancia reforzada de frecuencia.
+c) Cuando supere el 80%, evaluar la necesidad de mantener unidades de gas de ciclo
+   combinado en modo de espera caliente o reserva spinning.
+d) Por encima del 90%, considerar restricciones técnicas preventivas.
+
+INDICADORES DE PRESIÓN DE FRECUENCIA (SECCIÓN 6.5)
+El operador del sistema monitoriza continuamente los siguientes indicadores proxy
+ante la ausencia de señal directa de frecuencia en tiempo real en sistemas aislados:
+1. Desbalance generación-demanda (MW)
+2. Porcentaje de reserva de regulación activada
+3. Variación brusca de flujos de intercambio internacional
+4. Porcentaje de renovables no gestionables sobre demanda total
+
+UMBRALES DE ACTIVACIÓN DE PLAN DE DEFENSA (SECCIÓN 8.1)
+- Alerta Amarilla: P(colapso_1h) estimada > 15%
+- Alerta Naranja: P(colapso_1h) estimada > 35%
+- Alerta Roja: P(colapso_1h) estimada > 60%
+- Plan de Defensa activado: frecuencia < 49.2 Hz sostenida > 5 s

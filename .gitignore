@@ -1,0 +1,49 @@
+# === Credenciales — NUNCA versionar (restricción no negociable, CLAUDE.md) ===
+.env
+*.key
+*.pem
+secrets.*
+credentials.*
+*.token
+!.env.example
+
+# === Datos (pesados, regenerables vía ml/data/) ===
+data/raw/
+data/processed/
+*.parquet
+*.csv
+
+# === Modelos ML (artefactos, regenerables vía ml/train/) ===
+ml/models/
+*.pkl
+*.pth
+*.npz
+*.joblib
+
+# === Base de datos local ===
+*.db
+*.sqlite
+*.sqlite3
+
+# === Knowledge base / vector store (ChromaDB) ===
+knowledge/**/*.bin
+knowledge/**/chroma*.sqlite3
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# === Reports generados ===
+reports/*.pdf
+reports/*.html
+
+# === Claude / editor / OS ===
+.claude/settings.local.json
+.DS_Store
+Thumbs.db

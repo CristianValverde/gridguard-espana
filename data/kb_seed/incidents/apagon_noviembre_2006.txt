@@ -1,0 +1,49 @@
+INFORME DE INCIDENTE: APAGÓN EUROPEO — 4 DE NOVIEMBRE DE 2006
+Clasificación: CRÍTICO — Separación del sistema europeo en tres islas síncronas
+Fuente: Informe UCTE post-mortem (2007) / Datos REE
+
+RESUMEN EJECUTIVO
+El 4 de noviembre de 2006, el sistema eléctrico interconectado europeo (UCTE,
+actual ENTSO-E) se dividió en tres bloques asíncronos como consecuencia de una
+cadena de eventos desencadenados por la desconexión programada de una línea en
+Alemania para el paso de un barco de crucero. España quedó incluida en el bloque
+occidental (con déficit de generación) experimentando caídas de frecuencia a 49.0 Hz.
+
+DATOS DEL EVENTO
+Hora: 22:10 CET (21:10 UTC)
+Duración de la separación: ~20 minutos
+Afectados en Europa: ~15 millones de consumidores
+España: No hubo blackout total, pero frecuencia cayó hasta 49.0 Hz
+
+SECUENCIA SIMPLIFICADA
+21:10 UTC — Desconexión de línea 380 kV RWE Ems-Conneforde (Alemania) — operación planeada
+21:10:04 — Sobrecarga en líneas adyacentes → desconexión automática en cadena (N-1-1)
+21:10:06 — Sistema UCTE se separa en tres islas:
+           * Isla Oeste (déficit): Francia, España, Portugal, Italia, Bélgica, ...
+           * Isla Este (exceso): Alemania Este, Polonia, Chequia, ...
+           * Isla Nordeste
+21:10:12 — En isla Oeste: frecuencia cae a 49.0 Hz; deslastrado automático actúa
+21:10:35 — Reservas primaria y secundaria compensan; frecuencia se recupera a 49.5 Hz
+21:28 UTC — Sistema resincronizado progresivamente
+
+RELEVANCIA PARA GRIDGUARD
+Este incidente es el principal precedente histórico para el diseño de sistemas
+de alerta temprana en redes con alta penetración renovable. Las lecciones clave:
+
+1. Los fallos en cascada comienzan con eventos únicos aparentemente menores
+2. La velocidad de respuesta del sistema (<30 s) es crítica para evitar la separación
+3. Las interconexiones internacionales pueden tanto salvar el sistema (importación)
+   como destruirlo (transmisión del colapso)
+4. Los operadores necesitan herramientas predictivas, no solo reactivas
+
+INDICADORES ANÁLOGOS A MONITORIZAR
+- Flujo en interconexiones ES-FR próximo a límite térmico (> 80% de capacidad)
+- Variaciones bruscas en interchange_delta_mw (> 500 MW en 5 minutos)
+- Desbalance persistente generación-demanda en sistema ibérico (> 1000 MW)
+- Reserva secundaria activada > 60%
+
+REFERENCIA NORMATIVA DERIVADA
+Este incidente motivó la revisión del PO 7.1 en España y la introducción del
+criterio N-1-1 (tolerancia a dos fallos simultáneos en condiciones de alta carga)
+así como los requisitos de coordinación internacional establecidos en el
+Operation Handbook de ENTSO-E.

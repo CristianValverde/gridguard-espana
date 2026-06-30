@@ -1,0 +1,52 @@
+PROCEDIMIENTO OPERACIONAL — IMPORTACIÓN DE EMERGENCIA
+REE / ENTSO-E Emergency Assistance Protocol
+Referencia: PO 10.1 §8 / ENTSO-E OPS — Emergency and Restoration
+
+ACTIVACIÓN
+Este procedimiento se activa cuando:
+a) La frecuencia del sistema cae por debajo de 49.2 Hz de forma sostenida (> 5 s)
+b) El déficit de generación supera 1500 MW y los recursos internos no son suficientes
+c) La probabilidad estimada de colapso supera el 60% (nivel Alerta Roja)
+d) El operador del sistema toma la decisión de solicitar ayuda de emergencia
+
+PASO 1 — CONTACTO CON TSOs VECINOS (< 5 minutos tras activación)
+1.1 Llamada directa al Control de Sistema de RTE (Francia) — línea de emergencia 24/7
+1.2 Llamada directa al Control de Sistema de REN (Portugal)
+1.3 Comunicar: déficit en MW, duración estimada, capacidad de interconexión disponible
+1.4 Solicitar máxima importación disponible en ES-FR y ES-PT inmediatamente
+
+PASO 2 — GESTIÓN DE INTERCONEXIONES (< 10 minutos)
+2.1 Maximizar flujo en ES-FR hasta límite térmico (2800 MW import) si disponible
+2.2 Maximizar flujo en ES-PT hasta límite (1400 MW import) si Portugal tiene excedente
+2.3 Evaluar interconexión ES-MA (Marruecos): máx. 900 MW HVDC, menor prioridad
+2.4 Comunicar límites al mercado y suspender exportaciones si las hay
+
+PASO 3 — MEDIDAS COMPLEMENTARIAS SIMULTÁNEAS
+3.1 Activar reserva terciaria de todos los agentes disponibles (despachadores REE)
+3.2 Solicitar aumento de producción a centrales hidráulicas con agua disponible
+3.3 Evaluar arranque rápido de turbinas de gas (arranque < 10-15 min)
+3.4 Activar contratos de interrumpibilidad de demanda industrial (grandes consumidores)
+3.5 Si déficit > 3000 MW: activar primer escalón de deslastrado voluntario
+
+PASO 4 — COMUNICACIÓN (< 15 minutos)
+4.1 Notificar a CECOEL (Centro de Control Eléctrico) nivel Alerta Roja
+4.2 Alertar a distribuidoras (Endesa, Iberdrola, Naturgy, EDP, Viesgo) para reducción
+4.3 Comunicar al MITECO (Ministerio de Transición Ecológica)
+4.4 Preparar comunicado público si la situación se prolonga > 30 min
+
+CRITERIO DE DESACTIVACIÓN
+El procedimiento se desactiva cuando:
+- Frecuencia se estabiliza en banda normal (49.8-50.2 Hz) durante > 10 minutos
+- El déficit de generación se cubre con recursos internos o importaciones
+- La probabilidad de colapso cae por debajo del 20%
+
+CAPACIDADES REALES DE IMPORTACIÓN (ACTUALIZACIÓN 2024)
+ES-FR: Capacidad técnica 2800 MW / Capacidad comercialmente disponible: variable
+ES-PT: Capacidad técnica 1400 MW / Suele haber capacidad disponible por excedente hidro
+ES-MA: Capacidad técnica 900 MW HVDC / Depende de disponibilidad marroquí
+TOTAL MÁXIMO TEÓRICO: ~5100 MW (raramente disponible en su totalidad simultáneamente)
+
+NOTAS DE COORDINACIÓN ENTSO-E
+- En emergencias que afecten a múltiples países, coordinar a través del ENTSOE EOC
+- Usar el Emergency Assistance Protocol de ENTSO-E para solicitudes formales
+- Los TSOs deben responder en < 5 minutos a solicitudes de emergencia según ENTSO-E OPS

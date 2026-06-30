@@ -1,0 +1,45 @@
+PROCEDIMIENTO DE OPERACIÓN 3.1
+PROGRAMACIÓN DIARIA VIABLE ECONÓMICA (PDVE)
+Red Eléctrica de España (REE) — Operador del Sistema
+
+OBJETO Y ALCANCE
+Este procedimiento regula la elaboración del Programa Diario Viable Económico (PDVE)
+que determina la programación horaria de generación y los intercambios internacionales
+para el día siguiente, garantizando el cumplimiento de las restricciones técnicas
+del sistema y la cobertura de la demanda prevista.
+
+PREVISIÓN DE DEMANDA (SECCIÓN 3)
+REE elabora previsiones de demanda con horizontes de:
+- Muy corto plazo (1-4 horas): para gestión de desvíos en tiempo real
+- Corto plazo (D+1, D+2): para programación diaria
+- Medio plazo (semana, mes): para planificación de reservas
+La previsión considera: histórico de demanda, temperatura, laboralidad,
+eventos especiales, datos meteorológicos de AEMET.
+
+GESTIÓN DE INTERCAMBIOS INTERNACIONALES (SECCIÓN 5)
+Las capacidades nominales de interconexión son:
+- España-Francia (ES-FR): 2800 MW de importación, 2000 MW de exportación
+- España-Portugal (ES-PT): 1400 MW bidireccional (MIBEL integrado)
+- España-Marruecos (ES-MA): 900 MW HVDC bidireccional
+- España-Andorra: 200 MW (distribución local)
+
+Los flujos de intercambio se gestionan mediante:
+a) Subastas explícitas de capacidad coordinadas con ENTSO-E
+b) Mecanismos de flujo implícito en el mercado MIBEL (ES-PT)
+c) Acuerdos bilaterales para situaciones de emergencia
+
+RESTRICCIONES TÉCNICAS DE GENERACIÓN (SECCIÓN 6)
+El sistema debe garantizar en todo momento:
+a) Suficiente generación despachable para cubrir la reserva terciaria
+b) Mínimo de unidades de regulación sincrónica (ver PO 7.1 §6.4)
+c) Límites térmicos de la red de transporte (criterio N-1)
+d) Restricciones de rampas de generación por tecnología
+
+GESTIÓN DE ALTAS PENETRACIONES RENOVABLES (SECCIÓN 7, CIRCULAR 2024)
+Cuando la previsión de renovables supere el 50% de la demanda programada para
+cualquier hora del día siguiente, el operador del sistema debe:
+1. Verificar la disponibilidad de unidades de regulación sincrónica suficientes
+2. Publicar una Alerta de Alta Penetración Renovable (AAPR) a los agentes
+3. Solicitar ofertas de regulación terciaria con antelación
+4. Coordinar con los TSOs vecinos la disponibilidad de capacidad de importación
+5. Considerar la activación anticipada de servicios de respuesta de demanda

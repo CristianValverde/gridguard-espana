@@ -1,0 +1,54 @@
+PROCEDIMIENTO DE OPERACIÓN 10.1
+RESOLUCIÓN DE DESVÍOS ENTRE GENERACIÓN Y CONSUMO
+Red Eléctrica de España (REE) — Operador del Sistema
+
+OBJETO
+Regula el mecanismo para la resolución en tiempo real de los desvíos que se
+producen entre la generación y el consumo, asegurando el equilibrio permanente
+del sistema eléctrico.
+
+TIPOS DE RESERVA Y TIEMPOS DE ACTIVACIÓN (SECCIÓN 2)
+Reserva Primaria (Regulación Frecuencia-Potencia):
+- Tiempo de respuesta: automática, < 30 segundos
+- Responsables: todos los generadores > 10 MW con regulador de velocidad
+- Banda simétrica: ±1.5% de la potencia nominal
+- Se activa por desviación de frecuencia respecto a 50 Hz
+
+Reserva Secundaria (Regulación AGC - Automatic Generation Control):
+- Tiempo de respuesta: 15 segundos a 15 minutos
+- Contratación: mercado de servicios de ajuste, subasta horaria
+- Banda simétrica: contratada según necesidades del sistema
+- Controla el ACE (Area Control Error) del sistema ibérico
+
+Reserva Terciaria (Despacho por REE):
+- Tiempo de respuesta: 15 a 30 minutos
+- Activación: instrucción directa del operador del sistema
+- Mercado de terciaria: ofertas disponibles en bloques de 1 hora
+- Precio: oferta del mercado de terciaria o precio marginal
+
+MECANISMO DE GESTIÓN DE DESVÍOS (SECCIÓN 4)
+Umbral de desvío significativo: > 300 MW durante más de 15 minutos
+Umbral de desvío grave: > 600 MW durante más de 10 minutos
+Umbral de emergencia: > 1000 MW o pérdida súbita > 1500 MW
+
+DESLASTRADO AUTOMÁTICO DE CARGA (SECCIÓN 6)
+El Plan de Deslastrado de Carga (PDC) se activa automáticamente cuando:
+- Frecuencia < 48.8 Hz (Primer escalón: 10-15% de la carga)
+- Frecuencia < 48.4 Hz (Segundo escalón: adicional 10%)
+- Frecuencia < 47.5 Hz (Tercer escalón: adicional 15%)
+El deslastrado es geográfico y rotativo para minimizar el impacto social.
+
+COORDINACIÓN CON ENTSO-E EN EMERGENCIAS (SECCIÓN 8)
+En situaciones de emergencia grave, el operador del sistema puede:
+a) Solicitar ayuda de emergencia a TSOs vecinos (FR, PT) via ENTSO-E Emergency
+b) Activar el mecanismo de exportación de emergencia si hay exceso local
+c) Desconectar interconexiones para aislar el sistema y proteger su estabilidad
+d) Coordinar el restablecimiento en coordinación con RTE (Francia) y REN (Portugal)
+
+INDICADORES EN TIEMPO REAL (SECCIÓN 3)
+El Control de Sistema de REE monitoriza en tiempo real:
+- Frecuencia media del sistema (resolución 10 ms)
+- ACE (Error de Control de Área) del bloque ibérico
+- Intercambios internacionales reales vs. programados
+- Estado de activación de reservas primaria y secundaria
+- Margen de reserva disponible para las próximas 2 horas
