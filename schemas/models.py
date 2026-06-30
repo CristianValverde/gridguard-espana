@@ -392,6 +392,19 @@ class RenewablesForecast(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 
+class ComplianceReport(BaseModel):
+    """Output estructurado de RegulatoryComplianceSkill."""
+
+    applicable_regulations: list[dict] = Field(
+        default_factory=list,
+        description="[{id, section, trigger}] de procedimientos REE/ENTSO-E aplicables",
+    )
+    mandatory_actions: list[str] = Field(default_factory=list)
+    compliance_status: Literal["compliant", "warning", "violation"]
+    reasoning: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
 # ---------------------------------------------------------------------------
 # Capa 4 — Sub-agent outputs
 # ---------------------------------------------------------------------------
