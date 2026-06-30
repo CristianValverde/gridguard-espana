@@ -44,6 +44,8 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
+from tools.stability_proxy_calculator import compute_composite_pressure_score
+
 log = logging.getLogger("build_dataset")
 logging.basicConfig(
     level=logging.INFO,
@@ -189,22 +191,18 @@ def compute_stability_proxies(df: pd.DataFrame) -> pd.DataFrame:
     else:
         df["renewables_pct"] = np.nan
 
-    # 5. Presión compuesta [0-1] — normalización min-max rolling 7 días
-    proxies = ["balance_mw", "reserve_activated_pct", "interchange_delta_mw", "renewables_pct"]
-    proxy_scores: list[pd.Series] = []
-    for col in proxies:
-        if col in df.columns and not df[col].isna().all():
-            rolling_min = df[col].rolling(7 * 24, min_periods=24).min()
-            rolling_max = df[col].rolling(7 * 24, min_periods=24).max()
-            rng = rolling_max - rolling_min
-            normalized = ((df[col] - rolling_min) / rng.replace(0, np.nan)).clip(0, 1)
-            proxy_scores.append(normalized)
-
-    if proxy_scores:
-        weights = [0.35, 0.25, 0.20, 0.20]  # balance > reserva > intercambio > renovables
-        df["composite_pressure"] = sum(
-            s * w for s, w in zip(proxy_scores, weights[:len(proxy_scores)])
-        ) / sum(weights[:len(proxy_scores)])
+    # 5. Presión compuesta [0-1] — fórmula canónica absoluta (compute_composite_pressure_score)
+    # NOTA: se eliminó la normalización min-max rolling 7 días que causaba train/serve skew.
+    # Ahora usa los mismos umbrales operacionales absolutos que el runtime y la validación.
+    # El dataset DEBE reconstruirse y los modelos DEBEN reentrenarse tras este cambio.
+    required_cols = {"balance_mw", "reserve_activated_pct", "interchange_delta_mw", "renewables_pct"}
+    if required_cols.issubset(df.columns):
+        df["composite_pressure"] = np.vectorize(compute_composite_pressure_score)(
+            df["balance_mw"].fillna(0.0),
+            df["reserve_activated_pct"].fillna(0.0),
+            df["interchange_delta_mw"].fillna(0.0),
+            df["renewables_pct"].fillna(0.0),
+        )
     else:
         df["composite_pressure"] = np.nan
 

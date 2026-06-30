@@ -14,6 +14,44 @@ import math
 from schemas.models import StabilityProxies
 
 
+# ---------------------------------------------------------------------------
+# Función canónica compartida — fuente única de verdad para composite_pressure
+# ---------------------------------------------------------------------------
+
+def compute_composite_pressure_score(
+    balance_mw: float,
+    reserve_activated_pct: float,
+    interchange_delta_mw: float,
+    renewables_pct: float,
+) -> float:
+    """Calcula el índice de presión compuesta [0, 1] con umbrales operacionales absolutos.
+
+    Esta es la fórmula canónica usada en entrenamiento, servicio y validación.
+    NO usar la rama sigmoid (baseline) en producción para evitar train/serve skew.
+
+    Args:
+        balance_mw:             Diferencia generación - demanda (MW). Positivo = exceso.
+        reserve_activated_pct:  Reserva regulación activada (0-100 %).
+        interchange_delta_mw:   Variación absoluta en flujo neto de intercambio (MW).
+        renewables_pct:         % renovables no gestionables sobre demanda (0-100).
+
+    Returns:
+        float en [0, 1]. Valores altos = mayor presión sobre la red.
+    """
+    balance_score = min(abs(balance_mw) / 3000.0, 1.0)          # >3000 MW = crítico
+    reserve_score = reserve_activated_pct / 100.0
+    interchange_score = min(interchange_delta_mw / 2000.0, 1.0)
+    renewables_score = min(renewables_pct / 80.0, 1.0)           # >80 % = muy alto
+
+    composite = (
+        0.35 * balance_score
+        + 0.25 * reserve_score
+        + 0.20 * interchange_score
+        + 0.20 * renewables_score
+    )
+    return max(0.0, min(composite, 1.0))
+
+
 def stability_proxy_calculator(snapshot: dict, baseline: dict | None = None) -> dict:
     """Calcula los 4 proxies de frecuencia y el índice compuesto.
 
@@ -74,12 +112,23 @@ def stability_proxy_calculator(snapshot: dict, baseline: dict | None = None) -> 
         interchange_score = min(interchange_delta_mw / 2000, 1.0)
         renewables_score = _sigmoid(renew_z)
     else:
-        # Sin baseline: normalización heurística basada en umbrales operacionales
-        balance_score = min(abs(balance_mw) / 3000, 1.0)       # >3000 MW = crítico
-        reserve_score = reserve_activated_pct / 100
-        interchange_score = min(interchange_delta_mw / 2000, 1.0)
-        renewables_score = min(renewables_pct / 80, 1.0)        # >80% = muy alto
+        # Sin baseline: usa la fórmula canónica absoluta — RUTA PRINCIPAL para
+        # consistencia train/serve. La rama sigmoid (if baseline) NO es la ruta
+        # por defecto; evitar en producción salvo que se regenere el dataset
+        # con la misma normalización.
+        return_early_composite = compute_composite_pressure_score(
+            balance_mw, reserve_activated_pct, interchange_delta_mw, renewables_pct
+        )
+        proxies = StabilityProxies(
+            balance_mw=round(balance_mw, 2),
+            reserve_activated_pct=round(reserve_activated_pct, 2),
+            interchange_delta_mw=round(interchange_delta_mw, 2),
+            renewables_pct=round(renewables_pct, 2),
+            composite_pressure=round(return_early_composite, 4),
+        )
+        return proxies.model_dump(mode="json")
 
+    # Rama baseline (sigmoid) — solo se llega aquí cuando baseline is not None
     # Pesos: balance > reserva > intercambio > renovables (según literatura)
     composite_pressure = (
         0.35 * balance_score

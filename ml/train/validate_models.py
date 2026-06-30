@@ -27,6 +27,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from tools.stability_proxy_calculator import compute_composite_pressure_score
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
@@ -74,17 +76,9 @@ def _snapshot_to_row(snap: dict, prev_net_flow: float | None = None) -> dict:
     renewables = wind + solar_pv + solar_thermal
     renewables_pct = min(renewables / max(demand, 1e-6) * 100, 100.0)
 
-    # composite_pressure: aproximación estática (sin rolling window histórico)
-    balance_norm = max(0.0, 1.0 - (balance_mw + 5000) / 10000)  # más negativo = más presión
-    reserve_norm = min(reserve_pct / 20.0, 1.0)                   # alta reserva = alta presión
-    interchange_norm = min(interchange_delta / 2000.0, 1.0)
-    renewables_norm = min(renewables_pct / 100.0, 1.0)
-
-    composite = (
-        0.35 * balance_norm
-        + 0.25 * reserve_norm
-        + 0.20 * interchange_norm
-        + 0.20 * renewables_norm
+    # composite_pressure: fórmula canónica compartida (misma que entrenamiento y runtime)
+    composite = compute_composite_pressure_score(
+        balance_mw, reserve_pct, interchange_delta, renewables_pct
     )
 
     ts = pd.Timestamp(snap["timestamp"])
