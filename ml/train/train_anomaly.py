@@ -178,38 +178,15 @@ def _build_sequences(X: np.ndarray, seq_len: int) -> np.ndarray:
 
 
 class LSTMAutoencoder:
-    """Wrapper de PyTorch para facilitar save/load en memoria."""
+    """Factory que devuelve un LSTMAutoencoderModule (importable por pickle)."""
 
     def __new__(cls, n_features: int, hidden_size: int, num_layers: int, dropout: float):
         try:
-            import torch.nn as nn
+            from ml.train.lstm_model import LSTMAutoencoderModule  # noqa: PLC0415
         except ImportError as exc:
             raise ImportError("PyTorch requerido para LSTM. pip install torch") from exc
 
-        class _Model(nn.Module):
-            def __init__(self):
-                super().__init__()
-                self.encoder = nn.LSTM(
-                    n_features, hidden_size, num_layers,
-                    batch_first=True,
-                    dropout=dropout if num_layers > 1 else 0.0,
-                )
-                self.decoder = nn.LSTM(
-                    hidden_size, hidden_size, num_layers,
-                    batch_first=True,
-                    dropout=dropout if num_layers > 1 else 0.0,
-                )
-                self.output_layer = nn.Linear(hidden_size, n_features)
-
-            def forward(self, x):
-                seq_len = x.size(1)
-                _, (h_n, c_n) = self.encoder(x)
-                # Repetir el estado oculto final para cada paso del decoder
-                context = h_n[-1].unsqueeze(1).expand(-1, seq_len, -1)
-                decoded, _ = self.decoder(context, (h_n, c_n))
-                return self.output_layer(decoded)
-
-        return _Model()
+        return LSTMAutoencoderModule(n_features, hidden_size, num_layers, dropout)
 
 
 def train_lstm_autoencoder(X: np.ndarray, n_trials: int = 50, seq_len: int = SEQ_LEN_DEFAULT) -> dict:
