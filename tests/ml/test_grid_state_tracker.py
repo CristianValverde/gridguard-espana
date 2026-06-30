@@ -33,3 +33,24 @@ def test_blend_pulls_rare_transition_toward_prior():
     # P(S4|S3) mezclado ≈ prior S3->S4, claramente < uniforme 0.2
     assert A[gst.S3_MAJOR, gst.S4_BLACKOUT] < 0.2
     assert A[gst.S3_MAJOR, gst.S4_BLACKOUT] == gst.PRIOR_MATRIX[gst.S3_MAJOR, gst.S4_BLACKOUT]
+
+
+def test_fit_and_save_roundtrip(tmp_path):
+    idx = pd.date_range("2024-01-01", periods=2000, freq="h", tz="UTC")
+    rng = np.random.default_rng(0)
+    df = pd.DataFrame({
+        "composite_pressure": rng.uniform(0, 1, 2000),
+        "renewables_pct": rng.uniform(0, 90, 2000),
+        "balance_mw": rng.normal(0, 4000, 2000),
+    }, index=idx)
+
+    out = tmp_path / "markov_state.npz"
+    summary = gst.fit_and_save(df, out_path=out)
+    assert out.exists()
+    assert summary["transition_matrix"].shape == (5, 5)
+
+    data = np.load(out, allow_pickle=True)
+    A = data["transition_matrix"]
+    np.testing.assert_allclose(A.sum(axis=1), np.ones(5), rtol=1e-9)
+    thr = data["thresholds"].item()  # dict serializado
+    assert {"p90_cp", "p97_cp", "p90_ren", "p85_bal"} <= set(thr)

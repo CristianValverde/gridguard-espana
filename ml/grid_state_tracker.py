@@ -15,6 +15,7 @@ import pandas as pd
 
 from ml.incidents import (
     S0_NORMAL, S1_STRESS, S2_NOTABLE, S3_MAJOR, S4_BLACKOUT,
+    compute_thresholds, derive_stress_states,
 )
 
 N_STATES = 5
@@ -57,3 +58,39 @@ def blend_with_prior(empirical_counts: np.ndarray, kappa: float = 5.0) -> np.nda
     pseudo = kappa * PRIOR_MATRIX
     blended = empirical_counts + pseudo
     return blended / blended.sum(axis=1, keepdims=True)
+
+
+def fit_and_save(df: pd.DataFrame, out_path: Path = MODEL_PATH) -> dict:
+    """Estima la matriz de Markov del dataset y la persiste con los umbrales de discretización."""
+    states = derive_stress_states(df)
+    counts = np.full((N_STATES, N_STATES), 0.0)
+    s = states.values.astype(int)
+    for a, b in zip(s[:-1], s[1:]):
+        counts[a, b] += 1.0
+
+    A = blend_with_prior(counts, kappa=5.0)
+    thresholds = compute_thresholds(df)
+    state_counts = np.bincount(s, minlength=N_STATES)
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(
+        out_path,
+        transition_matrix=A,
+        thresholds=np.array(thresholds, dtype=object),
+        state_counts=state_counts,
+    )
+    return {"transition_matrix": A, "thresholds": thresholds, "state_counts": state_counts}
+
+
+def _main() -> None:
+    data = pd.read_parquet("data/processed/dataset_training.parquet")
+    data.index = pd.DatetimeIndex(data.index, tz="UTC")
+    summary = fit_and_save(data)
+    print("Matriz de transición A[5x5]:")
+    print(np.round(summary["transition_matrix"], 4))
+    print("Distribución de estados:", summary["state_counts"])
+
+
+if __name__ == "__main__":
+    _main()

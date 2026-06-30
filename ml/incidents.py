@@ -80,6 +80,16 @@ def build_graded_labels(index: pd.DatetimeIndex) -> tuple[pd.Series, pd.Series]:
     return labels, weights
 
 
+def compute_thresholds(df: pd.DataFrame) -> dict:
+    """Umbrales de percentil usados para derivar S0–S2. Persistidos para runtime."""
+    return {
+        "p90_cp": float(df["composite_pressure"].quantile(0.90)),
+        "p97_cp": float(df["composite_pressure"].quantile(0.97)),
+        "p90_ren": float(df["renewables_pct"].quantile(0.90)),
+        "p85_bal": float(df["balance_mw"].abs().quantile(0.85)),
+    }
+
+
 def derive_stress_states(df: pd.DataFrame) -> pd.Series:
     """Asigna estados S0–S4 por fila (shift-left, sin LLM; D2).
 
@@ -94,9 +104,11 @@ def derive_stress_states(df: pd.DataFrame) -> pd.Series:
     ren = df["renewables_pct"]
     bal = df["balance_mw"].abs()
 
-    p90_cp, p97_cp = cp.quantile(0.90), cp.quantile(0.97)
-    p90_ren = ren.quantile(0.90)
-    p85_bal = bal.quantile(0.85)
+    thr = compute_thresholds(df)
+    p90_cp = thr["p90_cp"]
+    p97_cp = thr["p97_cp"]
+    p90_ren = thr["p90_ren"]
+    p85_bal = thr["p85_bal"]
 
     # S1 — estrés: alta renovable junto a desequilibrio, o presión compuesta alta
     s1_mask = ((ren > p90_ren) & (bal > p85_bal)) | (cp > p90_cp)
