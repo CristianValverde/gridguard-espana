@@ -252,5 +252,81 @@ def get_aemet_alerts() -> list[dict]:
     return _cached("aemet_alerts", build)
 
 
+# ---------------------------------------------------------------------------
+# get_weather_forecast_24h — Open-Meteo (fuente confirmada via api-probe 2026-06-30)
+#
+# get_weather_forecast_24h fuente: Open-Meteo (AEMET horaria no da radiación + rate-limit 429).
+# Confirmado via api-probe 2026-06-30.
+# GET https://api.open-meteo.com/v1/forecast
+# params: latitude, longitude, hourly="wind_speed_10m,shortwave_radiation",
+#         wind_speed_unit="ms", forecast_days=2, timezone="UTC"
+# resp: data["hourly"]["time"] (iso8601 UTC), ["wind_speed_10m"] (m/s),
+#       ["shortwave_radiation"] (W/m²) — 48 valores
+# ---------------------------------------------------------------------------
+
+def _fetch_openmeteo_hourly(zone: str, coords: dict) -> dict:
+    """Transporte HTTP a Open-Meteo: viento (m/s) + radiación solar (W/m²) a 48h.
+
+    Nota: Open-Meteo no requiere token y no tiene rate-limit.
+    No se usa caché aquí para mantener el código simple (YAGNI); la TTL de 30 min
+    del resto del módulo se puede añadir si el tool se llama frecuentemente.
+    """
+    params = {
+        "latitude": coords["lat"],
+        "longitude": coords["lon"],
+        "hourly": "wind_speed_10m,shortwave_radiation",
+        "wind_speed_unit": "ms",
+        "forecast_days": 2,
+        "timezone": "UTC",
+    }
+    resp = requests.get(OPEN_METEO_BASE, params=params, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
+    hourly = data["hourly"]
+    return {
+        "timestamps": hourly["time"],
+        "wind_speed_ms": hourly["wind_speed_10m"],
+        "radiation_wm2": hourly["shortwave_radiation"],
+    }
+
+
+def _forecast_24h_impl(zones: list[str], fetch_fn) -> dict:
+    """Lógica pura: para cada zona conocida, obtiene 24 h de previsión vía fetch_fn.
+
+    fetch_fn(zone, coords) -> {"timestamps": [...], "wind_speed_ms": [...], "radiation_wm2": [...]}
+    Las listas se truncan a las primeras 24 entradas.
+    Zonas desconocidas (no en ZONE_COORDS) se saltan silenciosamente.
+    """
+    out: dict = {}
+    for zone in zones:
+        coords = ZONE_COORDS.get(zone)
+        if coords is None:
+            continue
+        data = fetch_fn(zone, coords)
+        out[zone] = {
+            "forecast_hours": 24,
+            "timestamps": data["timestamps"][:24],
+            "wind_speed_ms": data["wind_speed_ms"][:24],
+            "radiation_wm2": data["radiation_wm2"][:24],
+        }
+    return out
+
+
+@mcp.tool()
+def get_weather_forecast_24h(zones: list[str]) -> dict:
+    """Previsión meteorológica horaria a 24 h para las zonas de generación renovable indicadas.
+
+    Fuente: Open-Meteo (sin token, gratuito).
+    AEMET horaria descartada: no provee radiación solar y tiene rate-limit 429.
+
+    Args:
+        zones: Lista de zonas. Valores válidos: norte, sur, levante, interior, galicia, nordeste
+    Returns:
+        Dict {zona: {"forecast_hours": 24, "timestamps": [...], "wind_speed_ms": [...],
+                     "radiation_wm2": [...]}} — solo zonas reconocidas.
+    """
+    return _forecast_24h_impl(zones, fetch_fn=_fetch_openmeteo_hourly)
+
+
 if __name__ == "__main__":
     mcp.run()
