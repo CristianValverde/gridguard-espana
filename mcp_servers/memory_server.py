@@ -305,7 +305,7 @@ def get_risk_history(hours: int = 24) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def _init_db_at(db_path) -> None:
-    """Versión de _init_db parametrizada por ruta (para tests)."""
+    """Versión de _init_db parametrizada por ruta (para tests). Crea SOLO la tabla grid_states (no el esquema completo)."""
     con = sqlite3.connect(str(db_path))
     con.executescript("""
         CREATE TABLE IF NOT EXISTS grid_states (
@@ -321,11 +321,12 @@ def _init_db_at(db_path) -> None:
 
 
 def _store_grid_state_impl(timestamp: str, state: int, db_path) -> dict:
+    ts_norm = datetime.fromisoformat(timestamp.replace("Z", "+00:00")).isoformat()
     con = sqlite3.connect(str(db_path))
     try:
         con.execute(
             "INSERT INTO grid_states (timestamp, state) VALUES (?, ?)",
-            (timestamp, int(state)),
+            (ts_norm, int(state)),
         )
         con.commit()
         return {"ok": True}
