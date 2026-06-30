@@ -5,23 +5,18 @@ Modelo: XGBoost GPU + calibración isotónica.
 Salida:  ml/models/candidates/blackout_classifier.pkl
 
 Estrategia:
-  - Etiquetado: las 6 horas previas a cada incidente conocido → clase 1
-  - Walk-forward expansiva: 4 folds (1 año de validación cada uno)
+  - Etiquetado graduado: ml.incidents.build_graded_labels (ventanas por severidad, S3/S4)
+  - Leave-One-Event-Out (LOEO): un fold por evento documentado (D4)
   - Optuna TPE + MedianPruner: 100 trials
-  - Objetivo: maximizar AUC-ROC medio sobre los 4 folds
-  - Manejo de desbalance: scale_pos_weight + umbral óptimo vía F1
-  - Calibración isotónica post-entrenamiento sobre hold-out separado
+  - Objetivo: maximizar AUC-ROC medio sobre los folds LOEO
+  - Manejo de desbalance: scale_pos_weight + sample_weight por severidad + umbral óptimo vía F1
+  - Calibración isotónica post-entrenamiento sobre hold-out temporal (trailing 12 meses)
   - Métrica final: AUC-ROC + Recall@Precision=0.7 (prioriza recall — perder un apagón
     es peor que una falsa alarma)
 
-Incidentes conocidos para etiquetado (ampliable con eval/golden_dataset/):
-  - Apagón España 28 abril 2025
-  - Separación ibérica 4 noviembre 2006
-  - Incidentes CEER (genérico — extender con fechas reales de los post-mortems)
-
 Uso:
     python -m ml.train.train_classifier
-    python -m ml.train.train_classifier --trials 50 --label-window 6
+    python -m ml.train.train_classifier --trials 50
 """
 
 from __future__ import annotations
@@ -35,6 +30,7 @@ import joblib
 import numpy as np
 import pandas as pd
 
+from ml.incidents import build_graded_labels
 from ml.train.device_config import DEVICE, log_device_info
 
 logging.basicConfig(
@@ -45,13 +41,6 @@ log = logging.getLogger("train_classifier")
 
 DATA_PATH = Path(os.environ.get("DATA_PROCESSED_PATH", "data/processed")) / "dataset_training.parquet"
 CANDIDATES_DIR = Path(os.environ.get("ML_MODELS_PATH", "ml/models")) / "candidates"
-
-# Incidentes conocidos — cada entrada es el inicio del evento (el corte del suministro)
-# Las N horas anteriores se etiquetan como positivo
-KNOWN_INCIDENTS = [
-    "2025-04-28 08:00",   # Apagón España — inicio corte
-    "2006-11-04 10:00",   # Separación ibérica
-]
 
 FEATURE_COLS = [
     "balance_mw", "reserve_activated_pct", "interchange_delta_mw",
@@ -67,28 +56,29 @@ LAG_HOURS = [1, 3, 6]
 
 
 # ---------------------------------------------------------------------------
-# Etiquetado y preparación de datos
+# Etiquetado, splits y preparación de datos
 # ---------------------------------------------------------------------------
 
-def build_labels(df: pd.DataFrame, label_window_hours: int = 6) -> pd.Series:
-    """Etiqueta las N horas previas a cada incidente conocido como clase 1."""
-    labels = pd.Series(0, index=df.index, name="blackout_label")
+def leave_one_event_out_splits(
+    index: pd.DatetimeIndex, labels: np.ndarray,
+) -> list[tuple[np.ndarray, np.ndarray]]:
+    """Validación dejando un evento documentado fuera cada vez (D4).
 
-    for incident_ts_str in KNOWN_INCIDENTS:
-        incident_ts = pd.Timestamp(incident_ts_str, tz="UTC")
-        window_start = incident_ts - pd.Timedelta(hours=label_window_hours)
-        mask = (df.index >= window_start) & (df.index < incident_ts)
-        labels[mask] = 1
+    Cada fold valida sobre la ventana de un evento (± 12 h de margen) y entrena con el resto.
+    Garantiza ≥1 positivo en validación, evitando el AUC=0 de walk-forward con eventos raros.
+    """
+    from ml.incidents import documented_incidents_utc
 
-    n_positive = labels.sum()
-    n_total = len(labels)
-    pct = n_positive / n_total * 100
-    log.info("Positivos: %d / %d (%.4f%%)", n_positive, n_total, pct)
-    if n_positive == 0:
-        log.warning(
-            "Sin ejemplos positivos. Verificar que KNOWN_INCIDENTS coincide con el rango del dataset."
-        )
-    return labels
+    splits: list[tuple[np.ndarray, np.ndarray]] = []
+    for inc in documented_incidents_utc():
+        ts = inc["ts"]
+        val_start = ts - pd.Timedelta(hours=inc["window_h"] + 12)
+        val_end = ts + pd.Timedelta(hours=12)
+        val_mask = np.asarray((index >= val_start) & (index <= val_end))
+        train_mask = ~val_mask
+        if labels[val_mask].sum() > 0 and labels[train_mask].sum() > 0:
+            splits.append((train_mask, val_mask))
+    return splits
 
 
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -127,8 +117,8 @@ def walk_forward_splits(index: pd.DatetimeIndex, n_folds: int = 4, val_months: i
 # Optuna objective con walk-forward y AUC-ROC
 # ---------------------------------------------------------------------------
 
-def make_objective(X_full: np.ndarray, y_full: np.ndarray,
-                   index: pd.DatetimeIndex, splits, scale_pos_weight: float):
+def make_objective(X_full: np.ndarray, y_full: np.ndarray, w_full: np.ndarray,
+                   splits, scale_pos_weight: float):
     import xgboost as xgb
     from sklearn.metrics import roc_auc_score
 
@@ -156,22 +146,14 @@ def make_objective(X_full: np.ndarray, y_full: np.ndarray,
 
         fold_aucs = []
         for fold_idx, (train_mask, val_mask) in enumerate(splits):
-            # Importante: usar posición boolean sobre el índice alineado
-            idx_positions = np.arange(len(index))
-            train_idx = idx_positions[train_mask]
-            val_idx = idx_positions[val_mask]
-
-            X_tr, y_tr = X_full[train_idx], y_full[train_idx]
-            X_vl, y_vl = X_full[val_idx], y_full[val_idx]
-
-            if y_tr.sum() == 0 or y_vl.sum() == 0:
-                continue  # fold sin positivos — saltar
+            # train_mask/val_mask son booleanos alineados al índice de df_feat
+            X_tr, y_tr, w_tr = X_full[train_mask], y_full[train_mask], w_full[train_mask]
+            X_vl, y_vl = X_full[val_mask], y_full[val_mask]
 
             model = xgb.XGBClassifier(**params)
-            model.fit(X_tr, y_tr, eval_set=[(X_vl, y_vl)], verbose=False)
+            model.fit(X_tr, y_tr, sample_weight=w_tr, eval_set=[(X_vl, y_vl)], verbose=False)
             proba = model.predict_proba(X_vl)[:, 1]
-            auc = roc_auc_score(y_vl, proba)
-            fold_aucs.append(auc)
+            fold_aucs.append(roc_auc_score(y_vl, proba))
 
             trial.report(np.mean(fold_aucs), fold_idx)
             if trial.should_prune():
@@ -226,7 +208,7 @@ def calibrate_model(base_model, X_cal: np.ndarray, y_cal: np.ndarray):
 # Pipeline principal
 # ---------------------------------------------------------------------------
 
-def run(n_trials: int = 100, n_folds: int = 4, label_window: int = 6) -> None:
+def run(n_trials: int = 100) -> None:
     import optuna
     import xgboost as xgb
     from sklearn.metrics import (
@@ -246,22 +228,28 @@ def run(n_trials: int = 100, n_folds: int = 4, label_window: int = 6) -> None:
     df = pd.read_parquet(DATA_PATH)
     df.index = pd.DatetimeIndex(df.index, tz="UTC")
 
-    log.info("Construyendo features y etiquetas…")
+    log.info("Construyendo features y etiquetas graduadas…")
     df_feat = build_features(df)
-    y_all = build_labels(df_feat, label_window_hours=label_window)
+    labels, weights = build_graded_labels(df_feat.index)
 
     feature_cols = [c for c in df_feat.columns if c != "blackout_label"]
     X_all = df_feat[feature_cols].values.astype(np.float32)
-    y_all = y_all.reindex(df_feat.index).fillna(0).values.astype(int)
+    y_all = labels.reindex(df_feat.index).fillna(0).values.astype(int)
+    w_all = weights.reindex(df_feat.index).fillna(1.0).values.astype(np.float32)
 
     n_neg = (y_all == 0).sum()
     n_pos = (y_all == 1).sum()
     scale_pos_weight = n_neg / max(n_pos, 1)
-    log.info("Desbalance: %d negativos / %d positivos → scale_pos_weight base: %.1f",
-             n_neg, n_pos, scale_pos_weight)
+    log.info("Desbalance: %d neg / %d pos → scale_pos_weight base %.1f", n_neg, n_pos, scale_pos_weight)
 
-    splits, holdout_mask = walk_forward_splits(df_feat.index, n_folds=n_folds)
-    log.info("Walk-forward: %d folds + 1 hold-out calibración", len(splits))
+    splits = leave_one_event_out_splits(df_feat.index, y_all)
+    log.info("Leave-One-Event-Out: %d folds (uno por evento)", len(splits))
+    if not splits:
+        raise RuntimeError("Sin folds válidos — revisar ml/incidents.py y el rango del dataset")
+
+    # Hold-out temporal: trailing 12 meses (independiente de LOEO)
+    cutoff_holdout = df_feat.index[-1] - pd.DateOffset(months=12)
+    holdout_mask = np.asarray(df_feat.index >= cutoff_holdout)
 
     # ── Optuna ──────────────────────────────────────────────────────────────
     log.info("Optimizando hiperparámetros (%d trials, objetivo: AUC-ROC)…", n_trials)
@@ -272,13 +260,13 @@ def run(n_trials: int = 100, n_folds: int = 4, label_window: int = 6) -> None:
         study_name="blackout_classifier",
     )
     study.optimize(
-        make_objective(X_all, y_all, df_feat.index, splits, scale_pos_weight),
+        make_objective(X_all, y_all, w_all, splits, scale_pos_weight),
         n_trials=n_trials,
         show_progress_bar=True,
     )
     raw_best = study.best_params
     log.info("Mejores hiperparámetros: %s", raw_best)
-    log.info("Mejor AUC-ROC (walk-forward): %.4f", -study.best_value)
+    log.info("Mejor AUC-ROC (LOEO): %.4f", -study.best_value)
 
     # Reconstruir best_params para XGBoost: spw_factor es un alias Optuna,
     # hay que convertirlo a scale_pos_weight real antes de pasarlo al modelo.
@@ -299,7 +287,7 @@ def run(n_trials: int = 100, n_folds: int = 4, label_window: int = 6) -> None:
         **best_params, device=xgb_device, eval_metric="auc",
         random_state=42,
     )
-    final_model.fit(X_train, y_train, verbose=False)
+    final_model.fit(X_train, y_train, sample_weight=w_all[train_idx], verbose=False)
 
     # Calibración isotónica sobre el hold-out temporal
     if y_holdout.sum() > 0:
@@ -355,12 +343,9 @@ def run(n_trials: int = 100, n_folds: int = 4, label_window: int = 6) -> None:
 def _args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Entrena clasificador de riesgo de apagón")
     p.add_argument("--trials", type=int, default=100)
-    p.add_argument("--folds", type=int, default=4)
-    p.add_argument("--label-window", type=int, default=6,
-                   help="Horas antes del incidente etiquetadas como positivo")
     return p.parse_args()
 
 
 if __name__ == "__main__":
     args = _args()
-    run(n_trials=args.trials, n_folds=args.folds, label_window=args.label_window)
+    run(n_trials=args.trials)
