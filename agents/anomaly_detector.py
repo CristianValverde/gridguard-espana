@@ -2,14 +2,17 @@
 agents/anomaly_detector.py — Skill: AnomalyDetectorSkill (AgentTool).
 
 Tipo: AgentTool (síncrono, sin estado entre llamadas).
-Modelo: gemini-3.5-flash (fast_agent) · Temperature 0.1
-Flujo: ML detecta → RAG contextualiza → LLM razona y clasifica.
+Modelo: fast_agent · Temperature 0.1
+Flujo: ML detecta → RAG contextualiza → Markov + Meteo razonan causalidad → LLM clasifica.
 
 Tools disponibles:
-  - get_anomaly_score  (MCP: ml-models)
+  - get_anomaly_score      (MCP: ml-models)
   - stability_proxy_calculator  (Function Tool)
-  - get_baseline  (MCP: memory)
-  - search_regulations  (MCP: knowledge-base)
+  - get_baseline           (MCP: memory)
+  - search_regulations     (MCP: knowledge-base)
+  - get_grid_state         (MCP: markov)
+  - get_wind_forecast      (MCP: weather)
+  - get_solar_radiation    (MCP: weather)
 
 Output schema: AnomalyReport
 """
@@ -18,7 +21,9 @@ from __future__ import annotations
 
 from google.adk.agents import Agent
 from google.adk.tools.agent_tool import AgentTool
-from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, StdioServerParameters
+from google.adk.tools.mcp_tool.mcp_toolset import McpToolset, StdioConnectionParams
+from google.genai import types as genai_types
+from mcp.client.stdio import StdioServerParameters
 
 from config.model_loader import get_model
 from schemas.models import AnomalyReport
@@ -35,7 +40,17 @@ FLUJO OBLIGATORIO (ejecutar en este orden):
 3. Llama a `get_anomaly_score` con la ventana de snapshots recientes (serializada como JSON).
 4. Si el anomaly_score > 0.3, llama a `search_regulations` con una descripción de la anomalía
    para obtener contexto normativo relevante (ej: "alta penetración renovable con balance negativo").
+4b. Llama a `get_grid_state` (MCP markov) para obtener el estado actual S0–S4 y su trayectoria 6h.
+4c. Llama a `get_wind_forecast` y `get_solar_radiation` en las zonas más correlacionadas con la anomalía.
 5. Analiza todos los resultados y produce un AnomalyReport estructurado.
+5b. Razona explícitamente qué combinación de factores (rampa de generación, meteo, nivel de demanda,
+    trayectoria de estado) explica mejor el score del ML, y CLASIFICA el incidente en incident_type:
+      - "renewable_ramp"     : cambio brusco de solar/eólica
+      - "demand_surge"       : pico de demanda inesperado
+      - "generation_failure" : caída de generación convencional
+      - "interconnection"    : anomalía de flujo transfronterizo
+      - "unknown"            : evidencia insuficiente
+    Rellena `incident_type` y `causal_chain` en el AnomalyReport.
 
 REGLAS:
 - No uses LLM para detectar anomalías — eso es trabajo del ML (paso 3).
@@ -54,24 +69,48 @@ CLASIFICACIÓN DE SEVERIDAD:
 Devuelve ÚNICAMENTE el AnomalyReport en formato JSON estructurado.
 """.strip()
 
-_ml_toolset = MCPToolset(
-    connection_params=StdioServerParameters(
-        command="python",
-        args=["-m", "mcp_servers.ml_models_server"],
+_ml_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_servers.ml_models_server"],
+        )
     )
 )
 
-_memory_toolset = MCPToolset(
-    connection_params=StdioServerParameters(
-        command="python",
-        args=["-m", "mcp_servers.memory_server"],
+_memory_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_servers.memory_server"],
+        )
     )
 )
 
-_kb_toolset = MCPToolset(
-    connection_params=StdioServerParameters(
-        command="python",
-        args=["-m", "mcp_servers.knowledge_base_server"],
+_kb_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_servers.knowledge_base_server"],
+        )
+    )
+)
+
+_markov_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_servers.markov_server"],
+        )
+    )
+)
+
+_weather_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_servers.weather_server"],
+        )
     )
 )
 
@@ -84,9 +123,11 @@ _inner_agent = Agent(
         _ml_toolset,
         _memory_toolset,
         _kb_toolset,
+        _markov_toolset,
+        _weather_toolset,
     ],
     output_schema=AnomalyReport,
-    temperature=0.1,
+    generate_content_config=genai_types.GenerateContentConfig(temperature=0.1),
 )
 
 AnomalyDetectorSkill = AgentTool(agent=_inner_agent)

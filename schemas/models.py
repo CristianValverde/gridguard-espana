@@ -373,6 +373,10 @@ class AnomalyReport(BaseModel):
         ..., description="Fragmento normativo relevante recuperado del RAG"
     )
     reasoning: str = Field(..., description="Razonamiento del LLM sobre la situación")
+    incident_type: Literal[
+        "renewable_ramp", "demand_surge", "generation_failure", "interconnection", "unknown"
+    ] = "unknown"
+    causal_chain: str = Field(default="", description="Cadena causal que explica la anomalía")
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 
