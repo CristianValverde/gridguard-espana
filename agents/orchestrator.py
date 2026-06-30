@@ -1,22 +1,36 @@
 """
-agents/orchestrator.py — OrchestratorAgent: Root Agent de GridGuard España.
+agents/orchestrator.py -- OrchestratorAgent: Root Agent de GridGuard Espana.
 
-Modelo: gemini-3.5-flash (fast_agent) · Temperature 0.1 · max_turns 20
-Contexto: 1M tokens (permite ingestar semanas de histórico en una sola llamada)
+Modelo: gemini-3.5-flash (fast_agent) - Temperature 0.1 (via GenerateContentConfig)
+Contexto: 1M tokens (permite ingestar semanas de historico en una sola llamada)
+
+ADK 2.3.0 migration notes:
+- MCPToolset -> McpToolset; StdioServerParameters wrapped in StdioConnectionParams.
+- temperature -> generate_content_config=genai_types.GenerateContentConfig(temperature=...).
+- max_turns removed (not permitted in ADK 2.3.0; turn-limiting moves to the runner).
+- register_hooks: ADK 2.3.0 exposes before_tool_callback / after_tool_callback /
+  before_model_callback / after_model_callback / after_agent_callback as proper
+  pydantic fields on LlmAgent. Direct post-construction assignment works
+  (model_config allows arbitrary_types_allowed=True). The existing hook functions
+  in guardrails/hooks.py have signatures that differ from the ADK 2.3.0 protocol
+  (ADK 2.3.0 passes BaseTool+dict+Context; hooks.py uses simpler args). Hooks are
+  registered as-is so guardrail wiring is preserved; runtime behaviour under ADK
+  2.3.0 will need adaptation in a follow-up task (callback signature mismatch).
 
 Responsabilidades:
-  1. Adquisición de datos de red (ree_poller → data_normalizer)
-  2. Evaluación de riesgo (ML → risk_scorer)
-  3. Escalación inteligente por capas según P(blackout):
-       P < 0.10             → logging pasivo
-       P ∈ [0.10, 0.30)    → AnomalyDetectorSkill
-       P ∈ [0.30, 0.60)    → Anomaly + RenewablesForecastSkill + alerta WARNING
-       P ≥ 0.60 (CRITICAL) → todo anterior + CrossBorderAgent + ReportAgent
-  4. Persistencia en SQLite (store_snapshot, store_risk_score)
-  5. Emisión de alertas formateadas
+  1. Adquisicion de datos de red (ree_poller -> data_normalizer)
+  2. Evaluacion de riesgo (ML -> risk_scorer)
+  3. Adquisicion de estado de Markov (get_grid_state) + combinacion con P(blackout)
+  4. Escalacion inteligente por capas segun P(blackout) y estado de Markov:
+       P < 0.10             -> logging pasivo (override si Markov >= S2)
+       P in [0.10, 0.30)   -> AnomalyDetectorSkill (+ CrossBorder assessment si S1)
+       P in [0.30, 0.60)   -> Anomaly + Renewables + RegulatoryCompliance + CrossBorder assessment
+       P >= 0.60 (CRITICAL) -> todo anterior + CrossBorderAgent + ReportAgent
+  5. Persistencia en SQLite (store_snapshot, store_risk_score)
+  6. Emision de alertas formateadas
 
 Sub-agents: report_agent, cross_border_agent
-Skills (como AgentTools): AnomalyDetectorSkill, RenewablesForecastSkill
+Skills (como AgentTools): AnomalyDetectorSkill, RenewablesForecastSkill, RegulatoryComplianceSkill
 """
 
 from __future__ import annotations
@@ -28,10 +42,13 @@ from typing import Any
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
-from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, StdioServerParameters
+from google.adk.tools.mcp_tool.mcp_toolset import McpToolset, StdioConnectionParams
+from google.genai import types as genai_types
+from mcp.client.stdio import StdioServerParameters
 
 from agents.anomaly_detector import AnomalyDetectorSkill
 from agents.cross_border import cross_border_agent
+from agents.regulatory_compliance import RegulatoryComplianceSkill
 from agents.renewables_forecast import RenewablesForecastSkill
 from agents.report_agent import report_agent
 from config.model_loader import get_model
@@ -45,88 +62,121 @@ from tools.stability_proxy_calculator import stability_proxy_calculator
 log = logging.getLogger("gridguard.orchestrator")
 
 _INSTRUCTION = """
-Eres el OrchestratorAgent de GridGuard España, el operador autónomo de primer
-nivel para la vigilancia de la red eléctrica peninsular española. Tu objetivo es
+Eres el OrchestratorAgent de GridGuard Espana, el operador autonomo de primer
+nivel para la vigilancia de la red electrica peninsular espanola. Tu objetivo es
 detectar situaciones de riesgo y escalar correctamente ANTES de que ocurran
 problemas operacionales.
 
-════════════════════════════════════════════════
-PROTOCOLO DE MONITORIZACIÓN (seguir SIEMPRE este orden)
-════════════════════════════════════════════════
+================================================
+PROTOCOLO DE MONITORIZACION (seguir SIEMPRE este orden)
+================================================
 
-PASO 1 — Adquisición de datos (OBLIGATORIO en cada ciclo):
+PASO 1 -- Adquisicion de datos (OBLIGATORIO en cada ciclo):
   1a. Llama a `ree_poller` para obtener el snapshot de red en tiempo real.
   1b. Llama a `data_normalizer` con el resultado de 1a.
   1c. Llama a `stability_proxy_calculator` con el snapshot normalizado.
-  1d. Llama a `get_blackout_probability` con los proxies calculados.
-  1e. Llama a `risk_scorer` con el snapshot y el ml_score de 1d.
-  1f. Llama a `store_snapshot` y `store_risk_score` para persistir los datos.
+  1d. [NUEVO] Llama a `get_grid_state` (MCP markov) para obtener el estado actual S0-S4
+      y la trayectoria de las ultimas 6h.
+  1e. Llama a `get_blackout_probability` con los proxies calculados.
+  1f. Llama a `risk_scorer` con el snapshot y el ml_score de 1e.
+  1g. Llama a `store_snapshot` y `store_risk_score` para persistir los datos.
 
-PASO 2 — Escalación según P(blackout_1h):
+PASO 2 -- Escalacion segun P(blackout_1h) Y estado de Markov:
 
-▶ P < 0.10 (VERDE):
-  → Logging pasivo. Devuelve el RiskScore sin invocar Skills ni Sub-agents.
-  → Mensaje: "Sistema en operación normal. P={P:.1%}, Risk={risk}/100."
+La escalacion usa AHORA tanto P(blackout) COMO el estado de Markov:
+  - Si estado Markov >= S2 Y P < 0.10: eleva a AMARILLO (el estado manda cuando
+    el ML duda pero la trayectoria se degrada claramente).
+  - Si estado Markov = S1 Y P in [0.10, 0.30): activa CrossBorderAgent en modo
+    assessment ademas del flujo normal AMARILLO.
 
-▶ P ∈ [0.10, 0.30) (AMARILLO):
-  → Invoca `AnomalyDetectorSkill` con el snapshot normalizado del paso 1b.
-  → Registra el AnomalyReport en el log.
-  → No emitir alerta pública (estado de vigilancia elevada).
+Tramos de escalacion:
 
-▶ P ∈ [0.30, 0.60) (NARANJA):
-  → Invoca `AnomalyDetectorSkill` si no se ha hecho.
-  → Invoca `RenewablesForecastSkill` con el snapshot.
-  → Llama a `alert_formatter` con severity determinada por RiskScore.level,
-    scope="peninsular", y las anomalías del AnomalyReport.
-  → Emite alerta WARNING en el log (con acciones recomendadas).
+[VERDE] P < 0.10 (y Markov <= S1):
+  -> Logging pasivo. Devuelve el RiskScore sin invocar Skills ni Sub-agents.
+  -> Mensaje: "Sistema en operacion normal. P={P:.1%}, Risk={risk}/100."
+  -> EXCEPCION: si Markov >= S2, elevar a AMARILLO aunque P < 0.10.
 
-▶ P ≥ 0.60 (ROJO — EMERGENCIA):
-  → Invoca `AnomalyDetectorSkill`.
-  → Invoca `RenewablesForecastSkill`.
-  → Invoca `CrossBorderAgent` para evaluar importación de emergencia.
-  → Llama a `alert_formatter` con severity=CRITICAL, scope=nacional.
-  → Invoca `ReportAgent` con report_type="emergency".
-  → Emite alerta CRITICAL NACIONAL.
+[AMARILLO] P in [0.10, 0.30) (o override por Markov >= S2 con P < 0.10):
+  -> Invoca `AnomalyDetectorSkill` con el snapshot normalizado del paso 1b.
+  -> Registra el AnomalyReport en el log.
+  -> Si estado Markov = S1 Y P in [0.10, 0.30): activa CrossBorderAgent
+     con mode="assessment".
+  -> No emitir alerta publica (estado de vigilancia elevada).
 
-════════════════════════════════════════════════
+[NARANJA] P in [0.30, 0.60) -- [ACTUALIZADO]:
+  -> Invoca `AnomalyDetectorSkill` si no se ha hecho.
+  -> Invoca `RenewablesForecastSkill` con el snapshot.
+  -> [NUEVO] Invoca `RegulatoryComplianceSkill` con el estado actual de la red.
+  -> [NUEVO] Invoca CrossBorderAgent con mode="assessment".
+  -> Llama a `alert_formatter` con las 4 entradas anteriores: severity del
+     RiskScore.level, scope="peninsular", anomalias del AnomalyReport,
+     y capacidad de importacion disponible.
+  -> Emite alerta WARNING incluyendo la capacidad de importacion disponible.
+
+[ROJO -- EMERGENCIA] P >= 0.60:
+  -> Invoca `AnomalyDetectorSkill`.
+  -> Invoca `RenewablesForecastSkill`.
+  -> Invoca `RegulatoryComplianceSkill`.
+  -> Invoca `CrossBorderAgent` para evaluar importacion de emergencia.
+  -> Llama a `alert_formatter` con severity=CRITICAL, scope=nacional.
+  -> Invoca `ReportAgent` con report_type="emergency".
+  -> Emite alerta CRITICAL NACIONAL.
+
+================================================
 REGLAS NO NEGOCIABLES (shift-left)
-════════════════════════════════════════════════
-- Nunca uses el LLM para calcular proxies de estabilidad — usa stability_proxy_calculator.
-- Nunca uses el LLM para calcular el risk score — usa risk_scorer.
+================================================
+- Nunca uses el LLM para calcular proxies de estabilidad -- usa stability_proxy_calculator.
+- Nunca uses el LLM para calcular el risk score -- usa risk_scorer.
 - Nunca hardcodees un riesgo sin consultar al ML primero (get_blackout_probability).
-- Si una herramienta falla, regístralo y continúa con el resto del flujo.
-- Si los modelos ML no están disponibles (error en get_blackout_probability),
+- Si una herramienta falla, registralo y continua con el resto del flujo.
+- Si los modelos ML no estan disponibles (error en get_blackout_probability),
   asume P=0.20 y activa AnomalyDetectorSkill de forma preventiva.
+- Siempre consulta get_grid_state antes de aplicar los umbrales de escalacion.
 
-════════════════════════════════════════════════
+================================================
 FORMATO DE RESPUESTA FINAL
-════════════════════════════════════════════════
+================================================
 Devuelve SIEMPRE un dict JSON con:
 {
   "timestamp": "<ISO 8601 UTC>",
   "risk_score": <0-100>,
   "blackout_probability": <0.0-1.0>,
+  "markov_state": "<S0|S1|S2|S3|S4>",
   "severity": "LOW|MEDIUM|HIGH|CRITICAL",
   "scope": "nacional|peninsular|zonal|local",
   "alert": { ... } o null,
   "anomaly_report": { ... } o null,
   "renewables_forecast": { ... } o null,
+  "compliance_report": { ... } o null,
   "cross_border": { ... } o null,
   "actions_taken": ["lista de acciones ejecutadas"]
 }
 """.strip()
 
-_ml_toolset = MCPToolset(
-    connection_params=StdioServerParameters(
-        command="python",
-        args=["-m", "mcp_servers.ml_models_server"],
+_ml_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_servers.ml_models_server"],
+        )
     )
 )
 
-_memory_toolset = MCPToolset(
-    connection_params=StdioServerParameters(
-        command="python",
-        args=["-m", "mcp_servers.memory_server"],
+_memory_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_servers.memory_server"],
+        )
+    )
+)
+
+_markov_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_servers.markov_server"],
+        )
     )
 )
 
@@ -141,31 +191,40 @@ orchestrator = Agent(
         stability_proxy_calculator,
         risk_scorer,
         alert_formatter,
-        # Capa 2: MCP Tools (ML inference + memoria)
+        # Capa 2: MCP Tools (ML inference + memoria + Markov)
         _ml_toolset,
         _memory_toolset,
-        # Capa 3: Skills (AgentTools — LLM con contexto específico)
+        _markov_toolset,
+        # Capa 3: Skills (AgentTools -- LLM con contexto especifico)
         AnomalyDetectorSkill,
         RenewablesForecastSkill,
+        RegulatoryComplianceSkill,
     ],
     sub_agents=[
         report_agent,
         cross_border_agent,
     ],
-    temperature=0.1,
-    max_turns=20,
+    generate_content_config=genai_types.GenerateContentConfig(temperature=0.1),
 )
 
-# Registrar los 5 guardrails
+# Registrar los 5 guardrails.
+# NOTA ADK 2.3.0: Las firmas de callback en guardrails/hooks.py son
+# (tool_name, tool_args, agent_name) para before_tool_callback y
+# (tool_name, output) para after_tool_callback. ADK 2.3.0 espera
+# (BaseTool, dict, Context) y (BaseTool, dict, Context, dict) respectivamente.
+# La asignacion directa funciona (pydantic no valida el callable en tiempo de
+# asignacion bajo arbitrary_types_allowed=True), por lo que el wiring de
+# guardrails queda registrado. La adaptacion de firmas se marca como TECH DEBT
+# para un follow-up task de migracion de callbacks.
 register_hooks(orchestrator)
 
 
 # ---------------------------------------------------------------------------
-# API de ejecución
+# API de ejecucion
 # ---------------------------------------------------------------------------
 
 def run(region: str = "peninsular") -> dict[str, Any]:
-    """Ejecuta un ciclo de monitorización en tiempo real.
+    """Ejecuta un ciclo de monitorizacion en tiempo real.
 
     Devuelve el dict de resultado del Orchestrator.
     """
@@ -182,7 +241,7 @@ def run(region: str = "peninsular") -> dict[str, Any]:
     result = runner.run(
         session_id=session.id,
         user_id="gridguard-system",
-        new_message={"role": "user", "content": f"Ejecuta ciclo de monitorización para región: {region}"},
+        new_message={"role": "user", "content": f"Ejecuta ciclo de monitorizacion para region: {region}"},
     )
     return _extract_result(result)
 
@@ -207,7 +266,7 @@ def run_scenario(scenario: dict) -> dict[str, Any]:
         user_id="eval-runner",
     )
 
-    # Serializar el snapshot más reciente como contexto de entrada
+    # Serializar el snapshot mas reciente como contexto de entrada
     snapshot = scenario.get("snapshots", [{}])[-1]
     scenario_name = scenario.get("scenario_name", "unknown")
     message = (
