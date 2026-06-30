@@ -9,9 +9,27 @@ guardrails/hooks.py — ADK Callbacks (Guardrails) de GridGuard.
   after_model_callback  — valida rangos numéricos y JSON
   after_agent_callback  — valida schema final del agente
 
-NOTA ADK: En la versión actual de google-adk, los callbacks se registran
-como parámetros del Agent. Las firmas aquí siguen ARCHITECTURE.md §10 y
-se adaptan al objeto ToolContext/CallbackContext de ADK en agent_builder.py.
+NOTA ADK 2.3.0: firmas confirmadas desde google-adk 2.3.0:
+
+  before_tool_callback(tool: BaseTool, args: dict, tool_context: ToolContext)
+      -> Optional[dict]
+      tool.name  → nombre del tool
+      tool_context.agent_name  → nombre del agente
+
+  after_tool_callback(tool: BaseTool, args: dict, tool_context: ToolContext,
+                      tool_response: dict) -> Optional[dict]
+
+  before_model_callback(callback_context: CallbackContext, llm_request: LlmRequest)
+      -> Optional[LlmResponse]
+      llm_request.contents  → list[types.Content]; cada Content.parts[i].text
+
+  after_model_callback(callback_context: CallbackContext, llm_response: LlmResponse)
+      -> Optional[LlmResponse]
+      llm_response.content.parts[i].text  → texto generado
+
+  after_agent_callback(callback_context: CallbackContext)
+      -> Optional[types.Content]
+      Estado del agente en callback_context.state
 """
 
 from __future__ import annotations
@@ -20,7 +38,14 @@ import json
 import logging
 import re
 import time
-from typing import Any
+from typing import Any, Optional
+
+from google.adk.agents.callback_context import CallbackContext
+from google.adk.tools.base_tool import BaseTool
+from google.adk.tools.tool_context import ToolContext
+from google.adk.models.llm_request import LlmRequest
+from google.adk.models.llm_response import LlmResponse
+from google.genai import types as genai_types
 
 log = logging.getLogger("guardrails")
 
@@ -153,14 +178,27 @@ _MAX_OUTPUT_CHARS = _MAX_OUTPUT_TOKENS * 4
 # 1. before_tool_callback
 # ---------------------------------------------------------------------------
 
-def before_tool_callback(tool_name: str, tool_args: dict,
-                         agent_name: str = "") -> dict | None:
-    """Ejecutado antes de cada llamada a tool.
+def before_tool_callback(
+    tool: BaseTool,
+    args: dict,
+    tool_context: ToolContext,
+) -> Optional[dict]:
+    """Ejecutado antes de cada llamada a tool. ADK 2.3.0 signature.
+
+    Args:
+        tool: BaseTool instance — use tool.name for the tool name.
+        args: The keyword arguments the LLM passed to the tool.
+        tool_context: ToolContext (same as CallbackContext) — use
+            tool_context.agent_name for the running agent's name.
 
     Returns:
         None → dejar pasar la llamada
         dict → devolver este dict como resultado sin ejecutar el tool (bloqueo)
     """
+    tool_name: str = tool.name
+    tool_args: dict = args
+    agent_name: str = tool_context.agent_name
+
     # ── Bloquear acceso a ficheros sensibles ─────────────────────────────────
     if tool_name in _FILE_READ_TOOLS:
         path = str(tool_args.get("path", "") or tool_args.get("file_path", "")).lower()
@@ -195,11 +233,29 @@ def before_tool_callback(tool_name: str, tool_args: dict,
 # 2. after_tool_callback
 # ---------------------------------------------------------------------------
 
-def after_tool_callback(tool_name: str, output: Any) -> Any:
-    """Ejecutado tras cada llamada a tool. Sanitiza y valida el output."""
+def after_tool_callback(
+    tool: BaseTool,
+    args: dict,
+    tool_context: ToolContext,
+    tool_response: dict,
+) -> Optional[dict]:
+    """Ejecutado tras cada llamada a tool. ADK 2.3.0 signature.
+
+    Args:
+        tool: BaseTool instance — use tool.name.
+        args: The keyword arguments passed to the tool.
+        tool_context: ToolContext — use tool_context.agent_name.
+        tool_response: The dict returned by the tool execution.
+
+    Returns:
+        None → usar tool_response sin modificar
+        dict → reemplazar tool_response con este dict
+    """
+    tool_name: str = tool.name
+    output: Any = tool_response
 
     if not isinstance(output, (dict, list, str)):
-        return output
+        return None  # nothing to modify; ADK keeps original
 
     output_str = json.dumps(output) if isinstance(output, (dict, list)) else str(output)
 
@@ -213,6 +269,7 @@ def after_tool_callback(tool_name: str, output: Any) -> Any:
             return output
 
     # ── Validar rangos físicos ────────────────────────────────────────────────
+    modified = False
     if isinstance(output, dict):
         for field, (lo, hi) in _PHYSICAL_RANGES.items():
             if field in output:
@@ -222,6 +279,7 @@ def after_tool_callback(tool_name: str, output: Any) -> Any:
                                 tool_name, field, val, lo, hi)
                     output[field] = max(lo, min(hi, val))  # clamp en lugar de bloquear
                     output["_clamped"] = output.get("_clamped", []) + [field]
+                    modified = True
 
     # ── Truncar si supera el límite de tokens ─────────────────────────────────
     if len(output_str) > _MAX_OUTPUT_CHARS:
@@ -232,36 +290,97 @@ def after_tool_callback(tool_name: str, output: Any) -> Any:
             # Truncar campos de texto largos
             for k, v in output.items():
                 if isinstance(v, str) and len(v) > 2000:
-                    output[k] = v[:2000] + "… [TRUNCADO]"
+                    output[k] = v[:2000] + "... [TRUNCADO]"
+            modified = True
 
-    return output
+    # Return modified dict or None (ADK will keep original if None)
+    return output if modified else None
 
 
 # ---------------------------------------------------------------------------
 # 3. before_model_callback
 # ---------------------------------------------------------------------------
 
-def before_model_callback(messages: list[dict]) -> list[dict]:
-    """Detecta y sanitiza patrones de prompt injection antes de enviar al LLM."""
+def before_model_callback(
+    callback_context: CallbackContext,
+    llm_request: LlmRequest,
+) -> Optional[LlmResponse]:
+    """Detecta y sanitiza patrones de prompt injection antes de enviar al LLM.
+
+    ADK 2.3.0 signature.
+
+    Args:
+        callback_context: CallbackContext — use callback_context.agent_name.
+        llm_request: LlmRequest — mutation of llm_request.contents sanitizes
+            the messages in-place.
+
+    Returns:
+        None → proceder con llm_request (posiblemente mutado)
+        LlmResponse → cortocircuitar: devolver esta respuesta sin llamar al LLM
+    """
     sanitized = 0
-    for msg in messages:
-        content = str(msg.get("content") or msg.get("text") or "")
-        content_lower = content.lower()
-        if any(p in content_lower for p in _INJECTION_PATTERNS):
-            log.warning("[GUARDRAIL] before_model: posible injection detectada — sanitizada")
-            msg["content"] = "[SANITIZED: contenido potencialmente malicioso eliminado]"
-            sanitized += 1
+    for content_item in llm_request.contents:
+        if not content_item.parts:
+            continue
+        for part in content_item.parts:
+            text = part.text or ""
+            text_lower = text.lower()
+            if any(p in text_lower for p in _INJECTION_PATTERNS):
+                log.warning("[GUARDRAIL] before_model: posible injection detectada — sanitizada")
+                part.text = "[SANITIZED: contenido potencialmente malicioso eliminado]"
+                sanitized += 1
     if sanitized:
-        log.info("[GUARDRAIL] before_model: %d mensaje(s) sanitizado(s)", sanitized)
-    return messages
+        log.info("[GUARDRAIL] before_model: %d part(s) sanitizada(s)", sanitized)
+    # Return None to let ADK proceed with the (possibly mutated) request
+    return None
 
 
 # ---------------------------------------------------------------------------
 # 4. after_model_callback
 # ---------------------------------------------------------------------------
 
-def after_model_callback(output: str) -> str:
-    """Valida el output del modelo LLM antes de procesarlo."""
+def _extract_text_from_llm_response(llm_response: LlmResponse) -> str:
+    """Helper: extrae el texto concatenado de un LlmResponse."""
+    if not llm_response.content or not llm_response.content.parts:
+        return ""
+    return "".join(part.text or "" for part in llm_response.content.parts)
+
+
+def _replace_text_in_llm_response(llm_response: LlmResponse, new_text: str) -> None:
+    """Helper: reemplaza el texto del primer part de texto en un LlmResponse."""
+    if not llm_response.content or not llm_response.content.parts:
+        return
+    # Set first text part; clear the rest or set them to empty
+    first_set = False
+    for part in llm_response.content.parts:
+        if part.text is not None:
+            if not first_set:
+                part.text = new_text
+                first_set = True
+            else:
+                part.text = ""
+
+
+def after_model_callback(
+    callback_context: CallbackContext,
+    llm_response: LlmResponse,
+) -> Optional[LlmResponse]:
+    """Valida el output del modelo LLM antes de procesarlo.
+
+    ADK 2.3.0 signature.
+
+    Args:
+        callback_context: CallbackContext.
+        llm_response: LlmResponse — mutate in-place or return a new LlmResponse
+            to override, return None to proceed unchanged.
+
+    Returns:
+        None → usar llm_response sin cambios (o con mutaciones in-place)
+        LlmResponse → reemplazar la respuesta del modelo con esta
+    """
+    output = _extract_text_from_llm_response(llm_response)
+    if not output:
+        return None
 
     # ── Verificar JSON válido si parece JSON ──────────────────────────────────
     stripped = output.strip()
@@ -269,6 +388,7 @@ def after_model_callback(output: str) -> str:
         try:
             parsed = json.loads(stripped)
             # Validar rangos en el JSON del modelo
+            modified = False
             if isinstance(parsed, dict):
                 for field, (lo, hi) in _PHYSICAL_RANGES.items():
                     if field in parsed:
@@ -277,7 +397,10 @@ def after_model_callback(output: str) -> str:
                             log.warning("[GUARDRAIL] after_model: %s=%s fuera de rango",
                                         field, val)
                             parsed[field] = max(lo, min(hi, val))
-                return json.dumps(parsed)
+                            modified = True
+            if modified:
+                _replace_text_in_llm_response(llm_response, json.dumps(parsed))
+                return llm_response
         except json.JSONDecodeError:
             log.warning("[GUARDRAIL] after_model: output parece JSON pero no es válido")
 
@@ -285,9 +408,12 @@ def after_model_callback(output: str) -> str:
     for pattern in _CREDENTIAL_PATTERNS:
         if pattern.search(output):
             log.error("[GUARDRAIL] after_model: credencial en output del modelo — REDACTADO")
-            return "[REDACTED: output contenía posible credencial]"
+            _replace_text_in_llm_response(
+                llm_response, "[REDACTED: output contenía posible credencial]"
+            )
+            return llm_response
 
-    return output
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -297,11 +423,21 @@ def after_model_callback(output: str) -> str:
 _VALID_SEVERITIES = {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
 _VALID_SCOPES = {"nacional", "peninsular", "zonal", "local"}
 
+# Keys in session state where GridGuard agents store their domain output
+_AGENT_OUTPUT_STATE_KEYS = (
+    "risk_score", "value", "blackout_probability", "probability",
+    "severity", "level", "scope",
+)
 
-def after_agent_callback(agent_output: dict) -> dict:
-    """Valida el schema y bounds del output final del agente."""
+
+def _validate_agent_output_dict(agent_output: dict) -> None:
+    """Validate and clamp/flag domain values in agent_output in-place.
+
+    This is the pure validation logic, shared by after_agent_callback and
+    any direct callers (e.g. tests, orchestrator post-processing).
+    """
     if not isinstance(agent_output, dict):
-        return agent_output
+        return
 
     errors: list[str] = []
 
@@ -331,7 +467,49 @@ def after_agent_callback(agent_output: dict) -> dict:
         log.warning("[GUARDRAIL] after_agent: %d errores de validación: %s", len(errors), errors)
         agent_output["_validation_errors"] = errors
 
-    return agent_output
+
+def after_agent_callback(
+    callback_context: CallbackContext,
+) -> Optional[genai_types.Content]:
+    """Valida el schema y bounds del output final del agente.
+
+    ADK 2.3.0 signature.
+
+    Args:
+        callback_context: CallbackContext — agent output is read from
+            callback_context.state (session state dict where GridGuard agents
+            store risk_score, blackout_probability, severity, scope, etc.).
+
+    Returns:
+        None → no override; any validation errors are logged and state is
+            updated in-place via callback_context.state.
+        types.Content → append this as an extra agent response event (not used
+            by this guard — we always return None).
+
+    NOTE: In ADK 2.3.0 the callback no longer receives the agent output dict
+    directly.  GridGuard agents are expected to write their domain output into
+    session state under the keys listed in _AGENT_OUTPUT_STATE_KEYS.  This
+    guard reads those keys, validates, and writes corrections back into state.
+    """
+    state = callback_context.state
+
+    # Build a snapshot of the relevant domain keys from session state
+    agent_output: dict = {
+        k: state[k] for k in _AGENT_OUTPUT_STATE_KEYS if k in state
+    }
+
+    if not agent_output:
+        # No domain output in state yet — nothing to validate
+        return None
+
+    # Run validation (mutates agent_output in-place, logging errors)
+    _validate_agent_output_dict(agent_output)
+
+    # Write validated/clamped values back into session state
+    for k, v in agent_output.items():
+        state[k] = v
+
+    return None
 
 
 # ---------------------------------------------------------------------------
