@@ -53,6 +53,35 @@ _MIN_INTERVAL: dict[str, float] = {
 
 _rate_limiter: dict[str, float] = {}  # tool_name → last_call_monotonic
 
+# Estado Markov notable (S2 y superiores disparan acciones especiales)
+_S2_NOTABLE = 2
+
+# ---------------------------------------------------------------------------
+# Plan 4: Hooks de transición de estado (Task 2)
+# ---------------------------------------------------------------------------
+
+
+def on_state_transition(prev_state: int, curr_state: int) -> dict:
+    """Reacción a un cambio de estado de Markov entre ciclos (ver Plan 4).
+
+    - S2+ → S0 (recuperación): dispara post-mortem.
+    - S0 → S2+ (onset abrupto): dispara verificación normativa inmediata.
+    """
+    if prev_state >= _S2_NOTABLE and curr_state == 0:
+        log.info("[HOOK] on_state_transition: recuperación S%d→S0 → post_mortem", prev_state)
+        return {"action": "post_mortem", "trigger": f"S{prev_state}->S0"}
+    if prev_state == 0 and curr_state >= _S2_NOTABLE:
+        log.warning("[HOOK] on_state_transition: onset S0→S%d → regulatory_check", curr_state)
+        return {"action": "regulatory_check", "trigger": f"S0->S{curr_state}"}
+    return {"action": "none", "trigger": None}
+
+
+def on_forecast_risk_horizon(window_label: str, severity: str) -> dict:
+    """Registra una ventana de riesgo 6–24 h detectada por RenewablesForecastSkill."""
+    log.warning("[HOOK] on_forecast_risk_horizon: ventana de riesgo %s (%s)", window_label, severity)
+    return {"logged": True, "advance_warning": window_label}
+
+
 # Tools permitidas por tipo de agente (principio de mínimo privilegio)
 _ALLOWED_TOOLS: dict[str, set[str]] = {
     "gridguard_orchestrator": {
@@ -61,22 +90,30 @@ _ALLOWED_TOOLS: dict[str, set[str]] = {
         "get_blackout_probability", "store_snapshot", "store_risk_score",
         "AnomalyDetectorSkill", "RenewablesForecastSkill",
         "CrossBorderAgent", "ReportAgent",
+        "get_grid_state", "store_grid_state", "RegulatoryComplianceSkill",
     },
     "anomaly_detector_skill": {
         "get_anomaly_score", "stability_proxy_calculator",
         "get_baseline", "search_regulations",
+        "get_grid_state", "get_wind_forecast", "get_solar_radiation",
     },
     "renewables_forecast_skill": {
         "get_wind_forecast", "get_solar_radiation", "get_generation_mix",
         "get_load_forecast", "get_baseline",
+        "get_weather_forecast_24h", "get_grid_state",
     },
     "report_agent": {
         "query_incidents", "get_risk_history", "get_blackout_probability",
         "find_similar_incident", "write_report",
+        "get_markov_trajectory", "get_state_transitions",
     },
     "cross_border_agent": {
         "get_cross_border_flows", "get_capacity_margin",
         "get_eu_generation", "get_mitigation_procedure",
+        "get_eu_market_prices",
+    },
+    "regulatory_compliance_skill": {
+        "search_regulations", "get_grid_state",
     },
 }
 
