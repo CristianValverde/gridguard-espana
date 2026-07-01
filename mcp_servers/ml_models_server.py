@@ -202,18 +202,25 @@ def get_anomaly_score(window_json: str) -> dict:
 
         X = np.array(rows, dtype=float)
 
-        # ── Inferencia con Isolation Forest ─────────────────────────────────
+        # IF y LSTM se calculan como señales DISTINTAS (ya no son alternativos):
+        # el ensemble (Task 8) las fusiona. Ambos corren si están disponibles.
+        if_score = 0.0
+        lstm_recon_norm = 0.0
+        is_anomaly = False
+        top_features: list = []
+        feature_scores: dict = {}
+        model_types: list = []
+
+        # ── Isolation Forest (anomalía puntual) ─────────────────────────────
         if iforest is not None:
-            # IF devuelve -1 (anomalía) o 1 (normal)
             scores_raw = -iforest.score_samples(X)  # más alto = más anómalo
-            # Normalizar a [0, 1] usando percentiles del modelo
-            score_norm = float(np.clip(
+            if_score = float(np.clip(
                 (scores_raw.mean() - (-0.5)) / (0.5 - (-0.5)), 0, 1
             ))
-            is_anomaly = bool(iforest.predict(X[-1:] if len(X) > 0 else X)[0] == -1)
-            model_type = "isolation_forest"
-
-            # Features más anómalas: las de mayor desviación del último snapshot
+            is_anomaly = is_anomaly or bool(
+                iforest.predict(X[-1:] if len(X) > 0 else X)[0] == -1
+            )
+            model_types.append("isolation_forest")
             last = X[-1]
             mean = X.mean(axis=0)
             std = X.std(axis=0) + 1e-8
@@ -225,8 +232,8 @@ def get_anomaly_score(window_json: str) -> dict:
                 for i in range(len(feature_names))
             }
 
-        elif lstm is not None:
-            # LSTM Autoencoder: reconstrucción MSE como score de anomalía
+        # ── LSTM Autoencoder (reconstrucción temporal) ──────────────────────
+        if lstm is not None:
             try:
                 import torch
                 device = _models.get("device", "cpu")
@@ -235,14 +242,14 @@ def get_anomaly_score(window_json: str) -> dict:
                 with torch.no_grad():
                     reconstructed = lstm(X_tensor)
                     mse = float(torch.mean((X_tensor - reconstructed) ** 2).item())
-                score_norm = float(min(mse / lstm_threshold, 1.0))
-                is_anomaly = mse > lstm_threshold
-                model_type = "lstm_ae"
-                top_features = []
-                feature_scores = {"reconstruction_mse": round(mse, 6)}
+                lstm_recon_norm = float(min(mse / lstm_threshold, 1.0))
+                is_anomaly = is_anomaly or (mse > lstm_threshold)
+                model_types.append("lstm_ae")
+                feature_scores["reconstruction_mse"] = round(mse, 6)
             except Exception as exc:
                 return {"error": f"Error LSTM inference: {exc}"}
-        else:
+
+        if not model_types:
             return {
                 "error": (
                     "Modelos no entrenados. Ejecutar: "
@@ -250,17 +257,51 @@ def get_anomaly_score(window_json: str) -> dict:
                 )
             }
 
-        return AnomalyResult(
-            anomaly_score=round(score_norm, 4),
+        # anomaly_score legacy = la señal más fuerte disponible (compatibilidad)
+        anomaly_score = max(if_score, lstm_recon_norm)
+        result = AnomalyResult(
+            anomaly_score=round(anomaly_score, 4),
             is_anomaly=is_anomaly,
             top_features=top_features,
             feature_scores=feature_scores,
-            model_type=model_type,
+            model_type="+".join(model_types),
             inference_time_ms=0.0,
         ).model_dump(mode="json")
+        # Señales distintas para el ensemble:
+        result["if_score"] = round(if_score, 4)
+        result["lstm_recon_norm"] = round(lstm_recon_norm, 4)
+        return result
 
     except Exception as exc:
         return {"error": f"get_anomaly_score falló: {exc}"}
+
+
+@mcp.tool()
+def get_ensemble_score(features_json: str, window_json: str) -> dict:
+    """Fusiona LSTM + IF + clasificador en una P(blackout) única (riesgo principal).
+
+    El LSTM (no supervisado, inmune a D5) es el detector load-bearing; el IF y el
+    clasificador corroboran. Ver tools/ensemble_scorer.py.
+
+    Args:
+        features_json: JSON con la fila de features del clasificador (FEATURE_COLS,
+            idealmente de ml.serve_features.serve_feature_row para paridad train/serve).
+        window_json:   JSON array de snapshots (secuencia para IF/LSTM).
+
+    NOTA de paridad: la construcción del vector de features de get_anomaly_score y
+    get_blackout_probability debe alinearse con ml.serve_features durante la
+    integración [PADRE] (Task 10), ya que los modelos re-entrenados usan
+    ml.features.FEATURE_COLS + el scaler del bundle.
+    """
+    from tools.ensemble_scorer import fuse
+
+    anomaly = get_anomaly_score(window_json)
+    clf = get_blackout_probability(features_json)
+    return fuse(
+        lstm_recon_norm=float(anomaly.get("lstm_recon_norm", 0.0) or 0.0),
+        if_score=float(anomaly.get("if_score", 0.0) or 0.0),
+        clf_proba=float(clf.get("blackout_probability", 0.0) or 0.0),
+    )
 
 
 @mcp.tool()
