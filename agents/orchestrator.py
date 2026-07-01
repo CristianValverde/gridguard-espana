@@ -79,8 +79,10 @@ PASO 1 -- Adquisicion de datos (OBLIGATORIO en cada ciclo):
   1c. Llama a `stability_proxy_calculator` con el snapshot normalizado.
   1d. [NUEVO] Llama a `get_grid_state` (MCP markov) para obtener el estado actual S0-S4
       y la trayectoria de las ultimas 6h.
-  1e. Llama a `get_blackout_probability` con los proxies calculados.
-  1f. Llama a `risk_scorer` con el snapshot y el ml_score de 1e.
+  1e. Llama a `get_blackout_probability_ensemble` para obtener P(blackout). Este tool
+      fusiona LSTM (load-bearing) + Isolation Forest + clasificador usando las features
+      de serve (paridad train/serve, ventana 168h de la DB). Usa su `blackout_probability`.
+  1f. Llama a `risk_scorer` con el snapshot y el ml_score de 1e (el blackout_probability).
   1g. Llama a `store_snapshot` y `store_risk_score` para persistir los datos.
 
 PASO 2 -- Escalacion segun P(blackout_1h) Y estado de Markov:
@@ -129,9 +131,9 @@ REGLAS NO NEGOCIABLES (shift-left)
 ================================================
 - Nunca uses el LLM para calcular proxies de estabilidad -- usa stability_proxy_calculator.
 - Nunca uses el LLM para calcular el risk score -- usa risk_scorer.
-- Nunca hardcodees un riesgo sin consultar al ML primero (get_blackout_probability).
+- Nunca hardcodees un riesgo sin consultar al ML primero (get_blackout_probability_ensemble).
 - Si una herramienta falla, registralo y continua con el resto del flujo.
-- Si los modelos ML no estan disponibles (error en get_blackout_probability),
+- Si los modelos ML no estan disponibles (error o P=0 en get_blackout_probability_ensemble),
   asume P=0.20 y activa AnomalyDetectorSkill de forma preventiva.
 - Siempre consulta get_grid_state antes de aplicar los umbrales de escalacion.
 

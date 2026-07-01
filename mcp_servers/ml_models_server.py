@@ -305,6 +305,54 @@ def get_ensemble_score(features_json: str, window_json: str) -> dict:
 
 
 @mcp.tool()
+def get_serve_features(window_hours: int = 168) -> dict:
+    """Fila de features de serve (FEATURE_COLS) con paridad train/serve.
+
+    Lee las últimas `window_hours` de la tabla `snapshots` (pobladas por
+    ml.data.incremental_load.catch_up) y aplica ml.serve_features. Base para el
+    ensemble; el rolling queda activo si hay ≥168h de historia.
+    """
+    import pandas as pd
+    from mcp_servers import memory_server
+    from ml.serve_features import db_rows_to_snapshots, serve_feature_row
+
+    with memory_server._conn() as con:
+        rows = con.execute(
+            "SELECT * FROM snapshots ORDER BY timestamp DESC LIMIT ?",
+            (window_hours + 1,),
+        ).fetchall()
+    if not rows:
+        return {"error": "Sin snapshots en la DB. Ejecutar: python -m ml.data.incremental_load"}
+
+    snaps = db_rows_to_snapshots(list(reversed(rows)))
+    now = pd.Timestamp(snaps[-1]["timestamp"])
+    return serve_feature_row(snaps, now)
+
+
+@mcp.tool()
+def get_blackout_probability_ensemble() -> dict:
+    """P(blackout) del ensemble (LSTM load-bearing + IF + CLF) con paridad
+    train/serve. Pipeline 100% determinista (shift-left): lee la ventana 168h de
+    la DB, calcula las features de serve y fusiona los tres modelos. Sustituye a
+    get_blackout_probability como fuente del ml_score del orchestrator.
+    """
+    import json as _json
+    from mcp_servers import memory_server
+    from ml.serve_features import db_rows_to_snapshots
+
+    feats = get_serve_features()
+    if "error" in feats:
+        return feats
+
+    with memory_server._conn() as con:
+        rows = con.execute(
+            "SELECT * FROM snapshots ORDER BY timestamp DESC LIMIT 168"
+        ).fetchall()
+    window = db_rows_to_snapshots(list(reversed(rows)))
+    return get_ensemble_score(_json.dumps(feats), _json.dumps(window))
+
+
+@mcp.tool()
 def get_load_forecast(horizon_hours: int = 6, context_json: str = "{}") -> dict:
     """Predice la demanda eléctrica para las próximas N horas.
 

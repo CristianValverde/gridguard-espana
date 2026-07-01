@@ -11,11 +11,29 @@ completo en el mismo timestamp.
 """
 from __future__ import annotations
 
+import json
+
 import pandas as pd
 
 from ml import features as F
 
 _LINKS = ("es_fr_mw", "es_pt_mw", "es_ma_mw")
+
+
+def db_rows_to_snapshots(rows) -> list[dict]:
+    """Convierte filas de la tabla `snapshots` (dicts o sqlite.Row con las columnas
+    generation_json / interchange_json) en snapshots dict para serve_feature_row.
+    Es el puente DB→serve; mantiene serve_features agnóstico del origen."""
+    out = []
+    for r in rows:
+        out.append({
+            "timestamp": r["timestamp"],
+            "demand_mw": r["demand_mw"],
+            "generation_by_tech": json.loads(r["generation_json"] or "{}"),
+            "interchange_flows": json.loads(r["interchange_json"] or "{}"),
+            "reserve_mw": r["reserve_mw"],
+        })
+    return out
 
 
 def assemble_window(snapshots: list[dict], now: pd.Timestamp) -> pd.DataFrame:

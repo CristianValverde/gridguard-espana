@@ -113,6 +113,7 @@ _ALLOWED_TOOLS: dict[str, set[str]] = {
         "ree_poller", "data_normalizer", "stability_proxy_calculator",
         "risk_scorer", "alert_formatter",
         "get_blackout_probability", "store_snapshot", "store_risk_score",
+        "get_serve_features", "get_ensemble_score", "get_blackout_probability_ensemble",
         "AnomalyDetectorSkill", "RenewablesForecastSkill",
         "CrossBorderAgent", "ReportAgent",
         "get_grid_state", "store_grid_state", "RegulatoryComplianceSkill",

@@ -68,6 +68,28 @@ def test_serve_row_cold_start_does_not_crash():
     assert all(np.isfinite(v) for v in row.values())
 
 
+def test_db_rows_to_snapshots_parses_json_columns():
+    rows = [{
+        "timestamp": "2025-06-01T10:00:00+00:00",
+        "demand_mw": 26000.0,
+        "generation_json": '{"wind_mw": 5000.0, "nuclear_mw": 7000.0}',
+        "interchange_json": '{"es_fr_mw": -600.0}',
+        "reserve_mw": 300.0,
+    }]
+    snaps = SF.db_rows_to_snapshots(rows)
+    assert snaps[0]["generation_by_tech"]["wind_mw"] == 5000.0
+    assert snaps[0]["interchange_flows"]["es_fr_mw"] == -600.0
+    assert snaps[0]["demand_mw"] == 26000.0
+
+
+def test_db_rows_to_snapshots_handles_null_json():
+    rows = [{"timestamp": "2025-06-01T10:00:00+00:00", "demand_mw": 26000.0,
+             "generation_json": None, "interchange_json": None, "reserve_mw": 0.0}]
+    snaps = SF.db_rows_to_snapshots(rows)
+    assert snaps[0]["generation_by_tech"] == {}
+    assert snaps[0]["interchange_flows"] == {}
+
+
 def test_assemble_window_is_hourly_and_bounded():
     df = _full_dataset(400)
     now = df.index[300]
