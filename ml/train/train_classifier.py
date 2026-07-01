@@ -30,6 +30,7 @@ import joblib
 import numpy as np
 import pandas as pd
 
+from ml.features import FEATURE_COLS  # fuente única (incluye lags, física, interconexión)
 from ml.incidents import build_graded_labels
 from ml.train.calibration import _IsotonicCalibrated, calibrate_model  # noqa: F401
 from ml.train.device_config import DEVICE, log_device_info
@@ -43,17 +44,9 @@ log = logging.getLogger("train_classifier")
 DATA_PATH = Path(os.environ.get("DATA_PROCESSED_PATH", "data/processed")) / "dataset_training.parquet"
 CANDIDATES_DIR = Path(os.environ.get("ML_MODELS_PATH", "ml/models")) / "candidates"
 
-FEATURE_COLS = [
-    "balance_mw", "reserve_activated_pct", "interchange_delta_mw",
-    "renewables_pct", "composite_pressure",
-    "hour_sin", "hour_cos", "dow_sin", "dow_cos",
-    "month_sin", "month_cos", "is_weekend", "is_holiday_es",
-    # Lag features de los proxies (detectan tendencias)
-    "demand_real_mw",
-]
-
-LAG_FEATURES = ["balance_mw", "composite_pressure", "renewables_pct"]
-LAG_HOURS = [1, 3, 6]
+# FEATURE_COLS se importa de ml.features (fuente única). Ya incluye los lags
+# (composite_pressure_lag_*, balance_mw_lag_*, non_synchronous_penetration_lag_*),
+# así que build_features aquí solo SELECCIONA — no re-genera lags.
 
 
 # ---------------------------------------------------------------------------
@@ -83,12 +76,13 @@ def leave_one_event_out_splits(
 
 
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Añade lag features de los proxies de estabilidad."""
+    """Selecciona las FEATURE_COLS de ml.features presentes en el dataset.
+
+    Los lags/física/interconexión ya están calculados en el dataset por
+    ml.features.build_features (vía build_dataset), garantizando paridad
+    train/serve. Aquí no se re-generan.
+    """
     out = df[[c for c in FEATURE_COLS if c in df.columns]].copy()
-    for col in LAG_FEATURES:
-        if col in df.columns:
-            for lag in LAG_HOURS:
-                out[f"{col}_lag_{lag}h"] = df[col].shift(lag)
     return out.dropna()
 
 

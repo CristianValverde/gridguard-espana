@@ -31,6 +31,7 @@ import joblib
 import numpy as np
 import pandas as pd
 
+from ml.features import FEATURE_COLS as _ALL_FEATURE_COLS
 from ml.train.device_config import DEVICE, log_device_info
 
 logging.basicConfig(
@@ -43,13 +44,13 @@ log = logging.getLogger("train_anomaly")
 DATA_PATH = Path(os.environ.get("DATA_PROCESSED_PATH", "data/processed")) / "dataset_training.parquet"
 CANDIDATES_DIR = Path(os.environ.get("ML_MODELS_PATH", "ml/models")) / "candidates"
 
-# Features de entrada (subset de columnas del dataset)
+# Subset de detección: las features físicas de ml.features MENOS las temporales
+# (el autoencoder modela el estado físico de la red, no el reloj). Debe ser
+# subconjunto de ml.features.FEATURE_COLS para preservar la paridad con serve
+# (serve_feature_row solo devuelve FEATURE_COLS; NO las columnas por tecnología).
 FEATURE_COLS = [
-    "demand_real_mw",
-    "nuclear_mw", "hydro_mw", "wind_mw",
-    "solar_pv_mw", "solar_thermal_mw", "gas_cc_mw", "coal_mw",
-    "balance_mw", "reserve_activated_pct",
-    "interchange_delta_mw", "renewables_pct", "composite_pressure",
+    c for c in _ALL_FEATURE_COLS
+    if not c.startswith(("hour_", "dow_", "month_", "is_"))
 ]
 
 # Ventana temporal para el LSTM (horas hacia atrás)
