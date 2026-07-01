@@ -921,3 +921,33 @@ git commit -m "feat(kb): contexto RAG de interconexiones ES-FR/PT/MA + re-seed"
 11 (RAG) es independiente (puede ir en paralelo).
 ```
 Tareas 1,2,3,5,8,9,11(código) son **[FRÍO]**. Tareas 4,6,7,10 y los re-seed/validación son **[PADRE]**.
+
+---
+
+## Registro de ejecución (2026-07-01)
+
+Trabajando directamente sobre `main` (consolidado por fast-forward desde el worktree).
+
+- [x] **Task 1** `ml/features.py` (commit 4f760a2) — 4 tests. Capa única con NSP, deltas,
+  volatilidad, rolling composite + fallback absoluto, z-scores, lags, stress FR/PT/MA.
+- [x] **Task 2** `ml/serve_features.py` (commit 4730301) — 3 tests, incl. **paridad** serve==train (1e-9).
+- [x] **Task NUEVA — Carga incremental** (commits 5328e75, 126ca9d) — `ml/data/incremental_load.py`:
+  `missing_hours`/`raw_to_snapshots`/`complete_snapshots` (puras, 6 tests) + `backfill`/`catch_up`
+  (live). Reutiliza `download_esios` + `build_dataset.load_esios` → snapshots en escala de train.
+  **Backfill live ejecutado**: 742 snapshots reales [2026-05-23 → 2026-06-22 21:00] verificados
+  end-to-end (DB → serve_features → rolling activo: NSP/renovables/stress/z-scores poblados).
+
+### Hallazgos ESIOS (vía api-probe)
+- **Auth**: ESIOS exige `x-api-key`; el header legacy `Authorization: Token token="..."` da 403.
+  Arreglado en `ree_grid_server._headers` (commit 5328e75). `download_esios` ya lo mandaba.
+- **`ree_grid_server` tiene IDs de indicadores erróneos** (nuclear 460 → ~125 GW absurdo; wind 551
+  inconsistente). Los verificados están en `download_esios` (nuclear 1153, wind 10037, geo-sum).
+  → Los snapshots deben poblarse vía `catch_up` (ETL), NO vía los tools del poller. **Pendiente**:
+  decidir en Task 9 si el poller deja de escribir snapshots (los escribe `catch_up`).
+- **Lag de publicación de generación medida ~9 días**: `catch_up` apunta a `now - GENERATION_LAG_DAYS`
+  y `complete_snapshots` descarta horas con generación incompleta.
+
+### Pendiente
+- **Bridge DB→serve**: función que lea la ventana 168h de `snapshots` como dicts para
+  `serve_feature_row` (usado en Task 9 / orchestrator). Verificado inline; falta encapsular.
+- Tasks 3, 5, 8, 9 **[FRÍO]** y 4, 6, 7, 10, 11 **[PADRE]** siguen pendientes.
