@@ -31,6 +31,7 @@ from google.genai import types as genai_types
 from mcp.client.stdio import StdioServerParameters
 
 from config.model_loader import get_model
+from agents.instruction_utils import as_static_instruction
 
 REPORTS_DIR = Path(os.environ.get("REPORTS_PATH", "reports"))
 
@@ -175,7 +176,7 @@ _markov_toolset = McpToolset(
 report_agent = Agent(
     model=get_model("smart_agent"),
     name="report_agent",
-    instruction=_INSTRUCTION,
+    instruction=as_static_instruction(_INSTRUCTION),
     tools=[
         write_report,
         _memory_toolset,

@@ -53,6 +53,7 @@ from agents.regulatory_compliance import RegulatoryComplianceSkill
 from agents.renewables_forecast import RenewablesForecastSkill
 from agents.report_agent import report_agent
 from config.model_loader import get_model
+from agents.instruction_utils import as_static_instruction
 from guardrails.hooks import register_hooks
 from tools.alert_formatter import alert_formatter
 from tools.data_normalizer import data_normalizer
@@ -184,7 +185,7 @@ _markov_toolset = McpToolset(
 orchestrator = Agent(
     model=get_model("fast_agent"),
     name="gridguard_orchestrator",
-    instruction=_INSTRUCTION,
+    instruction=as_static_instruction(_INSTRUCTION),
     tools=[
         # Capa 1: Function Tools (Python puro, sin LLM)
         ree_poller,

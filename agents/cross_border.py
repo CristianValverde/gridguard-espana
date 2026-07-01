@@ -26,6 +26,7 @@ from google.genai import types as genai_types
 from mcp.client.stdio import StdioServerParameters
 
 from config.model_loader import get_model
+from agents.instruction_utils import as_static_instruction
 from schemas.models import CrossBorderAnalysis
 
 _INSTRUCTION = """
@@ -96,7 +97,7 @@ _kb_toolset = McpToolset(
 cross_border_agent = Agent(
     model=get_model("fast_agent"),
     name="cross_border_agent",
-    instruction=_INSTRUCTION,
+    instruction=as_static_instruction(_INSTRUCTION),
     tools=[
         _entsoe_toolset,
         _kb_toolset,

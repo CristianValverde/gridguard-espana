@@ -15,6 +15,7 @@ from google.genai import types as genai_types
 from mcp.client.stdio import StdioServerParameters
 
 from config.model_loader import get_model
+from agents.instruction_utils import as_static_instruction
 from schemas.models import ComplianceReport
 
 _INSTRUCTION = """
@@ -61,7 +62,7 @@ _markov_toolset = McpToolset(
 _inner_agent = Agent(
     model=get_model("fast_agent"),
     name="regulatory_compliance_skill",
-    instruction=_INSTRUCTION,
+    instruction=as_static_instruction(_INSTRUCTION),
     tools=[_kb_toolset, _markov_toolset],
     output_schema=ComplianceReport,
     generate_content_config=genai_types.GenerateContentConfig(temperature=0.1),

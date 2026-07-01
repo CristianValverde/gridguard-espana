@@ -26,6 +26,7 @@ from google.genai import types as genai_types
 from mcp.client.stdio import StdioServerParameters
 
 from config.model_loader import get_model
+from agents.instruction_utils import as_static_instruction
 from schemas.models import AnomalyReport
 from tools.stability_proxy_calculator import stability_proxy_calculator
 
@@ -117,7 +118,7 @@ _weather_toolset = McpToolset(
 _inner_agent = Agent(
     model=get_model("fast_agent"),
     name="anomaly_detector_skill",
-    instruction=_INSTRUCTION,
+    instruction=as_static_instruction(_INSTRUCTION),
     tools=[
         stability_proxy_calculator,
         _ml_toolset,

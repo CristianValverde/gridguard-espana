@@ -26,6 +26,7 @@ from google.genai import types as genai_types
 from mcp.client.stdio import StdioServerParameters
 
 from config.model_loader import get_model
+from agents.instruction_utils import as_static_instruction
 from schemas.models import RenewablesForecast
 
 _INSTRUCTION = """
@@ -111,7 +112,7 @@ _markov_toolset = McpToolset(
 _inner_agent = Agent(
     model=get_model("fast_agent"),
     name="renewables_forecast_skill",
-    instruction=_INSTRUCTION,
+    instruction=as_static_instruction(_INSTRUCTION),
     tools=[
         _weather_toolset,
         _ree_toolset,
