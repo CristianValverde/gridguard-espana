@@ -4,47 +4,37 @@ ml/data/build_dataset.py — Fusiona fuentes crudas y construye el dataset de en
 Entradas:
     data/raw/esios/     → demanda, generación, intercambios, reserva (10 min / hora)
     data/raw/aemet/     → temperatura, viento, radiación (hora)
-    data/raw/entsoe/    → flujos transfronterizos, generación vecinos (hora)
 
 Salida:
     data/processed/dataset_training.parquet
         Índice: timestamp UTC (horario)
-        ~525.000 filas para 2014→2024 · ~50 features
 
 Features generadas:
     · Demanda, generación por tecnología, intercambios, reserva (de ESIOS)
     · Temperatura media nacional, velocidad viento media, radiación media (AEMET)
-    · Flujos transfronterizos EU (ENTSO-E)
-    · Proxies de estabilidad calculados (ver ARCHITECTURE.md §5, Capa 1):
-        - balance_mw: generación_total − demanda
-        - reserve_activated_pct: reserva activada / reserva disponible × 100
-        - interchange_delta_mw: |variación en flujo neto externo| (rolling 1h)
-        - renewables_pct: (solar + eólica) / demanda × 100
-        - composite_pressure: combinación normalizada de los 4 proxies
-    · Features temporales:
-        - hour_sin, hour_cos (encoding circular)
-        - dow_sin, dow_cos (día de semana circular)
-        - month_sin, month_cos (mes circular)
-        - is_weekend, is_holiday_es
+    · Toda la capa derivada la produce ml.features.build_features (fuente única,
+      paridad train/serve garantizada): proxies de estabilidad, inercia (NSP),
+      estrés de interconexión por enlace, deltas, volatilidad, rolling composite,
+      z-scores 7d, lags y features temporales. Ver ml/features.py::FEATURE_COLS.
 
 Uso:
     python -m ml.data.build_dataset --esios data/raw/esios --aemet data/raw/aemet
-                                    --entsoe data/raw/entsoe --out data/processed
-    python -m ml.data.build_dataset  # usa rutas por defecto
+                                    --out data/processed
+    python -m ml.data.build_dataset            # usa rutas por defecto
+    python -m ml.data.build_dataset --refresh  # re-deriva features in-place sobre
+                                               # el parquet existente (sin re-descarga)
 """
 
 from __future__ import annotations
 
 import argparse
 import logging
-import math
 from pathlib import Path
 from typing import Optional
 
-import numpy as np
 import pandas as pd
 
-from tools.stability_proxy_calculator import compute_composite_pressure_score
+from ml.features import FEATURE_COLS, build_features
 
 log = logging.getLogger("build_dataset")
 logging.basicConfig(
@@ -128,113 +118,28 @@ def load_aemet(aemet_dir: Path) -> pd.DataFrame:
     return hourly
 
 
-def load_entsoe(entsoe_dir: Path) -> pd.DataFrame:
-    """Carga flujos transfronterizos ENTSO-E."""
-    log.info("Cargando datos ENTSO-E desde %s…", entsoe_dir)
-    cb_dir = entsoe_dir / "crossborder"
-    df = _load_parquet_dir(cb_dir) if cb_dir.exists() else pd.DataFrame()
-    if not df.empty:
-        df = df.resample("h").mean()
-        log.info("ENTSO-E cargado: %d filas, %d columnas", len(df), df.shape[1])
-    return df
-
-
 # ---------------------------------------------------------------------------
-# Feature engineering — Proxies de estabilidad (ARCHITECTURE.md §5 Capa 1)
+# Feature engineering — delegada por completo en ml.features (fuente única)
 # ---------------------------------------------------------------------------
 
-def compute_stability_proxies(df: pd.DataFrame) -> pd.DataFrame:
-    """Calcula los 4 proxies de estabilidad de frecuencia.
+def add_canonical_reserve(df: pd.DataFrame) -> pd.DataFrame:
+    """Construye reserve_mw canónico desde las columnas ESIOS de reserva secundaria.
 
-    Sustituyen a los datos de frecuencia real (no disponibles públicamente vía API).
+    ml.features espera una única columna reserve_mw; ESIOS publica energía
+    secundaria a subir/bajar por separado (MWh horarios ≈ MW medios).
     """
-    # 1. Balance oferta/demanda (MW)
-    gen_cols = [c for c in df.columns if c.startswith(("nuclear", "hydro", "wind",
-                "solar", "gas_cc", "coal", "cogeneration"))]
-    if gen_cols and "demand_real_mw" in df.columns:
-        df["balance_mw"] = df[gen_cols].sum(axis=1) - df["demand_real_mw"]
-    else:
-        df["balance_mw"] = np.nan
-
-    # 2. % Reserva de regulación activada
-    # ESIOS: secondary_reserve_up_mwh + secondary_reserve_dn_mwh (sumamos valor absoluto)
     reserve_cols = [c for c in df.columns if "secondary_reserve" in c]
-    if reserve_cols and "demand_real_mw" in df.columns:
-        reserve_total = df[reserve_cols].abs().sum(axis=1)
-        max_reserve = df["demand_real_mw"] * 0.015  # ~1.5% de la demanda → reserva máxima típica
-        df["reserve_activated_pct"] = (
-            reserve_total / max_reserve.replace(0, np.nan) * 100
-        ).clip(0, 100)
-    else:
-        df["reserve_activated_pct"] = np.nan
-
-    # 3. Variación brusca en flujos netos de intercambio (rolling 1h)
-    # ENTSO-E: columnas con prefijo "flow_"; ESIOS: columnas es_fr_mw, es_pt_mw, es_ma_mw
-    flow_cols = [
-        c for c in df.columns
-        if ("flow_" in c and c.endswith("_mw"))
-        or c in ("es_fr_mw", "es_pt_mw", "es_ma_mw")
-    ]
-    if flow_cols:
-        net_flow = df[flow_cols].sum(axis=1)
-        df["interchange_delta_mw"] = net_flow.diff(1).abs()
-    else:
-        df["interchange_delta_mw"] = np.nan
-
-    # 4. % renovables no gestionables sobre demanda
-    renewables_cols = [c for c in df.columns if c in ("wind_mw", "solar_pv_mw", "solar_thermal_mw")]
-    if renewables_cols and "demand_real_mw" in df.columns:
-        renewables = df[renewables_cols].sum(axis=1)
-        df["renewables_pct"] = (
-            renewables / df["demand_real_mw"].replace(0, np.nan) * 100
-        ).clip(0, 100)
-    else:
-        df["renewables_pct"] = np.nan
-
-    # 5. Presión compuesta [0-1] — fórmula canónica absoluta (compute_composite_pressure_score)
-    # NOTA: se eliminó la normalización min-max rolling 7 días que causaba train/serve skew.
-    # Ahora usa los mismos umbrales operacionales absolutos que el runtime y la validación.
-    # El dataset DEBE reconstruirse y los modelos DEBEN reentrenarse tras este cambio.
-    required_cols = {"balance_mw", "reserve_activated_pct", "interchange_delta_mw", "renewables_pct"}
-    if required_cols.issubset(df.columns):
-        df["composite_pressure"] = np.vectorize(compute_composite_pressure_score)(
-            df["balance_mw"].fillna(0.0),
-            df["reserve_activated_pct"].fillna(0.0),
-            df["interchange_delta_mw"].fillna(0.0),
-            df["renewables_pct"].fillna(0.0),
-        )
-    else:
-        df["composite_pressure"] = np.nan
-
+    df["reserve_mw"] = df[reserve_cols].abs().sum(axis=1) if reserve_cols else 0.0
     return df
 
 
-# ---------------------------------------------------------------------------
-# Feature engineering — Features temporales
-# ---------------------------------------------------------------------------
-
-def add_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Añade features temporales con encoding circular para evitar discontinuidades."""
-    idx = df.index
-
-    df["hour_sin"] = np.sin(2 * math.pi * idx.hour / 24)
-    df["hour_cos"] = np.cos(2 * math.pi * idx.hour / 24)
-    df["dow_sin"] = np.sin(2 * math.pi * idx.dayofweek / 7)
-    df["dow_cos"] = np.cos(2 * math.pi * idx.dayofweek / 7)
-    df["month_sin"] = np.sin(2 * math.pi * idx.month / 12)
-    df["month_cos"] = np.cos(2 * math.pi * idx.month / 12)
-    df["is_weekend"] = (idx.dayofweek >= 5).astype(int)
-
-    # Festivos nacionales de España (requiere holidays>=0.25)
-    try:
-        import holidays as hols
-        es_holidays = hols.Spain(years=range(idx.year.min(), idx.year.max() + 1))
-        holiday_dates = pd.DatetimeIndex(list(es_holidays.keys())).tz_localize("UTC")
-        df["is_holiday_es"] = idx.normalize().isin(holiday_dates).astype(int)
-    except ImportError:
-        log.warning("'holidays' no instalado. is_holiday_es = 0. pip install holidays")
-        df["is_holiday_es"] = 0
-
+def derive_features(df: pd.DataFrame) -> pd.DataFrame:
+    """reserve_mw canónico + capa completa de ml.features, con verificación."""
+    df = add_canonical_reserve(df)
+    df = build_features(df)
+    missing = [c for c in FEATURE_COLS if c not in df.columns]
+    if missing:
+        raise RuntimeError(f"build_features no produjo columnas esperadas: {missing}")
     return df
 
 
@@ -245,20 +150,18 @@ def add_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
 def build_dataset(
     esios_dir: Path,
     aemet_dir: Path,
-    entsoe_dir: Path,
     out_dir: Path,
     start: Optional[str] = None,
     end: Optional[str] = None,
 ) -> Path:
     esios = load_esios(esios_dir)
     aemet = load_aemet(aemet_dir)
-    entsoe = load_entsoe(entsoe_dir)
 
-    available = [df for df in (esios, aemet, entsoe) if not df.empty]
+    available = [df for df in (esios, aemet) if not df.empty]
     if not available:
         raise RuntimeError(
-            "No hay datos disponibles. Ejecutar primero download_esios.py, "
-            "download_aemet.py y download_entsoe.py."
+            "No hay datos disponibles. Ejecutar primero download_esios.py "
+            "y download_aemet.py."
         )
 
     log.info("Fusionando fuentes en índice horario UTC…")
@@ -279,11 +182,8 @@ def build_dataset(
     dataset = dataset.reindex(hourly_idx)
     dataset.index.name = "timestamp"
 
-    log.info("Calculando proxies de estabilidad…")
-    dataset = compute_stability_proxies(dataset)
-
-    log.info("Añadiendo features temporales…")
-    dataset = add_temporal_features(dataset)
+    log.info("Derivando features (ml.features)…")
+    dataset = derive_features(dataset)
 
     # Estadísticas de calidad
     missing_pct = dataset.isna().mean() * 100
@@ -308,24 +208,45 @@ def build_dataset(
     return out_path
 
 
+def refresh_features(parquet_path: Path) -> Path:
+    """Re-deriva la capa de features in-place sobre el parquet existente.
+
+    Las columnas raw (demanda, generación por tecnología, intercambios, reserva
+    secundaria, AEMET) se conservan; toda la capa derivada se recalcula con
+    ml.features y sobrescribe la anterior. No re-descarga nada.
+    """
+    log.info("Refrescando features in-place: %s", parquet_path)
+    dataset = pd.read_parquet(parquet_path)
+    dataset = derive_features(dataset)
+    dataset.to_parquet(parquet_path, engine="pyarrow", compression="snappy")
+    log.info(
+        "Dataset refrescado: %d filas × %d columnas | %.1f MB",
+        len(dataset), dataset.shape[1], parquet_path.stat().st_size / 1e6,
+    )
+    return parquet_path
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Construye dataset de entrenamiento")
     parser.add_argument("--esios", default="data/raw/esios")
     parser.add_argument("--aemet", default="data/raw/aemet")
-    parser.add_argument("--entsoe", default="data/raw/entsoe")
     parser.add_argument("--out", default="data/processed")
     parser.add_argument("--start", default=None, help="Filtro inicio (YYYY-MM-DD)")
     parser.add_argument("--end", default=None, help="Filtro fin (YYYY-MM-DD)")
+    parser.add_argument("--refresh", action="store_true",
+                        help="Re-derivar features in-place sobre el parquet existente")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = _parse_args()
-    build_dataset(
-        esios_dir=Path(args.esios),
-        aemet_dir=Path(args.aemet),
-        entsoe_dir=Path(args.entsoe),
-        out_dir=Path(args.out),
-        start=args.start,
-        end=args.end,
-    )
+    if args.refresh:
+        refresh_features(Path(args.out) / "dataset_training.parquet")
+    else:
+        build_dataset(
+            esios_dir=Path(args.esios),
+            aemet_dir=Path(args.aemet),
+            out_dir=Path(args.out),
+            start=args.start,
+            end=args.end,
+        )

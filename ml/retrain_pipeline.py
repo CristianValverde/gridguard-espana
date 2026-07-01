@@ -214,9 +214,6 @@ def run(dry_run: bool = False, skip_download: bool = False) -> None:
             _run([python, "-m", "ml.data.download_aemet",
                   "--start", period_start, "--end", period_end,
                   "--out", str(DATA_RAW / "aemet")], dry_run),
-            _run([python, "-m", "ml.data.download_entsoe",
-                  "--start", period_start, "--end", period_end,
-                  "--out", str(DATA_RAW / "entsoe")], dry_run),
         ])
         if not ok:
             log.error("Fase 1 falló — abortando pipeline")
@@ -229,7 +226,6 @@ def run(dry_run: bool = False, skip_download: bool = False) -> None:
     if not _run([python, "-m", "ml.data.build_dataset",
                  "--esios", str(DATA_RAW / "esios"),
                  "--aemet", str(DATA_RAW / "aemet"),
-                 "--entsoe", str(DATA_RAW / "entsoe"),
                  "--out", str(DATA_PROCESSED)], dry_run):
         log.error("Fase 2 falló — abortando pipeline")
         return
