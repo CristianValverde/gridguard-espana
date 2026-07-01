@@ -56,6 +56,9 @@ LSTM como detector principal neutraliza D5 (4) al no depender del modelo hambrie
 - Restaurar el `composite_pressure` rolling (replicable en serve vía histórico en DB).
 - Fusionar LSTM (load-bearing) + IF + clasificador en el **riesgo principal**.
 - Un **gate de eficacia honesto**: el ensemble discrimina golden>normal y crece hacia el onset.
+- **Grounding de dominio en el RAG:** incorporar contexto de las interconexiones de la red
+  española (ES↔FR/PT/MA) para que la capa LLM razone cualitativamente sobre lo que las nuevas
+  features numéricas de interconexión miden.
 
 **No-objetivos**
 - No se incorporan datos de clima al modelo core (la generación solar ya codifica la
@@ -175,6 +178,27 @@ def fuse(lstm_recon_norm: float, if_score: float, clf_proba: float,
   onset; LSTM primario. Se documenta que el CLF puede seguir débil por D5 y que el ensemble lo
   sostiene el LSTM.
 
+### 5.9 RAG — contexto de interconexiones (NUEVO corpus)
+
+Complemento cualitativo de las features numéricas de interconexión (§5.1): la capa LLM debe
+poder razonar sobre *qué* mide cada enlace y *por qué* importa.
+
+- **Nuevo documento de corpus** `data/kb_seed/procedures/interconexiones_red_espanola.txt` con:
+  el carácter de **isla eléctrica** de la península ibérica; ES↔FR como **único enlace AC a la
+  zona síncrona continental** (salvavidas de inercia; capacidad NTC típica); ES↔PT como coupling
+  **intra-ibérico** (MIBEL, co-víctima el 28-abr); ES↔MA como enlace **HVDC** de menor capacidad
+  con rol en la restauración; capacidades NTC de cada enlace; y su papel en el apagón del 28-abr
+  y su recuperación.
+- **Enrutado (paridad de acceso por agente):** el consumidor principal es `cross_border`, cuya
+  whitelist incluye `get_mitigation_procedure` (colección `procedures`) pero **no**
+  `search_regulations`. Por eso el documento va a la colección **`procedures`** (reachable por
+  cross_border). Alternativa evaluada en el plan: añadir `search_regulations` a la whitelist de
+  `cross_border` y ubicarlo en `regulations`. Se elige `procedures` por menor plumbing.
+- **Re-seed:** `scripts/seed_knowledge_base.py` (chunking 600/100 existente; idempotente por
+  `chunk_id`). No requiere cambios de código si se usa una carpeta ya mapeada en `COLLECTION_MAP`.
+- **Enriquecer** `data/kb_seed/procedures/importacion_emergencia.txt` con especificidades de
+  mitigación por enlace (import de emergencia desde FR, soporte DC de MA).
+
 ## 6. Catálogo de features (nuevas)
 
 | Feature | Definición | Justificación |
@@ -207,6 +231,9 @@ con física.
 - **Unit — cold-start:** ventana < min_periods ⟹ fallback determinista (== primeras filas del train).
 - **Unit — features físicas:** NSP, deltas, stress con casos conocidos.
 - **Integración (padre, con dataset + GPU):** `validate_models` verde; `validate_ensemble` PASS.
+- **RAG (integración, requiere embeddings):** smoke test de recuperación — una query de
+  interconexión (p.ej. "capacidad de la interconexión España-Francia") devuelve el chunk nuevo
+  con relevancia alta desde `get_mitigation_procedure`.
 - La suite offline debe seguir verde (los tests que requieren dataset/artefactos se auto-omiten).
 
 ## 9. Rollout y operación
