@@ -142,11 +142,14 @@ de detección recae en tres patas complementarias: (1) detección de anomalías 
 entrenados), (2) la capa de Markov sobre estados frecuentes S1/S2, (3) el clasificador como señal adicional.
 Ningún plan debe afirmar métricas de apagón "buenas" derivadas de 3 eventos.
 
-### D6 — Discrepancia de nombres de modelo (corregir en Plan 1)
+### D6 — Nombre del forecaster: NO hay bug (verificado en ejecución 2026-06-30)
 
-`retrain_pipeline.py:43` registra `"load_forecaster.pkl"` mientras el handoff/`train_forecast.py` producen
-`demand_forecaster.pkl`. Plan 1 Task 8 unifica el nombre a `demand_forecaster.pkl` en `PRODUCTION_MODELS` y
-en `validate_models.py` para que la promoción no se salte silenciosamente el forecaster.
+El handoff afirmaba una discrepancia (`demand_forecaster.pkl` vs `load_forecaster.pkl`). **Falso.** La
+verificación en ejecución muestra que `load_forecaster.pkl` es el nombre canónico, consistente en TODO el
+código: `train_forecast.py:240` (produce), `retrain_pipeline.py:46` (promueve), `ml_models_server.py:99`
+(carga para inferencia), y `ARCHITECTURE.md:544`. `demand_forecaster.pkl` no aparece en ningún punto del
+código — solo en el handoff. **Plan 1 Task 8 queda CANCELADA**: renombrar rompería la consistencia existente
+(YAGNI). El nombre canónico es `load_forecaster.pkl`.
 
 ---
 
@@ -155,9 +158,9 @@ en `validate_models.py` para que la promoción no se salte silenciosamente el fo
 ### [Plan 1 — Enriquecimiento de incidentes + re-entrenamiento del clasificador](2026-06-30-plan1-incident-enrichment-classifier.md)
 **Prioridad máxima. Bloquea todo lo demás.** Crea `ml/incidents.py` (registro S0–S4 verificado), corrige el
 timestamp del apagón, reescribe el etiquetado con ventanas graduadas + `sample_weight` por severidad, añade
-`derive_stress_states`, sustituye walk-forward por Leave-One-Event-Out, completa los jobs de fondo pendientes
-(`lstm_ae.pth`, `demand_forecaster.pkl`), re-entrena el clasificador, valida con el golden test y unifica el
-nombre del forecaster.
+`derive_stress_states`, sustituye walk-forward por Leave-One-Event-Out, verifica los modelos de fondo
+(`lstm_ae.pth`, `load_forecaster.pkl` — ya presentes), re-entrena el clasificador y valida con el golden test.
+(Task 8/D6 cancelada: el nombre `load_forecaster.pkl` ya es consistente — ver D6.)
 **Entregable:** clasificador re-entrenado con etiquetas correctas + `validate_models` en verde + registro de
 incidentes reutilizable.
 

@@ -34,7 +34,7 @@ operativo para este plan: UTC en todo; shift-left (la derivación de estados es 
   `ml/incidents.py`; añadir `leave_one_event_out_splits`; pasar `sample_weight`.
 - **Crear** `tests/ml/test_train_classifier.py` — tests de splits y forma del bundle.
 - **Modificar** `ml/train/validate_models.py` — unificar nombre forecaster (D6) + leer el bundle nuevo.
-- **Modificar** `ml/retrain_pipeline.py:43` — `load_forecaster.pkl` → `demand_forecaster.pkl` (D6).
+- **Modificar** `ml/retrain_pipeline.py:43` — `load_forecaster.pkl` → `load_forecaster.pkl` (D6).
 
 ---
 
@@ -367,7 +367,7 @@ git commit -m "feat(ml): derive_stress_states S0-S4 por umbrales fisicos (compar
 ### Task 4: Verificar/completar los jobs de entrenamiento de fondo
 
 Operación, no TDD. El handoff lanzó dos jobs GPU; a fecha del plan solo existen `anomaly_detector.pkl` y
-`blackout_classifier.pkl` en `ml/models/candidates/`. Faltan `lstm_ae.pth` y `demand_forecaster.pkl`.
+`blackout_classifier.pkl` en `ml/models/candidates/`. Faltan `lstm_ae.pth` y `load_forecaster.pkl`.
 
 **Files:**
 - Inspect: `ml/models/candidates/`
@@ -375,7 +375,7 @@ Operación, no TDD. El handoff lanzó dos jobs GPU; a fecha del plan solo existe
 - [ ] **Step 1: Comprobar qué candidatos existen**
 
 Run: `python -c "from pathlib import Path; print([p.name for p in Path('ml/models/candidates').glob('*')])"`
-Expected: lista. Si **no** contiene `lstm_ae.pth`, ejecutar Step 2. Si **no** contiene `demand_forecaster.pkl`,
+Expected: lista. Si **no** contiene `lstm_ae.pth`, ejecutar Step 2. Si **no** contiene `load_forecaster.pkl`,
 ejecutar Step 3.
 
 - [ ] **Step 2: (Si falta) re-lanzar el entrenamiento de anomalías (incluye LSTM) en GPU**
@@ -387,11 +387,11 @@ Expected: al terminar, `ml/models/candidates/lstm_ae.pth` existe. Verás logs de
 - [ ] **Step 3: (Si falta) re-lanzar el entrenamiento del forecaster en GPU**
 
 Run: `python -m ml.train.train_forecast --trials 500`
-Expected: al terminar, `ml/models/candidates/demand_forecaster.pkl` existe.
+Expected: al terminar, `ml/models/candidates/load_forecaster.pkl` existe.
 
 - [ ] **Step 4: Confirmar los 4 candidatos**
 
-Run: `python -c "from pathlib import Path; req={'anomaly_detector.pkl','lstm_ae.pth','demand_forecaster.pkl','blackout_classifier.pkl'}; have={p.name for p in Path('ml/models/candidates').glob('*')}; print('OK' if req<=have else f'FALTAN: {req-have}')"`
+Run: `python -c "from pathlib import Path; req={'anomaly_detector.pkl','lstm_ae.pth','load_forecaster.pkl','blackout_classifier.pkl'}; have={p.name for p in Path('ml/models/candidates').glob('*')}; print('OK' if req<=have else f'FALTAN: {req-have}')"`
 Expected: `OK`.
 
 No hay commit (no se modifica código; los `.pkl`/`.pth` no se versionan).
@@ -628,63 +628,21 @@ git commit -m "test(ml): ajuste de criterio del golden test para el clasificador
 
 ---
 
-### Task 8: Unificar el nombre del forecaster (D6) en pipeline y validación
+### Task 8: ~~Unificar el nombre del forecaster (D6)~~ — CANCELADA
 
-**Files:**
-- Modify: `ml/retrain_pipeline.py:43-48`
-- Modify: `ml/train/validate_models.py` (si referencia `load_forecaster`)
-- Test: `tests/ml/test_retrain_pipeline.py`
+**Cancelada el 2026-06-30 tras verificación en ejecución.** El handoff afirmaba una discrepancia de nombres
+(`demand_forecaster.pkl` vs `load_forecaster.pkl`), pero `grep load_forecaster|demand_forecaster` sobre el
+código muestra que `load_forecaster.pkl` es el nombre canónico y **ya es consistente** en todos los
+consumidores:
 
-**Interfaces:**
-- Produce: `PRODUCTION_MODELS` con clave `"demand_forecaster.pkl"` (no `"load_forecaster.pkl"`), coherente
-  con lo que produce `train_forecast.py`.
+- `ml/train/train_forecast.py:240` lo produce,
+- `ml/retrain_pipeline.py:46` lo promueve (`PRODUCTION_MODELS`),
+- `mcp_servers/ml_models_server.py:99` lo carga para inferencia,
+- `ARCHITECTURE.md:544` lo documenta.
 
-- [ ] **Step 1: Escribir el test que falla**
-
-```python
-# tests/ml/test_retrain_pipeline.py
-from ml import retrain_pipeline
-
-
-def test_production_models_uses_demand_forecaster_name():
-    keys = set(retrain_pipeline.PRODUCTION_MODELS)
-    assert "demand_forecaster.pkl" in keys
-    assert "load_forecaster.pkl" not in keys
-```
-
-- [ ] **Step 2: Ejecutar el test para verificar que falla**
-
-Run: `python -m pytest tests/ml/test_retrain_pipeline.py -v`
-Expected: FAIL (`load_forecaster.pkl` sigue en el dict).
-
-- [ ] **Step 3: Corregir el nombre**
-
-En `ml/retrain_pipeline.py`:
-
-```python
-PRODUCTION_MODELS = {
-    "anomaly_detector.pkl": "iforest",
-    "lstm_ae.pth": "lstm_ae",
-    "demand_forecaster.pkl": "xgb_forecast",   # antes: load_forecaster.pkl (D6)
-    "blackout_classifier.pkl": "xgb_blackout",
-}
-```
-
-Buscar cualquier otra referencia y unificar:
-Run: `python -c "import pathlib,re; [print(p) for p in pathlib.Path('.').rglob('*.py') if 'load_forecaster' in p.read_text(encoding='utf-8')]"`
-Si aparece `validate_models.py` u otro, reemplaza `load_forecaster` → `demand_forecaster` allí también.
-
-- [ ] **Step 4: Ejecutar el test para verificar que pasa**
-
-Run: `python -m pytest tests/ml/test_retrain_pipeline.py -v`
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add ml/retrain_pipeline.py ml/train/validate_models.py tests/ml/test_retrain_pipeline.py
-git commit -m "fix(ml): unificar nombre del forecaster a demand_forecaster.pkl en el pipeline de promocion"
-```
+`demand_forecaster.pkl` no aparece en ningún punto del código — solo en el handoff. No hay promoción
+silenciosamente saltada. Renombrar tocaría 4 sitios sin beneficio e introduciría riesgo (YAGNI, D6). **No se
+realiza ningún cambio.** El nombre canónico es `load_forecaster.pkl`.
 
 ---
 
