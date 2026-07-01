@@ -29,6 +29,10 @@ import pandas as pd
 log = logging.getLogger("incremental_load")
 
 BOOTSTRAP_DAYS = 30
+# La "Generación medida" de ESIOS tiene lag de publicación (~9 días verificado
+# 2026-07-01). catch_up apunta a `now - GENERATION_LAG_DAYS` para no perseguir
+# horas aún no publicadas (que se re-descargarían en vano cada ciclo).
+GENERATION_LAG_DAYS = 10
 
 _GEN_COLS = ["nuclear_mw", "hydro_mw", "wind_mw", "solar_pv_mw", "solar_thermal_mw",
              "gas_cc_mw", "coal_mw", "cogeneration_mw", "pumping_mw"]
@@ -55,6 +59,13 @@ def missing_hours(last_ts, now, bootstrap_days: int = BOOTSTRAP_DAYS) -> list[pd
     if start > now:
         return []
     return list(pd.date_range(start=start, end=now, freq="h", tz="UTC"))
+
+
+def complete_snapshots(snaps: list[dict]) -> list[dict]:
+    """Descarta snapshots con generación incompleta (suma 0 = datos no publicados
+    aún por ESIOS). España siempre tiene generación síncrona de base 24/7, así que
+    una suma de generación nula significa dato ausente, no cero real."""
+    return [s for s in snaps if sum(s["generation_by_tech"].values()) > 0]
 
 
 def _num(row, col) -> float:
@@ -132,17 +143,20 @@ def backfill(start_date: date, end_date: date, raw_dir: Path | None = None) -> i
         log.warning("load_esios devolvió DataFrame vacío para %s → %s", start_date, end_date)
         return 0
 
-    snaps = raw_to_snapshots(df)
+    snaps = complete_snapshots(raw_to_snapshots(df))  # descarta horas con generación incompleta
     inserted = _store_snapshots(snaps)
-    log.info("Backfill: %d snapshots nuevos (de %d horas)", inserted, len(snaps))
+    log.info("Backfill: %d snapshots nuevos (de %d horas completas)", inserted, len(snaps))
     return inserted
 
 
-def catch_up(now=None, bootstrap_days: int = BOOTSTRAP_DAYS) -> int:
-    """Rellena la tabla snapshots desde el último timestamp almacenado hasta `now`.
-    Si la tabla está vacía, hace bootstrap de `bootstrap_days` días."""
+def catch_up(now=None, bootstrap_days: int = BOOTSTRAP_DAYS,
+             lag_days: int = GENERATION_LAG_DAYS) -> int:
+    """Rellena la tabla snapshots hasta `now - lag_days` (margen para el lag de
+    publicación de la generación medida). Si la tabla está vacía, hace bootstrap
+    de `bootstrap_days` días terminando en ese punto."""
     now = now or datetime.now(timezone.utc)
-    hours = missing_hours(_last_snapshot_ts(), now, bootstrap_days)
+    effective_end = _to_utc(now) - pd.Timedelta(days=lag_days)
+    hours = missing_hours(_last_snapshot_ts(), effective_end, bootstrap_days)
     if not hours:
         log.info("catch_up: sin huecos que rellenar")
         return 0

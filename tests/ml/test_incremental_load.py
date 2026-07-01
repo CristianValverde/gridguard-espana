@@ -54,6 +54,17 @@ def test_raw_to_snapshots_maps_training_scale_columns():
     assert pd.Timestamp(s0["timestamp"]) == idx[0]
 
 
+def test_complete_snapshots_drops_zero_generation():
+    snaps = [
+        {"generation_by_tech": {"nuclear_mw": 7000.0, "wind_mw": 500.0}},   # completo
+        {"generation_by_tech": {"nuclear_mw": 0.0, "wind_mw": 0.0}},        # incompleto (no publicado)
+        {"generation_by_tech": {}},                                          # vacío
+    ]
+    kept = IL.complete_snapshots(snaps)
+    assert len(kept) == 1
+    assert kept[0]["generation_by_tech"]["nuclear_mw"] == 7000.0
+
+
 def test_raw_to_snapshots_handles_nan():
     idx = pd.date_range("2025-06-01", periods=1, freq="h", tz="UTC")
     df = pd.DataFrame(index=idx)
