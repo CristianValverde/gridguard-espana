@@ -69,9 +69,13 @@ def _token() -> str:
 
 
 def _headers() -> dict:
+    # ESIOS exige la cabecera x-api-key (verificado 2026-07-01 vía api-probe):
+    # el esquema legacy `Authorization: Token token="..."` por sí solo devuelve 403.
+    token = _token()
     return {
         "Accept": "application/json; application/vnd.esios-api-v2+json",
-        "Authorization": f'Token token="{_token()}"',
+        "Authorization": f'Token token="{token}"',
+        "x-api-key": token,
     }
 
 
