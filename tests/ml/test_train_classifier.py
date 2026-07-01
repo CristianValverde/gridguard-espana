@@ -2,9 +2,19 @@
 import joblib
 import numpy as np
 import pandas as pd
+import pytest
 from ml import incidents
 from ml.train import train_classifier
 from ml.train.calibration import _IsotonicCalibrated
+
+# El dataset de entrenamiento es un artefacto regenerable (gitignored). Los tests
+# que llaman a run() lo requieren: se auto-omiten si no está presente (checkout
+# limpio) y corren donde exista (regenerar: python -m ml.data.build_dataset).
+_requires_dataset = pytest.mark.skipif(
+    not train_classifier.DATA_PATH.exists(),
+    reason=f"dataset no presente: {train_classifier.DATA_PATH} "
+           "(regenerable vía `python -m ml.data.build_dataset`)",
+)
 
 
 def test_loeo_every_val_fold_has_a_positive():
@@ -20,6 +30,7 @@ def test_loeo_every_val_fold_has_a_positive():
         assert not (train_mask & val_mask).any()
 
 
+@_requires_dataset
 def test_run_uses_graded_labels_and_weights(monkeypatch, tmp_path):
     """run() debe construir labels+weights con build_graded_labels y pasar sample_weight al fit."""
     import ml.train.train_classifier as tc
@@ -42,6 +53,7 @@ def test_run_uses_graded_labels_and_weights(monkeypatch, tmp_path):
     assert (tmp_path / "blackout_classifier.pkl").exists()
 
 
+@_requires_dataset
 def test_bundle_serialization_module(monkeypatch, tmp_path):
     """El bundle debe desserializarse con __class__.__module__ == 'ml.train.calibration'.
 
