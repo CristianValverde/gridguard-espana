@@ -35,23 +35,30 @@ def _col(df: pd.DataFrame, name: str) -> pd.Series:
     return df[name] if name in df.columns else pd.Series(0.0, index=df.index)
 
 
+def _col0(df: pd.DataFrame, name: str) -> pd.Series:
+    """Columna raw con NaN→0: una tecnología/enlace sin dato aporta 0 MW,
+    igual que en serve (gen.get(c) or 0.0). La demanda NO usa esto — su
+    ausencia hace la fila inevaluable y debe propagar."""
+    return _col(df, name).fillna(0.0)
+
+
 def add_base_proxies(df: pd.DataFrame) -> pd.DataFrame:
-    total_gen = sum(_col(df, c) for c in GEN_COLS)
+    total_gen = sum(_col0(df, c) for c in GEN_COLS)
     df["balance_mw"] = total_gen - _col(df, "demand_real_mw")
     demand = _col(df, "demand_real_mw").replace(0, np.nan)
     max_reserve = demand * 0.015
-    df["reserve_activated_pct"] = (_col(df, "reserve_mw").abs() / max_reserve * 100).clip(0, 100).fillna(0.0)
-    net_flow = sum(_col(df, c) for c in LINK_COLS.values())
+    df["reserve_activated_pct"] = (_col0(df, "reserve_mw").abs() / max_reserve * 100).clip(0, 100).fillna(0.0)
+    net_flow = sum(_col0(df, c) for c in LINK_COLS.values())
     df["interchange_delta_mw"] = net_flow.diff(1).abs().fillna(0.0)
-    renew = sum(_col(df, c) for c in RENEWABLE_COLS)
+    renew = sum(_col0(df, c) for c in RENEWABLE_COLS)
     df["renewables_pct"] = (renew / demand * 100).clip(0, 100).fillna(0.0)
     return df
 
 
 def add_inertia_proxy(df: pd.DataFrame) -> pd.DataFrame:
-    total_gen = sum(_col(df, c) for c in GEN_COLS).replace(0, np.nan)
-    renew = sum(_col(df, c) for c in RENEWABLE_COLS)
-    df["synchronous_gen_mw"] = sum(_col(df, c) for c in SYNC_COLS)
+    total_gen = sum(_col0(df, c) for c in GEN_COLS).replace(0, np.nan)
+    renew = sum(_col0(df, c) for c in RENEWABLE_COLS)
+    df["synchronous_gen_mw"] = sum(_col0(df, c) for c in SYNC_COLS)
     df["non_synchronous_penetration"] = (renew / total_gen).clip(0, 1).fillna(0.0)
     return df
 
@@ -60,7 +67,7 @@ def add_interconnect_stress(df: pd.DataFrame) -> pd.DataFrame:
     total_cap = sum(INTERCONNECT_CAPACITY_MW.values())
     net = pd.Series(0.0, index=df.index)
     for key, col in LINK_COLS.items():
-        flow = _col(df, col)
+        flow = _col0(df, col)
         df[f"stress_{key}"] = (flow.abs() / INTERCONNECT_CAPACITY_MW[key]).clip(0, 1)
         net = net + flow
     df["interconnect_stress_total"] = (net.abs() / total_cap).clip(0, 1)

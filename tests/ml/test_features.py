@@ -57,3 +57,26 @@ def test_build_features_produces_all_feature_cols():
     df = F.build_features(_base_df())
     missing = [c for c in F.FEATURE_COLS if c not in df.columns]
     assert not missing, f"faltan columnas: {missing}"
+
+
+def test_nan_gap_in_raw_column_does_not_propagate():
+    """Un hueco NaN en una tecnología (p. ej. solar_pv el 24-jul-2021) equivale a
+    aportación 0, como en serve (gen.get(c) or 0.0) y en el train legacy (skipna).
+    La demanda ausente SÍ debe propagar (la fila no es evaluable sin demanda)."""
+    df = _base_df()
+    gap = df.index[100]
+    df.loc[gap, "solar_pv_mw"] = np.nan
+    df.loc[gap, "es_ma_mw"] = np.nan
+    out = F.build_features(df)
+    row = out.loc[gap]
+    for col in ("balance_mw", "non_synchronous_penetration", "synchronous_gen_mw",
+                "renewables_pct", "stress_es_ma", "interconnect_stress_total"):
+        assert np.isfinite(row[col]), f"{col} propagó NaN"
+    # balance = gen sin la solar ausente − demanda
+    expected_gen = sum(float(df.loc[gap, c]) for c in F.GEN_COLS if c != "solar_pv_mw")
+    assert abs(row["balance_mw"] - (expected_gen - 30000.0)) < 1e-6
+
+    df2 = _base_df()
+    df2.loc[df2.index[100], "demand_real_mw"] = np.nan
+    out2 = F.build_features(df2)
+    assert not np.isfinite(out2["balance_mw"].iloc[100])
