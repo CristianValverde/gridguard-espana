@@ -30,10 +30,9 @@ from schemas.models import RadiationForecast, WindForecast
 
 mcp = FastMCP("gridguard-weather")
 
-AEMET_BASE = "https://opendata.aemet.es/opendata/api"
 OPEN_METEO_BASE = "https://api.open-meteo.com/v1/forecast"
 CACHE_TTL = 1800  # 30 min — datos meteorológicos cambian más despacio
-REQUEST_TIMEOUT = 30  # segundos para llamadas HTTP a Open-Meteo y AEMET
+REQUEST_TIMEOUT = 30  # segundos para llamadas HTTP a Open-Meteo
 
 _cache: dict[str, tuple[Any, float]] = {}
 
@@ -46,17 +45,6 @@ ZONE_COORDS = {
     "galicia":  {"lat": 42.88, "lon": -8.54},   # Santiago (eólica Galicia)
     "nordeste": {"lat": 41.38, "lon":  2.17},   # Barcelona (mix)
 }
-
-# Estaciones AEMET correspondientes por zona
-ZONE_AEMET_STATION = {
-    "norte": "0076", "sur": "5514", "levante": "8025",
-    "interior": "9898", "galicia": "1387", "nordeste": "0200E",
-}
-
-
-def _aemet_key() -> str | None:
-    return os.environ.get("AEMET_API_KEY")
-
 
 def _cached(key: str, build_fn):
     now = time.monotonic()
