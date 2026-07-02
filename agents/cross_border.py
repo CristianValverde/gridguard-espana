@@ -36,7 +36,8 @@ _grid_data_toolset = McpToolset(
         server_params=StdioServerParameters(
             command="python",
             args=["-m", "mcp_servers.grid_data_server"],
-        )
+        ),
+        timeout=60.0,
     )
 )
 
@@ -45,7 +46,8 @@ _kb_toolset = McpToolset(
         server_params=StdioServerParameters(
             command="python",
             args=["-m", "mcp_servers.knowledge_base_server"],
-        )
+        ),
+        timeout=60.0,
     )
 )
 

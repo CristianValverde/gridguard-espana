@@ -36,8 +36,8 @@ def _fresh_import():
 def test_instruction_has_markov_and_new_thresholds():
     """La instruccion del orchestrator debe mencionar:
     - get_grid_state (adquisicion de estado Markov en PASO 1)
-    - RegulatoryComplianceSkill (invocada en tramo NARANJA)
-    - assessment (CrossBorderAgent en modo assessment)
+    - regulatory_compliance_skill (invocada en tramo NARANJA)
+    - assessment (cross_border_agent en modo assessment)
     - S2 (umbral de override por estado Markov)
     """
     orch = _fresh_import()
@@ -46,11 +46,11 @@ def test_instruction_has_markov_and_new_thresholds():
     assert "get_grid_state" in text, (
         "La instruccion debe incluir 'get_grid_state' en PASO 1"
     )
-    assert "RegulatoryComplianceSkill" in text, (
-        "La instruccion debe mencionar 'RegulatoryComplianceSkill' en tramo NARANJA"
+    assert "regulatory_compliance_skill" in text, (
+        "La instruccion debe mencionar 'regulatory_compliance_skill' en tramo NARANJA"
     )
     assert "assessment" in text, (
-        "La instruccion debe mencionar CrossBorderAgent en modo 'assessment'"
+        "La instruccion debe mencionar cross_border_agent en modo 'assessment'"
     )
     assert "S2" in text, (
         "La instruccion debe mencionar el umbral Markov 'S2' para el override"

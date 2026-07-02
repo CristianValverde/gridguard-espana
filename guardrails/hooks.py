@@ -110,9 +110,9 @@ _ALLOWED_TOOLS: dict[str, set[str]] = {
         "risk_scorer", "alert_formatter",
         "get_blackout_probability", "store_risk_score",
         "get_serve_features", "get_ensemble_score", "get_blackout_probability_ensemble",
-        "AnomalyDetectorSkill", "RenewablesForecastSkill",
-        "CrossBorderAgent", "ReportAgent",
-        "get_grid_state", "store_grid_state", "RegulatoryComplianceSkill",
+        "anomaly_detector_skill", "renewables_forecast_skill",
+        "cross_border_agent", "report_agent",
+        "get_grid_state", "store_grid_state", "regulatory_compliance_skill",
     },
     "anomaly_detector_skill": {
         "get_anomaly_score", "stability_proxy_calculator",

@@ -37,7 +37,8 @@ _ml_toolset = McpToolset(
         server_params=StdioServerParameters(
             command="python",
             args=["-m", "mcp_servers.ml_models_server"],
-        )
+        ),
+        timeout=60.0,
     )
 )
 
@@ -46,7 +47,8 @@ _memory_toolset = McpToolset(
         server_params=StdioServerParameters(
             command="python",
             args=["-m", "mcp_servers.memory_server"],
-        )
+        ),
+        timeout=60.0,
     )
 )
 
@@ -55,7 +57,8 @@ _kb_toolset = McpToolset(
         server_params=StdioServerParameters(
             command="python",
             args=["-m", "mcp_servers.knowledge_base_server"],
-        )
+        ),
+        timeout=60.0,
     )
 )
 
@@ -64,7 +67,8 @@ _weather_toolset = McpToolset(
         server_params=StdioServerParameters(
             command="python",
             args=["-m", "mcp_servers.weather_server"],
-        )
+        ),
+        timeout=60.0,
     )
 )
 

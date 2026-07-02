@@ -6,7 +6,7 @@ def test_orchestrator_can_use_grid_state_and_compliance():
     """Orchestrator should have access to grid state tools and compliance skill."""
     o = _ALLOWED_TOOLS["gridguard_orchestrator"]
     assert "get_grid_state" in o
-    assert "RegulatoryComplianceSkill" in o
+    assert "regulatory_compliance_skill" in o
 
 
 def test_anomaly_can_use_grid_state_and_weather():
@@ -40,7 +40,7 @@ def test_regulatory_compliance_whitelist_exists():
 def test_orchestrator_preserves_existing_tools():
     """Orchestrator must retain all pre-existing tools (regression test)."""
     o = _ALLOWED_TOOLS["gridguard_orchestrator"]
-    assert {"ree_poller", "data_normalizer", "AnomalyDetectorSkill", "ReportAgent"} <= o
+    assert {"ree_poller", "data_normalizer", "anomaly_detector_skill", "report_agent"} <= o
 
 
 def test_anomaly_preserves_existing_tools():

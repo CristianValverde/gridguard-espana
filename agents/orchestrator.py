@@ -70,7 +70,8 @@ _ml_toolset = McpToolset(
         server_params=StdioServerParameters(
             command="python",
             args=["-m", "mcp_servers.ml_models_server"],
-        )
+        ),
+        timeout=60.0,
     )
 )
 
@@ -79,7 +80,8 @@ _memory_toolset = McpToolset(
         server_params=StdioServerParameters(
             command="python",
             args=["-m", "mcp_servers.memory_server"],
-        )
+        ),
+        timeout=60.0,
     )
 )
 

@@ -25,7 +25,7 @@ PASO 2 -- Escalacion segun P(blackout_1h) Y estado de Markov:
 La escalacion usa AHORA tanto P(blackout) COMO el estado de Markov:
   - Si estado Markov >= S2 Y P < 0.10: eleva a AMARILLO (el estado manda cuando
     el ML duda pero la trayectoria se degrada claramente).
-  - Si estado Markov = S1 Y P in [0.10, 0.30): activa CrossBorderAgent en modo
+  - Si estado Markov = S1 Y P in [0.10, 0.30): activa cross_border_agent en modo
     assessment ademas del flujo normal AMARILLO.
 
 Tramos de escalacion:
@@ -36,29 +36,29 @@ Tramos de escalacion:
   -> EXCEPCION: si Markov >= S2, elevar a AMARILLO aunque P < 0.10.
 
 [AMARILLO] P in [0.10, 0.30) (o override por Markov >= S2 con P < 0.10):
-  -> Invoca `AnomalyDetectorSkill` con el snapshot normalizado del paso 1b.
+  -> Invoca `anomaly_detector_skill` con el snapshot normalizado del paso 1b.
   -> Registra el AnomalyReport en el log.
-  -> Si estado Markov = S1 Y P in [0.10, 0.30): activa CrossBorderAgent
+  -> Si estado Markov = S1 Y P in [0.10, 0.30): activa cross_border_agent
      con mode="assessment".
   -> No emitir alerta publica (estado de vigilancia elevada).
 
 [NARANJA] P in [0.30, 0.60) -- [ACTUALIZADO]:
-  -> Invoca `AnomalyDetectorSkill` si no se ha hecho.
-  -> Invoca `RenewablesForecastSkill` con el snapshot.
-  -> [NUEVO] Invoca `RegulatoryComplianceSkill` con el estado actual de la red.
-  -> [NUEVO] Invoca CrossBorderAgent con mode="assessment".
+  -> Invoca `anomaly_detector_skill` si no se ha hecho.
+  -> Invoca `renewables_forecast_skill` con el snapshot.
+  -> [NUEVO] Invoca `regulatory_compliance_skill` con el estado actual de la red.
+  -> [NUEVO] Invoca cross_border_agent con mode="assessment".
   -> Llama a `alert_formatter` con las 4 entradas anteriores: severity del
      RiskScore.level, scope="peninsular", anomalias del AnomalyReport,
      y capacidad de importacion disponible.
   -> Emite alerta WARNING incluyendo la capacidad de importacion disponible.
 
 [ROJO -- EMERGENCIA] P >= 0.60:
-  -> Invoca `AnomalyDetectorSkill`.
-  -> Invoca `RenewablesForecastSkill`.
-  -> Invoca `RegulatoryComplianceSkill`.
-  -> Invoca `CrossBorderAgent` para evaluar importacion de emergencia.
+  -> Invoca `anomaly_detector_skill`.
+  -> Invoca `renewables_forecast_skill`.
+  -> Invoca `regulatory_compliance_skill`.
+  -> Invoca `cross_border_agent` para evaluar importacion de emergencia.
   -> Llama a `alert_formatter` con severity=CRITICAL, scope=nacional.
-  -> Invoca `ReportAgent` con report_type="emergency".
+  -> Invoca `report_agent` con report_type="emergency".
   -> Emite alerta CRITICAL NACIONAL.
 
 ================================================
@@ -69,7 +69,7 @@ REGLAS NO NEGOCIABLES (shift-left)
 - Nunca hardcodees un riesgo sin consultar al ML primero (get_blackout_probability_ensemble).
 - Si una herramienta falla, registralo y continua con el resto del flujo.
 - Si los modelos ML no estan disponibles (error o P=0 en get_blackout_probability_ensemble),
-  asume P=0.20 y activa AnomalyDetectorSkill de forma preventiva.
+  asume P=0.20 y activa anomaly_detector_skill de forma preventiva.
 - Siempre consulta get_grid_state antes de aplicar los umbrales de escalacion.
 
 ================================================

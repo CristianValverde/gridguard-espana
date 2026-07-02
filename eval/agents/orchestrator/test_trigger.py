@@ -15,9 +15,9 @@ _EXPECTED_TOOLS = {
     "risk_scorer", "alert_formatter",
     "get_blackout_probability", "store_risk_score",
     "get_serve_features", "get_ensemble_score", "get_blackout_probability_ensemble",
-    "AnomalyDetectorSkill", "RenewablesForecastSkill",
-    "CrossBorderAgent", "ReportAgent",
-    "get_grid_state", "store_grid_state", "RegulatoryComplianceSkill",
+    "anomaly_detector_skill", "renewables_forecast_skill",
+    "cross_border_agent", "report_agent",
+    "get_grid_state", "store_grid_state", "regulatory_compliance_skill",
 }
 _EXPECTED_SERVERS = {"mcp_servers.ml_models_server", "mcp_servers.memory_server"}
 
@@ -37,8 +37,8 @@ def test_connected_servers_serve_the_whitelist():
 # (no el harness genérico: el orchestrator ya expone su propio entrypoint).
 # ---------------------------------------------------------------------------
 
-_SKILL_TOOLS = {"AnomalyDetectorSkill", "RenewablesForecastSkill",
-                "RegulatoryComplianceSkill", "CrossBorderAgent", "ReportAgent"}
+_SKILL_TOOLS = {"anomaly_detector_skill", "renewables_forecast_skill",
+                "regulatory_compliance_skill", "cross_border_agent", "report_agent"}
 
 
 @pytest.mark.integration
