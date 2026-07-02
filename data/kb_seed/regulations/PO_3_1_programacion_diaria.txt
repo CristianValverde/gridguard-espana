@@ -19,8 +19,9 @@ eventos especiales, datos meteorológicos de AEMET.
 GESTIÓN DE INTERCAMBIOS INTERNACIONALES (SECCIÓN 5)
 Las capacidades nominales de interconexión son:
 - España-Francia (ES-FR): 2800 MW de importación, 2000 MW de exportación
-- España-Portugal (ES-PT): 1400 MW bidireccional (MIBEL integrado)
-- España-Marruecos (ES-MA): 900 MW HVDC bidireccional
+- España-Portugal (ES-PT): 3000 MW bidireccional (MIBEL integrado)
+- España-Marruecos (ES-MA): cable submarino AC 400 kV Tarifa–Fardioua,
+  900 MW en sentido España→Marruecos y 600 MW en sentido Marruecos→España
 - España-Andorra: 200 MW (distribución local)
 
 Los flujos de intercambio se gestionan mediante:

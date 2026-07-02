@@ -17,9 +17,24 @@ PASO 1 — CONTACTO CON TSOs VECINOS (< 5 minutos tras activación)
 
 PASO 2 — GESTIÓN DE INTERCONEXIONES (< 10 minutos)
 2.1 Maximizar flujo en ES-FR hasta límite térmico (2800 MW import) si disponible
-2.2 Maximizar flujo en ES-PT hasta límite (1400 MW import) si Portugal tiene excedente
-2.3 Evaluar interconexión ES-MA (Marruecos): máx. 900 MW HVDC, menor prioridad
+2.2 Maximizar flujo en ES-PT hasta límite (3000 MW import) si Portugal tiene excedente
+2.3 Evaluar interconexión ES-MA (Marruecos): máx. 600 MW import por el doble cable
+    submarino AC de 400 kV Tarifa–Fardioua, menor prioridad
 2.4 Comunicar límites al mercado y suspender exportaciones si las hay
+
+MITIGACIÓN POR ENLACE
+ES-FR — Import de emergencia prioritario. Es el único acoplamiento síncrono con la
+    red continental europea (ENTSO-E CE): además de energía, aporta rigidez de
+    frecuencia (inercia) al sistema ibérico. Solicitar a RTE máxima capacidad
+    disponible; el enlace HVDC Santa Llogaia–Baixas permite control rápido y
+    preciso del flujo importado.
+ES-PT — Portugal comparte el riesgo ibérico (co-víctima el 28-abr-2025): antes de
+    contar con su excedente, confirmar con REN que su sistema está estable. Útil
+    sobre todo con excedente hidroeléctrico portugués.
+ES-MA — Soporte complementario en corriente alterna. Marruecos puede aportar hasta
+    600 MW hacia España y fue clave como apoyo de tensión y energía en la
+    restauración del 28-abr-2025. Coordinar con ONEE; verificar disponibilidad
+    del parque de generación marroquí.
 
 PASO 3 — MEDIDAS COMPLEMENTARIAS SIMULTÁNEAS
 3.1 Activar reserva terciaria de todos los agentes disponibles (despachadores REE)
@@ -40,11 +55,12 @@ El procedimiento se desactiva cuando:
 - El déficit de generación se cubre con recursos internos o importaciones
 - La probabilidad de colapso cae por debajo del 20%
 
-CAPACIDADES REALES DE IMPORTACIÓN (ACTUALIZACIÓN 2024)
+CAPACIDADES REALES DE IMPORTACIÓN (ACTUALIZACIÓN 2026)
 ES-FR: Capacidad técnica 2800 MW / Capacidad comercialmente disponible: variable
-ES-PT: Capacidad técnica 1400 MW / Suele haber capacidad disponible por excedente hidro
-ES-MA: Capacidad técnica 900 MW HVDC / Depende de disponibilidad marroquí
-TOTAL MÁXIMO TEÓRICO: ~5100 MW (raramente disponible en su totalidad simultáneamente)
+ES-PT: Capacidad técnica 3000 MW / Suele haber capacidad disponible por excedente hidro
+ES-MA: Capacidad técnica 600 MW import (AC submarino 400 kV Tarifa–Fardioua; 900 MW
+       en sentido España→Marruecos) / Depende de disponibilidad marroquí
+TOTAL MÁXIMO TEÓRICO: ~6400 MW (raramente disponible en su totalidad simultáneamente)
 
 NOTAS DE COORDINACIÓN ENTSO-E
 - En emergencias que afecten a múltiples países, coordinar a través del ENTSOE EOC

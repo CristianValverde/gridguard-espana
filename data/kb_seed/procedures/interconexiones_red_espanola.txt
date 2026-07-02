@@ -1,0 +1,215 @@
+DOCUMENTO TÉCNICO — INTERCONEXIONES DE LA RED ELÉCTRICA ESPAÑOLA
+Referencia: REE / Redeia — INELFE — ENTSO-E — Comisión Europea
+Ámbito: Sistema eléctrico peninsular español y sus enlaces transfronterizos
+
+OBJETO
+Este documento describe las interconexiones eléctricas de la red peninsular
+española con los sistemas vecinos (Francia, Portugal y Marruecos), sus
+capacidades de intercambio, su carácter técnico (corriente alterna AC o
+corriente continua HVDC) y su papel en la seguridad del sistema. Las
+interconexiones son las líneas de transporte de muy alta tensión que conectan
+el sistema español con las redes de países limítrofes y permiten importar o
+exportar energía. Su relevancia es doble: participan en el mercado
+transfronterizo de electricidad y actúan como soporte de estabilidad
+(frecuencia, tensión e inercia) ante incidentes graves. Las cifras de este
+documento distinguen entre capacidad física instalada y capacidad
+comercialmente disponible (NTC, Net Transfer Capacity), que suele ser menor y
+variable según las condiciones de red.
+
+LA PENÍNSULA IBÉRICA COMO ISLA ELÉCTRICA
+La península ibérica (España y Portugal) forma parte de la zona síncrona de
+Europa continental, la mayor red eléctrica interconectada del mundo, que opera
+a 50 Hz de forma sincronizada desde Portugal hasta Turquía. Sin embargo, la
+península está conectada al resto de esa zona síncrona por un único vecino
+terrestre: Francia. Toda la capacidad de intercambio síncrono con el corazón de
+Europa continental pasa por la frontera hispano-francesa (los Pirineos). Esta
+dependencia de un solo enlace, unida a una capacidad de interconexión reducida
+en proporción a la potencia instalada, hace que la península se comporte como
+una "isla eléctrica" dentro de Europa.
+
+El ratio de interconexión de la península con el resto del continente es de
+aproximadamente el 2,8%. Considerando solo España y sus enlaces con Francia y
+Portugal, el ratio se sitúa en torno al 7,2%. Ambos valores están por debajo de
+los objetivos fijados por la Unión Europea (10% para 2020 y 15% para 2030). Un
+sistema con baja interconexión tiene menos capacidad de apoyarse en sus vecinos
+para amortiguar desequilibrios súbitos entre generación y demanda, y por tanto
+es más vulnerable a perturbaciones de frecuencia. En un sistema débilmente
+mallado con el exterior, la inercia disponible y las reservas propias adquieren
+una importancia crítica para la estabilidad.
+
+INTERCONEXIÓN ESPAÑA-FRANCIA (ES-FR)
+La interconexión con Francia es el principal enlace de la península con la zona
+síncrona continental europea y el más importante en términos de seguridad de
+suministro. Se compone de enlaces en corriente alterna (AC) a través de los
+Pirineos y de un enlace en corriente continua de alta tensión (HVDC).
+
+El proyecto INELFE (Interconexión Eléctrica Francia-España), sociedad participada
+al 50% por Red Eléctrica de España (REE) y por la francesa RTE (Réseau de
+Transport d'Électricité), construyó el enlace subterráneo HVDC entre Santa
+Llogaia (Girona, España) y Baixas (Francia). Este enlace, en servicio desde
+octubre de 2015, es una línea de corriente continua a 320 kV y duplicó la
+capacidad comercial de intercambio entre España y Francia, que pasó de 1.400 MW
+a 2.800 MW. La corriente continua se emplea para reducir pérdidas en el tramo
+subterráneo de larga distancia y para controlar de forma precisa el flujo de
+potencia.
+
+La capacidad comercial de intercambio en la frontera España-Francia es, por
+tanto, del orden de 2.800 MW. Esta cifra corresponde a la capacidad física del
+conjunto de la interconexión; la capacidad comercialmente disponible (NTC)
+oscila según las condiciones de red y puede ser inferior. Durante 2025 la
+interconexión registró un elevado grado de utilización, predominantemente en
+sentido Francia hacia España.
+
+El papel de la interconexión con Francia va más allá del intercambio comercial:
+al ser el único enlace síncrono relevante con Europa continental, actúa como
+soporte de inercia y estabilidad de frecuencia ("salvavidas de inercia"). Cuando
+el sistema peninsular sufre un desequilibrio, el flujo por la frontera francesa
+puede ayudar a amortiguar la variación de frecuencia gracias a la enorme masa
+síncrona de la red continental. La contrapartida es que, si el enlace se pierde
+en un momento crítico, la península queda súbitamente aislada y sin ese soporte.
+
+Está en construcción un nuevo enlace HVDC por el Golfo de Bizkaia (Golfo de
+Vizcaya), también a cargo de INELFE, con una capacidad prevista de 2.000 MW
+adicionales, que elevará la capacidad de intercambio España-Francia de los
+2.800 MW actuales hasta unos 5.000 MW. Su entrada en servicio está prevista para
+en torno a 2028. Los estudios conjuntos de REE y RTE contemplan aumentar la NTC
+de la frontera a objetivos posteriores de 6.500 MW y 8.000 MW.
+
+INTERCONEXIÓN ESPAÑA-PORTUGAL (ES-PT)
+La interconexión con Portugal es un enlace en corriente alterna (AC) formado por
+varias líneas de 400 kV y 220 kV que atraviesan la frontera terrestre entre
+ambos países. A diferencia del enlace con Francia, España y Portugal comparten
+un mercado eléctrico común, el MIBEL (Mercado Ibérico de la Electricidad), que
+funciona como un mercado único en los horizontes diario e intradiario, con
+separación en dos áreas de precio únicamente cuando se produce congestión en la
+interconexión entre ambos sistemas.
+
+La capacidad de intercambio actual entre España y Portugal es del orden de
+3.000 MW. Existen trabajos de refuerzo en curso, en especial en la frontera
+entre Galicia y el norte de Portugal (nuevo eje Beariz-Ponte de Lima / Fontefría),
+que prevén elevar la capacidad hasta aproximadamente 4.200 MW en sentido
+España-Portugal y 3.500 MW en sentido inverso. El operador del sistema portugués
+es REN (Redes Energéticas Nacionais).
+
+Desde el punto de vista de la estabilidad, Portugal no aporta soporte síncrono
+externo a la península: forma parte de la misma isla eléctrica que España. Por
+ello, ante una perturbación grave de frecuencia de alcance peninsular, Portugal
+tiende a ser co-víctima del mismo incidente en lugar de una fuente de apoyo. El
+enlace ES-PT sirve principalmente para el intercambio comercial y para el
+reparto de recursos (por ejemplo, excedentes hidráulicos) dentro de la propia
+península.
+
+INTERCONEXIÓN ESPAÑA-MARRUECOS (ES-MA)
+La interconexión con Marruecos conecta la península con el continente africano a
+través del estrecho de Gibraltar, mediante un cable submarino entre las
+subestaciones de Tarifa (España) y Fardioua (Marruecos). Se compone de dos
+líneas de 400 kV, puestas en servicio en 1997 y 2006, que discurren por cables
+submarinos a lo largo de unos 26-29 km, alcanzando profundidades de hasta unos
+620 m. Contrariamente a lo que se asume a veces, el enlace opera en corriente
+alterna (AC) trifásica a 50 Hz y 400 kV nominales, no en HVDC. La infraestructura
+fue diseñada para poder convertirse a corriente continua en el futuro, lo que
+permitiría elevar la capacidad total hasta unos 4.000 MW.
+
+La capacidad total combinada de las dos líneas es de 1.400 MW. La capacidad
+dedicada a uso comercial es de 900 MW en sentido España-Marruecos (exportación
+desde España) y de 600 MW en sentido Marruecos-España (importación hacia
+España). Está gestionada conjuntamente por REE y por la ONEE (Office National de
+l'Électricité et de l'Eau Potable) de Marruecos. Existen planes para una tercera
+línea de 400 kV que añadiría del orden de 700 MW.
+
+Aunque su capacidad es menor que la de los enlaces con Francia y Portugal, la
+interconexión con Marruecos es estratégica porque ofrece una vía de importación
+alternativa, independiente de la frontera pirenaica, y desempeñó un papel
+relevante en la restauración tras el apagón de abril de 2025.
+
+PAPEL DE LAS INTERCONEXIONES EN EL APAGÓN DEL 28 DE ABRIL DE 2025
+El 28 de abril de 2025, a las 12:33 CEST, el sistema eléctrico peninsular sufrió
+un colapso generalizado que dejó sin suministro a España peninsular, Portugal
+continental y Andorra, afectando a más de 50 millones de personas. En apenas
+unos segundos se perdieron alrededor de 15.000 MW de generación, en torno al 60%
+de la producción del momento.
+
+Durante la secuencia del incidente, la interconexión con Francia jugó un papel
+crítico. Al producirse oscilaciones de potencia y una caída de frecuencia en la
+península, el enlace síncrono con Francia se desconectó, separando a la
+península de la red de Europa continental. Esta pérdida del principal soporte de
+inercia externo, en un sistema que en ese momento operaba con muy baja inercia
+síncrona propia (alta penetración renovable instantánea), contribuyó a que la
+perturbación derivase en un colapso en cascada. Portugal, conectado a España por
+el enlace AC del MIBEL y sin soporte síncrono externo propio, resultó co-víctima
+del mismo apagón.
+
+En la fase de restauración, las interconexiones fueron decisivas para acelerar la
+recuperación. El protocolo de arranque en negro (black start) de REE permite
+reiniciar la red apoyándose en centrales hidroeléctricas peninsulares sin
+depender del exterior, pero una vez levantadas las primeras islas de tensión, los
+enlaces internacionales aportaron energía y estabilidad. Marruecos suministró
+hasta 900 MW a través de las líneas del estrecho de Gibraltar, llegando a
+movilizar una parte muy significativa de su capacidad de generación para apoyar a
+España. Francia aportó hasta 2.000 MW (2 GW) a través de las interconexiones que
+conectan con Cataluña y el País Vasco. La restauración comenzó la tarde del mismo
+día y el sistema quedó prácticamente restablecido en la madrugada del 29 de
+abril. El episodio ilustra tanto la vulnerabilidad de una isla eléctrica con baja
+interconexión como el valor de los enlaces vecinos como recurso de recuperación.
+
+RATIO DE INTERCONEXIÓN Y OBJETIVOS DE LA UNIÓN EUROPEA
+La Unión Europea fijó un objetivo de interconexión eléctrica del 10% para 2020,
+posteriormente elevado al 15% para 2030 en el marco del Reglamento sobre la
+Gobernanza de la Unión de la Energía (2018/1999). El ratio de interconexión mide
+la capacidad de intercambio de un país en relación con su potencia de generación
+instalada: un ratio del 15% significa que el país puede importar de sus vecinos
+el equivalente al 15% de su capacidad de producción.
+
+La península ibérica está claramente por debajo de estos objetivos. El ratio de
+interconexión de la península con el resto de Europa continental es de en torno
+al 2,8%. Considerando España aisladamente y sus enlaces con Francia y Portugal,
+el ratio ronda el 7,2%; en 2020 España fue el único país de Europa continental
+por debajo del 10%. Las razones de este déficit son fundamentalmente geográficas
+y técnicas: la barrera natural de los Pirineos encarece y complica la
+construcción de nuevas líneas hacia Francia, y históricamente la interconexión
+transfronteriza ha avanzado con lentitud frente al fuerte crecimiento de la
+potencia instalada en España, en particular la renovable. Por ello, aumentar la
+capacidad de interconexión —a través de proyectos como el enlace del Golfo de
+Bizkaia y los refuerzos con Portugal— es una prioridad estratégica para reducir
+el carácter de isla eléctrica de la península, mejorar la integración de
+renovables y reforzar la seguridad de suministro.
+
+RESUMEN DE CAPACIDADES (VALORES DE REFERENCIA)
+ES-FR (España-Francia): 2.800 MW de capacidad comercial actual (AC + HVDC INELFE
+  Santa Llogaia-Baixas, 320 kV DC). Objetivo ~5.000 MW con el enlace del Golfo de
+  Bizkaia (~2028). Principal enlace síncrono con Europa continental.
+ES-PT (España-Portugal): ~3.000 MW de capacidad actual (AC, 400/220 kV). Objetivo
+  ~4.200 MW (ES->PT) y ~3.500 MW (PT->ES) con refuerzos en curso. Mercado común
+  MIBEL. Sin soporte síncrono externo (misma isla eléctrica).
+ES-MA (España-Marruecos): 1.400 MW de capacidad total instalada (AC, 400 kV, cable
+  submarino). Capacidad comercial: 900 MW en sentido España->Marruecos y 600 MW en
+  sentido Marruecos->España. Aportó hasta 900 MW en la restauración del 28-abr-2025.
+Ratio de interconexión: península ~2,8%; España ~7,2%. Objetivo UE: 10% (2020) y
+  15% (2030).
+
+FUENTES
+- Red Eléctrica / Redeia — Interconexión subterránea España-Francia:
+  https://www.ree.es/en/transmission/transmission-projects/spain-france-underground-electricity-interconnection
+- Redeia — New interconnection with France:
+  https://www.redeia.com/en/activities/unique-projects/new-interconnection-with-france
+- INELFE — Baixas-Santa Llogaia:
+  https://www.inelfe.eu/en/projects/baixas-santa-llogaia
+- INELFE — Bay of Biscay (Golfo de Bizkaia):
+  https://www.inelfe.eu/en/projects/bay-biscay
+- BEI/EIB — Bay of Biscay interconnection (€1.6 bn):
+  https://www.eib.org/en/press/all/2025-241-eib-supports-with-eur1-6-bn-the-strategic-bay-of-biscay-electricity-interconnection-between-spain-and-france
+- REE — Capacidad de intercambio (Sistema Eléctrico):
+  https://www.sistemaelectrico-ree.es/en/spanish-electricity-system/exchanges/exchange-capacity
+- Wikipedia — Spain-Morocco interconnection:
+  https://en.wikipedia.org/wiki/Spain-Morocco_interconnection
+- REE — Mantenimiento del cable submarino España-Marruecos:
+  https://www.ree.es/en/sala-de-prensa/actualidad/nota-de-prensa/2022/11/Red-Electrica-and-its-Moroccan-counterpart-carry-out-maintenance-work-on-the-reserve-cable-of-the-submarine-electricity-link-between-Spain-Morocco
+- Comisión Europea — Electricity interconnection targets:
+  https://energy.ec.europa.eu/topics/infrastructure/electricity-interconnection-targets_en
+- FEDARENE — Electricity interconnections in the EU: the challenge of the Iberian peninsula:
+  https://fedarene.org/electricity-interconnections-in-the-eu-the-challenge-of-the-iberian-peninsula/
+- IEEE (Instituto Español de Estudios Estratégicos) — España, una isla eléctrica en Europa:
+  https://www.ieee.es/Galerias/fichero/docs_opinion/2022/DIEEEO78_2022_DELFUE_Isla.pdf
+- Wikipedia — Apagón en la península ibérica de 2025:
+  https://es.wikipedia.org/wiki/Apag%C3%B3n_en_la_pen%C3%ADnsula_ib%C3%A9rica_de_2025
+- ENTSO-E — Informe final sobre el apagón ibérico de abril de 2025 (referenciado en fuentes anteriores)
