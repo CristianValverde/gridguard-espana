@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>GridGuard España — Arquitectura</title>
+<title>GridGuard España — Architecture</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -10,7 +10,7 @@
     font-family: system-ui, -apple-system, sans-serif;
     color: #e2e8f0;
     padding: 24px 20px;
-    min-width: 900px;
+    min-width: 960px;
   }
 
   /* ── Header ── */
@@ -29,7 +29,8 @@
   .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
   .g4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
-  .g6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .g5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .g7 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
 
   /* ── Base card ── */
   .card {
@@ -44,52 +45,53 @@
   }
 
   /* ── Color themes ── */
-  /* DATA SOURCES */
   .c-src  { background:#111827; border:1px solid #374151; }
   .c-src .t { color:#9ca3af; }
   .c-src .badge { background:#1f2937; color:#6b7280; }
 
-  /* OFFLINE / ML TRAINING */
   .c-off  { background:#0c1a2e; border:1.5px dashed #1d4ed8; }
   .c-off .t { color:#93c5fd; }
   .c-off .badge { background:#1e3a8a; color:#bfdbfe; }
 
-  /* KNOWLEDGE BASE */
   .c-kb   { background:#1a0f35; border:1.5px dashed #6d28d9; }
   .c-kb .t { color:#c4b5fd; }
   .c-kb .badge { background:#4c1d95; color:#ddd6fe; }
 
-  /* FUNCTION TOOLS */
+  /* Markov */
+  .c-mk   { background:#0d1f1f; border:1.5px dashed #0f766e; }
+  .c-mk .t { color:#5eead4; }
+  .c-mk .badge { background:#134e4a; color:#99f6e4; }
+
   .c-fn   { background:#132030; border:1px solid #0369a1; }
   .c-fn .t { color:#38bdf8; }
   .c-fn .badge { background:#0c4a6e; color:#7dd3fc; }
 
-  /* MCP SERVERS — live */
   .c-mcp  { background:#0f2318; border:1px solid #15803d; }
   .c-mcp .t { color:#4ade80; }
   .c-mcp .badge { background:#14532d; color:#86efac; }
 
-  /* MCP SERVERS — new */
   .c-mcp-new { background:#0f2318; border:2px solid #22c55e; }
   .c-mcp-new .t { color:#86efac; }
   .c-mcp-new .badge { background:#166534; color:#bbf7d0; }
 
-  /* SKILLS */
+  /* Markov MCP */
+  .c-mcp-mk { background:#0d1f1f; border:2px solid #14b8a6; }
+  .c-mcp-mk .t { color:#5eead4; }
+  .c-mcp-mk .badge { background:#134e4a; color:#99f6e4; }
+
   .c-sk   { background:#1e1040; border:1.5px solid #7c3aed; }
   .c-sk .t { color:#c084fc; }
   .c-sk .badge { background:#4c1d95; color:#d8b4fe; }
 
-  /* SUB-AGENTS */
   .c-ag   { background:#2a0f20; border:1.5px solid #be185d; }
   .c-ag .t { color:#f472b6; }
   .c-ag .badge { background:#831843; color:#fbcfe8; }
 
-  /* ORCHESTRATOR */
   .c-orch { background:#1c1500; border:2px solid #d97706; }
   .c-orch .t { color:#fbbf24; }
   .c-orch .badge { background:#78350f; color:#fde68a; }
 
-  /* HOOKS */
+  /* Hooks */
   .hook {
     background:#1a0808; border:1px dashed #991b1b;
     border-radius:6px; padding:7px 12px;
@@ -99,12 +101,10 @@
   .hook-label { font-size:9px; font-weight:700; color:#f87171; margin-bottom:4px; }
   .hook span  { font-size:8.5px; color:#fca5a5; line-height:1.5; }
 
-  /* OUTPUTS */
   .c-out  { background:#111; border:1px solid #334155; }
   .c-out .t { color:#94a3b8; }
   .c-out .badge { background:#1e293b; color:#64748b; }
 
-  /* EVAL / TRACING */
   .c-ev   { background:#061a1f; border:1px solid #0e7490; }
   .c-ev .t { color:#22d3ee; }
   .c-ev .badge { background:#0e4f5f; color:#67e8f9; }
@@ -115,14 +115,19 @@
   /* ── Divider ── */
   hr.div { border:none; border-top:1px solid #1e293b; margin:14px 0; }
 
-  /* ── NEW badge ── */
+  /* ── NEW / UPD badges ── */
   .new-pill {
     display:inline-block; background:#166534; color:#bbf7d0;
     border-radius:999px; padding:1px 7px; font-size:8px; font-weight:700;
     vertical-align:middle; margin-left:4px;
   }
+  .upd-pill {
+    display:inline-block; background:#0f3460; color:#93c5fd;
+    border-radius:999px; padding:1px 7px; font-size:8px; font-weight:700;
+    vertical-align:middle; margin-left:4px;
+  }
 
-  /* ── Model card table ── */
+  /* ── Model table ── */
   table { width:100%; border-collapse:collapse; font-size:9px; margin-top:6px; }
   th { background:#1e293b; color:#94a3b8; font-weight:600; padding:6px 8px; text-align:left; }
   td { padding:5px 8px; border-bottom:1px solid #1e293b; color:#cbd5e1; vertical-align:top; }
@@ -134,62 +139,75 @@
   .tAg { color:#f472b6; font-weight:700; }
   .tOr { color:#fbbf24; font-weight:700; }
   .tML { color:#93c5fd; font-weight:700; }
+  .tMk { color:#5eead4; font-weight:700; }
 
   /* ── Offline panel ── */
   .offline-wrap {
-    display:grid; grid-template-columns:1fr 1fr; gap:8px;
+    display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;
     margin-bottom:4px;
   }
 
-  /* ── Flow strip (pipeline) ── */
+  /* ── Flow strip ── */
   .flow {
     display:flex; align-items:stretch; gap:0;
     border-radius:8px; overflow:hidden; margin:6px 0;
   }
-  .flow-box { flex:1; padding:8px 6px; text-align:center; font-size:9px; }
-  .flow-arrow-box { display:flex; align-items:center; color:#334155; font-size:14px; padding:0 2px; background:#1a1a1a; }
+  .flow-box { flex:1; padding:7px 5px; text-align:center; font-size:9px; }
+  .flow-arrow-box { display:flex; align-items:center; color:#334155; font-size:13px; padding:0 2px; background:#1a1a1a; }
   .fb-src { background:#111827; border:1px solid #374151; }
   .fb-src .fq { color:#9ca3af; font-weight:700; font-size:9px; }
   .fb-src .fa { color:#6b7280; font-size:8px; margin-top:3px; }
   .fb-ml  { background:#0c1a2e; }
   .fb-ml  .fq { color:#93c5fd; font-weight:700; font-size:9px; }
   .fb-ml  .fa { color:#60a5fa; font-size:8px; margin-top:3px; }
+  .fb-mk  { background:#0d1f1f; }
+  .fb-mk  .fq { color:#5eead4; font-weight:700; font-size:9px; }
+  .fb-mk  .fa { color:#2dd4bf; font-size:8px; margin-top:3px; }
   .fb-kb  { background:#1a0f35; }
   .fb-kb  .fq { color:#c4b5fd; font-weight:700; font-size:9px; }
   .fb-kb  .fa { color:#a78bfa; font-size:8px; margin-top:3px; }
+
+  /* ── DB pill ── */
+  .db-pill {
+    display:inline-flex; align-items:center; gap:4px;
+    border-radius:4px; padding:3px 8px; font-size:8px; font-weight:700;
+    margin-top:5px; margin-right:4px;
+  }
+  .db-sqlite { background:#1a200f; border:1px solid #4d7c0f; color:#a3e635; }
+  .db-chroma { background:#1a0f35; border:1px solid #6d28d9; color:#c4b5fd; }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>⚡ GridGuard España — Arquitectura Completa</h1>
-  <p>Multi-Agent · MCP · ML · RAG · Guardrails · Eval &amp; Tracing &nbsp;·&nbsp; Capstone Project Google × Kaggle 2026</p>
+  <h1>⚡ GridGuard España — Full Architecture</h1>
+  <p>Multi-Agent · 7 MCP Servers · ML Models · Markov Chain · RAG (ChromaDB) · Guardrails · Eval &amp; Tracing &nbsp;·&nbsp; Capstone Project Google × Kaggle 2026</p>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
      OFFLINE PIPELINE
 ═══════════════════════════════════════════════════════════ -->
-<div class="section-label">📦 Pipeline Offline — Entrenamiento y Base de Conocimiento (se ejecuta una vez / re-entrena periódicamente)</div>
+<div class="section-label">📦 Offline Pipeline — Training &amp; Knowledge Base (runs once / periodically retrained)</div>
 
 <div class="offline-wrap">
 
-  <!-- Data sources + ML pipeline -->
+  <!-- ML Pipeline -->
   <div class="card c-off">
-    <div class="t">🤖 Pipeline ML — Modelos de Predicción</div>
+    <div class="t">🤖 ML Pipeline — Predictive Models</div>
     <div class="flow">
       <div class="flow-box fb-src">
         <div class="fq">ESIOS</div>
-        <div class="fa">2014 → hoy<br>10 min granularidad<br>~530k puntos</div>
+        <div class="fa">2014 → today<br>10 min granularity<br>~530k points</div>
       </div>
       <div class="flow-arrow-box">+</div>
       <div class="flow-box fb-src">
         <div class="fq">AEMET</div>
-        <div class="fa">2000 → hoy<br>horaria<br>viento · sol · temp</div>
+        <div class="fa">2000 → today<br>hourly<br>wind · solar · temp</div>
       </div>
       <div class="flow-arrow-box">+</div>
       <div class="flow-box fb-src">
         <div class="fq">ENTSO-E</div>
-        <div class="fa">2011 → hoy<br>horaria<br>intercambios EU</div>
+        <div class="fa">2011 → today<br>hourly<br>EU flows</div>
       </div>
       <div class="flow-arrow-box">→</div>
       <div class="flow-box fb-ml">
@@ -203,42 +221,68 @@
       </div>
       <div class="flow-arrow-box">·</div>
       <div class="flow-box fb-ml">
-        <div class="fq">GBM Calibrado</div>
+        <div class="fq">GBM Calibrated</div>
         <div class="fa">blackout_classifier.pkl</div>
       </div>
     </div>
     <div class="d" style="margin-top:4px">
-      ⚠️ <b>Frecuencia (Hz) no disponible</b> vía API pública → se usan <b>4 proxies</b>: balance oferta/demanda · reserva regulación activada · variación intercambios · % renovables no gestionables
-    </div>
-    <div class="d" style="margin-top:6px;padding:6px 8px;background:#0f172a;border-radius:6px;font-family:monospace;font-size:11px;color:#94a3b8">
-      <span style="color:#f472b6">🟣 CUDA</span> — LSTM Autoencoder: <span style="color:#86efac">torch.device("cuda")</span> → pesos <span style="color:#fbbf24">lstm_ae.pth</span><br>
-      <span style="color:#f472b6">🟣 CUDA</span> — XGBoost forecast/classifier: <span style="color:#86efac">device="cuda"</span> → pesos <span style="color:#fbbf24">.json</span><br>
-      <span style="color:#94a3b8">⬜ CPU</span> — Isolation Forest: sklearn, sin GPU → pesos <span style="color:#fbbf24">iforest.pkl</span> (joblib)<br>
-      <span style="color:#38bdf8">🔄 Cron</span> — <b>Día 1 de cada mes, 02:00 UTC</b>: descarga → reentrena → valida → swap atómico si mejora → hot-reload MCP
+      ⚠️ <b>Grid frequency (Hz) not available</b> via public API → 4 <b>proxies</b> used: supply/demand balance · activated regulation reserve · interchange variation · % unmanageable renewables
     </div>
     <span class="badge" style="background:#1e3a8a;color:#bfdbfe">scikit-learn</span>
-    <span class="badge" style="background:#1e3a8a;color:#bfdbfe">XGBoost GPU</span>
-    <span class="badge" style="background:#1e3a8a;color:#bfdbfe">PyTorch CUDA</span>
-    <span class="badge" style="background:#7c2d12;color:#fed7aa">⚡ CUDA training</span>
-    <span class="badge" style="background:#14532d;color:#bbf7d0">🔄 cron mensual</span>
+    <span class="badge" style="background:#1e3a8a;color:#bfdbfe">XGBoost</span>
+    <span class="badge" style="background:#1e3a8a;color:#bfdbfe">PyTorch</span>
+    <span class="badge" style="background:#14532d;color:#bbf7d0">🔄 monthly cron</span>
+  </div>
+
+  <!-- Markov Pipeline -->
+  <div class="card c-mk">
+    <div class="t">📈 Markov Chain — Grid State Trajectory</div>
+    <div class="flow">
+      <div class="flow-box fb-src">
+        <div class="fq">Historical states</div>
+        <div class="fa">derive_stress_states()<br>S0–S4 labels<br>from proxies</div>
+      </div>
+      <div class="flow-arrow-box">→</div>
+      <div class="flow-box fb-mk">
+        <div class="fq">Empirical counts</div>
+        <div class="fa">Laplace smoothing<br>A[5×5] raw matrix</div>
+      </div>
+      <div class="flow-arrow-box">+</div>
+      <div class="flow-box fb-mk">
+        <div class="fq">Dirichlet prior</div>
+        <div class="fa">Expert prior for<br>rare S3→S4 transitions</div>
+      </div>
+      <div class="flow-arrow-box">→</div>
+      <div class="flow-box fb-mk">
+        <div class="fq">markov_state.npz</div>
+        <div class="fa">A[5×5] blended<br>+ discretisation thresholds</div>
+      </div>
+    </div>
+    <div class="d" style="margin-top:4px">
+      <b>Grid states</b>: S0 Normal · S1 Stress · S2 Notable · S3 Major · S4 Blackout<br>
+      Runtime: <code style="color:#5eead4">compute_state</code> · <code style="color:#5eead4">get_trajectory</code> · <code style="color:#5eead4">prob_reach_severity</code> — pure NumPy, no LLM
+    </div>
+    <span class="badge" style="background:#134e4a;color:#99f6e4">NumPy / pandas</span>
+    <span class="badge" style="background:#134e4a;color:#99f6e4">Pure Python</span>
+    <span class="badge" style="background:#134e4a;color:#99f6e4">No LLM</span>
   </div>
 
   <!-- Knowledge base pipeline -->
   <div class="card c-kb">
-    <div class="t">📚 Pipeline RAG — Base de Conocimiento</div>
+    <div class="t">📚 RAG Pipeline — Knowledge Base</div>
     <div class="flow">
       <div class="flow-box fb-src">
-        <div class="fq">POs REE</div>
-        <div class="fa">PO 1.1, 1.2, 7.4<br>operación sistema<br>PDFs</div>
+        <div class="fq">REE POs</div>
+        <div class="fa">PO 1.1, 1.2, 7.4<br>system operation<br>PDFs</div>
       </div>
       <div class="flow-arrow-box">+</div>
       <div class="flow-box fb-src">
         <div class="fq">Post-mortems</div>
-        <div class="fa">Apagón 28-abr-2025<br>Separación ibérica 2006<br>CEER reports</div>
+        <div class="fa">Blackout 28-Apr-2025<br>Iberian separation 2006<br>CEER reports</div>
       </div>
       <div class="flow-arrow-box">+</div>
       <div class="flow-box fb-src">
-        <div class="fq">Normas EU</div>
+        <div class="fq">EU Standards</div>
         <div class="fa">ENTSO-E Network Code<br>EN 50160<br>ROCOF standards</div>
       </div>
       <div class="flow-arrow-box">→</div>
@@ -249,11 +293,11 @@
       <div class="flow-arrow-box">→</div>
       <div class="flow-box fb-kb">
         <div class="fq">ChromaDB</div>
-        <div class="fa">Vector store local<br>recuperación semántica</div>
+        <div class="fa">Local vector store<br>semantic retrieval</div>
       </div>
     </div>
     <div class="d" style="margin-top:4px">
-      Golden dataset eval: <b>apagón 28 abril 2025</b> (post-mortem REE publicado, reconstrucción minuto a minuto)
+      Golden eval dataset: <b>blackout 28 April 2025</b> (published REE post-mortem, minute-by-minute)
     </div>
     <span class="badge" style="background:#4c1d95;color:#ddd6fe">ChromaDB</span>
     <span class="badge" style="background:#4c1d95;color:#ddd6fe">gemini-embedding-2</span>
@@ -262,113 +306,137 @@
 
 </div>
 
-<div class="arrow">↓ modelos .pkl + chroma_db disponibles en runtime ↓</div>
+<!-- Databases legend -->
+<div style="text-align:center; margin:4px 0 8px">
+  <span class="db-pill db-sqlite">🗄 SQLite — gridguard.db (snapshots · incidents · Markov state history)</span>
+  <span class="db-pill db-chroma">🔮 ChromaDB — chroma_db/ (semantic vector store · RAG)</span>
+</div>
+
+<div class="arrow">↓ ML models (.pkl/.json) · markov_state.npz · ChromaDB available at runtime ↓</div>
 
 <!-- ══════════════════════════════════════════════════════════
-     CAPA 0: TRIGGERS
+     LAYER 0: TRIGGERS
 ═══════════════════════════════════════════════════════════ -->
-<div class="section-label">⏱ Capa 0 — Disparadores</div>
+<div class="section-label">⏱ Layer 0 — Triggers</div>
 <div class="g4">
-  <div class="card c-src"><div class="t">⏰ Cron cada 10 min</div><div class="d">Invoca ree_poller()<br>→ snapshot + ML inference</div><span class="badge">OS / APScheduler</span></div>
-  <div class="card c-src"><div class="t">⏰ Cron cada 1h</div><div class="d">Invoca RenewablesForecastSkill<br>→ previsión próximas 6h</div><span class="badge">OS / APScheduler</span></div>
-  <div class="card c-src"><div class="t">⏰ Cron cada 24h</div><div class="d">Invoca ReportAgent<br>→ informe diario</div><span class="badge">OS / APScheduler</span></div>
-  <div class="card c-src"><div class="t">🔔 Event: P(blackout) &gt; umbral</div><div class="d">Dispara OrchestratorAgent<br>para análisis profundo inmediato</div><span class="badge">Python Queue</span></div>
+  <div class="card c-src"><div class="t">⏰ Cron every 10 min</div><div class="d">Invokes ree_poller()<br>→ snapshot + ML inference + Markov state update</div><span class="badge">APScheduler</span></div>
+  <div class="card c-src"><div class="t">⏰ Cron every 1h</div><div class="d">Invokes RenewablesForecastSkill<br>→ next 6h forecast + 24h weather window</div><span class="badge">APScheduler</span></div>
+  <div class="card c-src"><div class="t">⏰ Cron every 24h</div><div class="d">Invokes ReportAgent<br>→ daily report</div><span class="badge">APScheduler</span></div>
+  <div class="card c-src"><div class="t">🔔 Event: P(blackout) &gt; threshold</div><div class="d">Fires OrchestratorAgent<br>for immediate deep analysis</div><span class="badge">Python Queue</span></div>
 </div>
 
 <div class="arrow">↓</div>
 
 <!-- ══════════════════════════════════════════════════════════
-     CAPA 1: FUNCTION TOOLS
+     LAYER 1: FUNCTION TOOLS
 ═══════════════════════════════════════════════════════════ -->
-<div class="section-label">🔧 Capa 1 — Function Tools (Python Puro, Sin LLM, Determinísticos)</div>
-<div class="g4">
-  <div class="card c-fn"><div class="t">📡 ree_poller()</div><div class="d">GET ESIOS API<br>Parsea JSON → dict<br>Retry con backoff x3</div><span class="badge">DETERMINISTIC</span></div>
-  <div class="card c-fn"><div class="t">📐 data_normalizer()</div><div class="d">Unidades → SI<br>Timestamps → UTC<br>Validación Pydantic</div><span class="badge">DETERMINISTIC</span></div>
-  <div class="card c-fn"><div class="t">📊 stability_proxy_calculator()</div><div class="d">4 proxies de frecuencia:<br>balance · reserva · intercambios · %renovables<br>→ composite_pressure</div><span class="badge">DETERMINISTIC</span></div>
-  <div class="card c-fn"><div class="t">🎯 risk_scorer() + alert_formatter()</div><div class="d">Combina ML score + proxies<br>→ RiskScore [0-100]<br>→ Alert con ámbito (nacional/zonal)</div><span class="badge">DETERMINISTIC</span></div>
+<div class="section-label">🔧 Layer 1 — Function Tools (Pure Python · Deterministic · No LLM)</div>
+<div class="g5">
+  <div class="card c-fn"><div class="t">📡 ree_poller()</div><div class="d">GET ESIOS API<br>Parse JSON → dict<br>Retry with backoff ×3</div><span class="badge">DETERMINISTIC</span></div>
+  <div class="card c-fn"><div class="t">📐 data_normalizer()</div><div class="d">Units → SI<br>Timestamps → UTC<br>Pydantic validation</div><span class="badge">DETERMINISTIC</span></div>
+  <div class="card c-fn"><div class="t">📊 stability_proxy_calculator()</div><div class="d">4 frequency proxies:<br>balance · reserve · interchanges · %renewables<br>→ composite_pressure</div><span class="badge">DETERMINISTIC</span></div>
+  <div class="card c-fn"><div class="t">🎯 risk_scorer() + alert_formatter()</div><div class="d">ML score + proxies<br>→ RiskScore [0-100]<br>→ Alert (national/zonal scope)</div><span class="badge">DETERMINISTIC</span></div>
+  <div class="card c-mk" style="border-style:solid">
+    <div class="t">📈 markov_state_tracker <span class="new-pill">NEW</span></div>
+    <div class="d">
+      <b>compute_state(features)</b> → S0–S4<br>
+      <b>get_trajectory(state, hours)</b> → list[int]<br>
+      <b>prob_reach_severity(s, t, h)</b> → float<br>
+      Loads markov_state.npz · no LLM
+    </div>
+    <span class="badge" style="background:#134e4a;color:#99f6e4">NumPy</span>
+    <span class="badge" style="background:#134e4a;color:#99f6e4">NO LLM</span>
+  </div>
 </div>
 
 <div class="arrow">↓</div>
 
-<!-- HOOK 1 -->
+<!-- HOOK: before_tool -->
 <div class="hook">
   <div><div class="hook-label">🛡 before_tool_callback</div>
-    <span>🚫 Bloquea .env, *.key, secrets.*, credentials</span></div>
+    <span>🚫 Blocks .env, *.key, secrets.*, credentials.*</span></div>
   <div><div class="hook-label" style="opacity:0"> </div>
-    <span>⏱ Rate-limit: min 9 min entre polls ESIOS · 50 req/min AEMET</span></div>
+    <span>⏱ Rate-limit: min 9 min between ESIOS polls · 50 req/min AEMET</span></div>
   <div><div class="hook-label" style="opacity:0"> </div>
-    <span>🔐 Whitelist de tools permitidas por agente</span></div>
+    <span>🔐 Per-agent tool whitelist (includes new Markov tools)</span></div>
 </div>
 
 <div class="arrow">↓</div>
 
 <!-- ══════════════════════════════════════════════════════════
-     CAPA 2: MCP SERVERS
+     LAYER 2: MCP SERVERS
 ═══════════════════════════════════════════════════════════ -->
-<div class="section-label">🔌 Capa 2 — MCP Servers (6 servidores)</div>
-<div class="g6">
+<div class="section-label">🔌 Layer 2 — MCP Servers (7 servers)</div>
+<div class="g7">
   <div class="card c-mcp">
     <div class="t">MCP: ree-grid</div>
-    <div class="d">get_realtime_demand()<br>get_generation_mix()<br>get_interchange_flows()<br>get_reserve_activation()</div>
+    <div class="d">get_realtime_demand()<br>get_generation_mix()<br>get_interchange_flows()<br>get_reserve_activation()<br>get_programmed_generation()</div>
     <span class="badge">ESIOS TOKEN</span><br>
-    <span class="badge">desde 2014</span>
+    <span class="badge">from 2014</span>
   </div>
   <div class="card c-mcp">
-    <div class="t">MCP: weather</div>
-    <div class="d">get_wind_forecast()<br>get_solar_radiation()<br>get_aemet_alerts()</div>
+    <div class="t">MCP: weather <span class="upd-pill">UPD</span></div>
+    <div class="d">get_wind_forecast()<br>get_solar_radiation()<br>get_aemet_alerts()<br><b>get_weather_forecast_24h()</b><br>→ hourly 24h per zone</div>
     <span class="badge">AEMET KEY</span><br>
-    <span class="badge">desde 2000</span>
+    <span class="badge">from 2000</span>
   </div>
   <div class="card c-mcp">
-    <div class="t">MCP: entso-e</div>
-    <div class="d">get_cross_border_flows()<br>get_eu_generation()<br>get_capacity_margin()</div>
+    <div class="t">MCP: entso-e <span class="upd-pill">UPD</span></div>
+    <div class="d">get_cross_border_flows()<br>get_eu_generation()<br>get_capacity_margin()<br><b>get_eu_market_prices()</b><br>→ day-ahead €/MWh (A44)</div>
     <span class="badge">ENTSOE TOKEN</span><br>
-    <span class="badge">desde 2011</span>
+    <span class="badge">from 2011</span>
   </div>
   <div class="card c-mcp">
-    <div class="t">MCP: memory</div>
-    <div class="d">store_snapshot()<br>get_baseline()<br>query_incidents()<br>get_risk_history()</div>
-    <span class="badge">SQLITE LOCAL</span>
+    <div class="t">MCP: memory <span class="upd-pill">UPD</span></div>
+    <div class="d">store_snapshot()<br>get_baseline()<br>query_incidents()<br>get_risk_history()<br><b>store_grid_state()</b><br><b>get_state_transitions()</b></div>
+    <span class="badge">SQLITE</span>
+    <span class="db-pill db-sqlite" style="margin-top:3px;display:inline-flex">🗄 gridguard.db</span>
   </div>
   <div class="card c-mcp-new">
     <div class="t">MCP: ml-models <span class="new-pill">NEW</span></div>
-    <div class="d">get_anomaly_score()<br>→ Isolation Forest<br>get_load_forecast()<br>→ XGBoost/Prophet<br>get_blackout_probability()<br>→ GBM calibrado</div>
-    <span class="badge">PKL EN MEMORIA</span><br>
-    <span class="badge">SIN LLM</span>
+    <div class="d">get_anomaly_score()<br>→ Isolation Forest<br>get_load_forecast()<br>→ XGBoost/Prophet<br>get_blackout_probability()<br>→ Calibrated GBM</div>
+    <span class="badge">PKL IN MEMORY</span><br>
+    <span class="badge">NO LLM</span>
   </div>
   <div class="card c-mcp-new">
     <div class="t">MCP: knowledge-base <span class="new-pill">NEW</span></div>
-    <div class="d">search_regulations()<br>→ normas ENTSO-E / REE<br>find_similar_incident()<br>→ post-mortems RAG<br>get_mitigation_procedure()<br>→ procedimientos REE</div>
-    <span class="badge">CHROMADB</span><br>
-    <span class="badge">RAG SEMÁNTICO</span>
+    <div class="d">search_regulations()<br>→ ENTSO-E / REE norms<br>find_similar_incident()<br>→ RAG post-mortems<br>get_mitigation_procedure()<br>→ REE procedures</div>
+    <span class="badge">CHROMADB</span>
+    <span class="db-pill db-chroma" style="margin-top:3px;display:inline-flex">🔮 chroma_db/</span>
+  </div>
+  <div class="card c-mcp-mk">
+    <div class="t">MCP: markov <span class="new-pill">NEW</span></div>
+    <div class="d">get_grid_state()<br>→ {state, label, confidence, trajectory_6h}<br>get_transition_probabilities()<br>→ A[5×5] matrix<br>get_markov_trajectory()<br>→ trajectory + P(S3) + P(S4)</div>
+    <span class="badge" style="background:#134e4a;color:#99f6e4">NPZ IN MEMORY</span><br>
+    <span class="badge" style="background:#134e4a;color:#99f6e4">NO LLM</span>
   </div>
 </div>
 
 <div class="arrow">↓</div>
 
-<!-- HOOK 2 -->
+<!-- HOOK: after_tool + state_transition -->
 <div class="hook">
   <div><div class="hook-label">🛡 after_tool_callback</div>
-    <span>✅ Valida schema JSON · rangos físicos (freq [45-55]Hz, demanda &gt; 0, score [0-1])</span></div>
+    <span>✅ Validates JSON schema · physical ranges (demand &gt; 0, score [0-1], state [0-4])</span></div>
+  <div><div class="hook-label">🛡 on_state_transition <span class="new-pill" style="font-size:7px">NEW</span></div>
+    <span>🔺 S→S+1 escalation detected → forces AnomalyDetectorSkill · S4 → immediate CRITICAL alert regardless of P(blackout)</span></div>
   <div><div class="hook-label" style="opacity:0"> </div>
-    <span>🔐 Escanea output por patrones de credenciales (regex token/key/secret)</span></div>
-  <div><div class="hook-label" style="opacity:0"> </div>
-    <span>📏 Trunca a 4k tokens antes de pasar al LLM</span></div>
+    <span>🔐 Scans output for credential patterns (regex token/key/secret) · truncates to 4k tokens</span></div>
 </div>
 
 <div class="arrow">↓</div>
 
 <!-- ══════════════════════════════════════════════════════════
-     CAPA 3: SKILLS
+     LAYER 3: SKILLS
 ═══════════════════════════════════════════════════════════ -->
-<div class="section-label">🎯 Capa 3 — Skills (AgentTool: Síncronos, ML + RAG + LLM)</div>
-<div class="g2">
+<div class="section-label">🎯 Layer 3 — Skills (AgentTool: Synchronous · ML + Markov + RAG + LLM)</div>
+<div class="g3">
   <div class="card c-sk">
     <div class="t">🔍 AnomalyDetectorSkill</div>
     <div class="d">
-      <b>Flujo</b>: ML detecta anomalía estadística → RAG recupera normativa relevante → LLM razona y clasifica<br>
-      <b>Tools</b>: get_anomaly_score (ML) · stability_proxy_calculator · get_baseline · search_regulations (RAG)<br>
-      <b>Por qué Skill</b>: llamada única síncrona cada 10 min → velocidad crítica
+      <b>Flow</b>: ML detects statistical anomaly → Markov projects state trajectory → RAG retrieves applicable regulation → LLM reasons and classifies<br>
+      <b>Tools</b>: get_anomaly_score (ML) · stability_proxy_calculator · get_baseline · get_grid_state (Markov) · search_regulations (RAG)<br>
+      <b>Why Skill</b>: single synchronous call every 10 min → speed critical
     </div>
     <span class="badge">AgentTool</span>
     <span class="badge">gemini-3.5-flash</span>
@@ -377,9 +445,21 @@
   <div class="card c-sk">
     <div class="t">🌬️ RenewablesForecastSkill</div>
     <div class="d">
-      <b>Flujo</b>: ML predice carga → datos AEMET → LLM correlaciona y estima riesgo por baja generación renovable<br>
-      <b>Tools</b>: get_wind_forecast · get_solar_radiation · get_load_forecast (ML) · get_generation_mix · get_baseline<br>
-      <b>Por qué Skill</b>: resultado estructurado único, reutilizable por Orchestrator y ReportAgent
+      <b>Flow</b>: ML forecasts load → AEMET 24h weather data → LLM correlates and estimates risk from low renewable generation<br>
+      <b>Tools</b>: get_wind_forecast · get_solar_radiation · get_weather_forecast_24h · get_load_forecast (ML) · get_generation_mix · get_baseline<br>
+      <b>Why Skill</b>: single structured result, reusable by Orchestrator and ReportAgent
+    </div>
+    <span class="badge">AgentTool</span>
+    <span class="badge">gemini-3.5-flash</span>
+    <span class="badge">temp=0.1</span>
+  </div>
+  <div class="card c-sk" style="border-color:#22c55e">
+    <div class="t">⚖️ RegulatoryComplianceSkill <span class="new-pill">NEW</span></div>
+    <div class="d">
+      <b>Flow</b>: LLM queries RAG for regulations applicable to current Markov state → returns structured compliance report<br>
+      <b>Tools</b>: search_regulations (RAG) · get_grid_state (Markov)<br>
+      <b>Why Skill</b>: focused regulatory lookup, single structured output, invoked when anomaly detected<br>
+      <b>Output</b>: ComplianceReport {applicable_regulations, mandatory_actions, compliance_status, reasoning}
     </div>
     <span class="badge">AgentTool</span>
     <span class="badge">gemini-3.5-flash</span>
@@ -389,27 +469,29 @@
 
 <div class="arrow">↓</div>
 
-<!-- HOOK 3 -->
-<div class="hook" style="grid-template-columns:1fr 1fr">
+<!-- HOOK: before_model + forecast_horizon -->
+<div class="hook">
   <div><div class="hook-label">🛡 before_model_callback — Anti-Injection</div>
-    <span>🚨 Detecta patrones de prompt injection en datos externos de APIs ("ignore previous", "system:", "override", "disregard")</span></div>
+    <span>🚨 Detects prompt injection patterns in data from external APIs ("ignore previous", "system:", "override", "disregard")</span></div>
+  <div><div class="hook-label">🛡 on_forecast_risk_horizon <span class="new-pill" style="font-size:7px">NEW</span></div>
+    <span>🔭 After RenewablesForecastSkill: prob_reach_s3 &gt; 0.3 in 24h window → WARNING · prob_reach_s4 &gt; 0.1 → CRITICAL. Bridges Markov trajectory to alert pipeline.</span></div>
   <div><div class="hook-label" style="opacity:0"> </div>
-    <span>🔢 Valida que valores numéricos en el contexto son físicamente plausibles antes de enviar al modelo</span></div>
+    <span>🔢 Validates that numeric values in context are physically plausible before sending to model</span></div>
 </div>
 
 <div class="arrow">↓</div>
 
 <!-- ══════════════════════════════════════════════════════════
-     CAPA 4: SUB-AGENTS
+     LAYER 4: SUB-AGENTS
 ═══════════════════════════════════════════════════════════ -->
-<div class="section-label">🤖 Capa 4 — Sub-agentes (Autónomos, Multi-Step, Con Loop Propio)</div>
+<div class="section-label">🤖 Layer 4 — Sub-agents (Autonomous · Multi-Step · Own Loop)</div>
 <div class="g2">
   <div class="card c-ag">
     <div class="t">📊 ReportAgent</div>
     <div class="d">
-      Pasos: recopilar snapshots históricos → analizar tendencias con ML → recuperar incidentes similares vía RAG → redactar narrativa → formatear HTML/Markdown<br>
-      <b>Tools</b>: query_incidents · get_risk_history · get_blackout_probability (ML) · find_similar_incident (RAG) · escritura en reports/<br>
-      <b>Por qué Sub-agent</b>: múltiples pasos encadenados, número impredecible, estado interno entre pasos
+      Steps: collect historical snapshots → analyse trends with ML → retrieve similar incidents via RAG → read Markov state history → draft narrative → format HTML/Markdown<br>
+      <b>Tools</b>: query_incidents · get_risk_history · get_blackout_probability (ML) · find_similar_incident (RAG) · get_state_transitions (Markov) · write to reports/<br>
+      <b>Why Sub-agent</b>: multiple chained steps, unpredictable count, internal state between steps
     </div>
     <span class="badge">gemini-3.1-pro</span>
     <span class="badge">temp=0.4</span>
@@ -418,9 +500,9 @@
   <div class="card c-ag">
     <div class="t">📡 CrossBorderAgent</div>
     <div class="d">
-      Analiza capacidad de importación de emergencia: flujos ENTSO-E + capacidad interconexión Francia/Portugal/Marruecos + procedimientos REE para crisis<br>
-      <b>Tools</b>: get_cross_border_flows · get_capacity_margin · get_eu_generation · get_mitigation_procedure (RAG)<br>
-      <b>Por qué Sub-agent</b>: razonamiento geopolítico multi-país, memoria de sesión, pasos impredecibles
+      Analyses emergency import capacity: ENTSO-E flows + France/Portugal/Morocco interconnection capacity + day-ahead market prices + REE crisis procedures<br>
+      <b>Tools</b>: get_cross_border_flows · get_capacity_margin · get_eu_generation · get_eu_market_prices · get_mitigation_procedure (RAG)<br>
+      <b>Why Sub-agent</b>: multi-country reasoning with session memory, unpredictable steps
     </div>
     <span class="badge">gemini-3.5-flash</span>
     <span class="badge">temp=0.2</span>
@@ -430,39 +512,39 @@
 
 <div class="arrow">↓</div>
 
-<!-- HOOK 4 -->
+<!-- HOOK: after_model + after_agent -->
 <div class="hook">
   <div><div class="hook-label">🛡 after_model_callback + after_agent_callback</div>
-    <span>🔢 Valida rangos de outputs: risk_score ∈ [0,100] · P(blackout) ∈ [0,1] · severity ∈ {LOW,MEDIUM,HIGH,CRITICAL}</span></div>
+    <span>🔢 Validates output ranges: risk_score ∈ [0,100] · P(blackout) ∈ [0,1] · severity ∈ {LOW,MEDIUM,HIGH,CRITICAL} · state ∈ [0,4]</span></div>
   <div><div class="hook-label" style="opacity:0"> </div>
-    <span>🔄 Limita max_turns del loop agéntico → evita bucles infinitos (Skills: 5 · Sub-agents: 8-10 · Orchestrator: 20)</span></div>
+    <span>🔄 Limits agentic loop max_turns → prevents infinite loops (Skills: 5 · Sub-agents: 8–10 · Orchestrator: 20)</span></div>
   <div><div class="hook-label" style="opacity:0"> </div>
-    <span>📝 Verifica que el output cumple el schema JSON esperado antes de pasar al Orchestrator</span></div>
+    <span>📝 Verifies output matches expected JSON schema before passing to Orchestrator</span></div>
 </div>
 
 <div class="arrow">↓</div>
 
 <!-- ══════════════════════════════════════════════════════════
-     CAPA 5: ORCHESTRATOR
+     LAYER 5: ORCHESTRATOR
 ═══════════════════════════════════════════════════════════ -->
-<div class="section-label">🧠 Capa 5 — Orquestador Raíz</div>
+<div class="section-label">🧠 Layer 5 — Root Orchestrator</div>
 <div class="card c-orch">
   <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start">
     <div>
       <div class="t">🧠 OrchestratorAgent — Root Agent</div>
       <div class="d">
-        Gestiona el loop principal · Recibe snapshots cada 10 min · Consulta ML directamente para decisión rápida<br>
-        <b>Lógica de escalado basada en P(blackout_1h)</b>:<br>
-        P &lt; 0.10 → logging pasivo · P 0.10–0.30 → AnomalyDetectorSkill<br>
-        P 0.30–0.60 → Anomaly + RenewablesForecast + alerta WARNING (ámbito zonal)<br>
-        P &gt; 0.60 → todo anterior + CrossBorderAgent + alerta CRITICAL nacional + ReportAgent inmediato
+        Manages the main loop · Receives snapshots every 10 min · Queries ML + Markov directly for fast escalation decisions<br>
+        <b>Escalation logic based on P(blackout_1h) and Markov trajectory</b>:<br>
+        P &lt; 0.10 → passive logging · P 0.10–0.30 → AnomalyDetectorSkill<br>
+        P 0.30–0.60 or S≥S2→S3 → Anomaly + RenewablesForecast + RegulatoryCompliance + WARNING alert (zonal scope)<br>
+        P &gt; 0.60 or S≥S3→S4 → all above + CrossBorderAgent + CRITICAL national alert + immediate ReportAgent
       </div>
     </div>
     <div>
       <span class="badge">gemini-3.5-flash</span><br>
       <span class="badge" style="margin-top:4px;display:inline-block">temp=0.1</span><br>
       <span class="badge" style="margin-top:4px;display:inline-block">max_turns=20</span><br>
-      <span class="badge" style="margin-top:4px;display:inline-block">context=32k</span>
+      <span class="badge" style="margin-top:4px;display:inline-block">context=1M tokens</span>
     </div>
   </div>
 </div>
@@ -474,10 +556,10 @@
 ═══════════════════════════════════════════════════════════ -->
 <div class="section-label">📤 Outputs</div>
 <div class="g4">
-  <div class="card c-out"><div class="t">🚨 Alertas</div><div class="d">INFO / WARNING / CRITICAL<br>Ámbito: nacional · zonal · local<br>Consola + log archivo</div></div>
-  <div class="card c-out"><div class="t">📈 Risk Score + P(blackout)</div><div class="d">Índice 0–100 en tiempo real<br>Probabilidad de apagón calibrada<br>Feature importance ML</div></div>
-  <div class="card c-out"><div class="t">🌐 Dashboard HTML</div><div class="d">Evolución risk score<br>Mix generación · Intercambios<br>Alertas activas</div></div>
-  <div class="card c-out"><div class="t">📄 Informe diario</div><div class="d">Resumen ejecutivo<br>Incidencias + incidentes similares históricos<br>Markdown / HTML</div></div>
+  <div class="card c-out"><div class="t">🚨 Alerts</div><div class="d">INFO / WARNING / CRITICAL<br>Scope: national · zonal · local<br>Console + log file</div></div>
+  <div class="card c-out"><div class="t">📈 Risk Score + P(blackout)</div><div class="d">Real-time index 0–100<br>Calibrated blackout probability<br>ML feature importance</div></div>
+  <div class="card c-out"><div class="t">🌐 HTML Dashboard</div><div class="d">Risk score evolution<br>Generation mix · Interchanges<br>Active alerts · Markov state</div></div>
+  <div class="card c-out"><div class="t">📄 Daily Report</div><div class="d">Executive summary<br>Incidents + similar historical events<br>Regulatory compliance summary<br>Markdown / HTML</div></div>
 </div>
 
 <hr class="div">
@@ -485,23 +567,24 @@
 <!-- ══════════════════════════════════════════════════════════
      EVAL & TRACING
 ═══════════════════════════════════════════════════════════ -->
-<div class="section-label">📈 Eval &amp; Tracing — Cross-Cutting (aplica a todas las capas)</div>
+<div class="section-label">📈 Eval &amp; Tracing — Cross-Cutting (applies to all layers)</div>
 <div class="g3">
   <div class="card c-ev">
     <div class="t">🔭 Tracing (ADK built-in)</div>
     <div class="d">
-      Árbol de spans: Orchestrator → Skill → Tool → ML Model<br>
-      Cada paso: nombre, args, duración, tokens, output<br>
-      Export a JSON local · opcional Cloud Trace
+      Span tree: Orchestrator → Skill → Tool → ML Model / Markov<br>
+      Every step: name, args, duration, tokens, output<br>
+      Export to local JSON · optional Cloud Trace
     </div>
     <span class="badge">ADK TRACING</span>
   </div>
   <div class="card c-ev">
     <div class="t">🎯 Output Eval</div>
     <div class="d">
-      ML: AUC-ROC · MAE · Calibración (hold-out 2023-2024)<br>
-      Skills: Precision/Recall alertas vs golden dataset<br>
-      ReportAgent: LLM-as-judge (coherencia, cita normativa)
+      ML: AUC-ROC · MAE · Calibration (hold-out 2023–2024)<br>
+      Skills: Precision/Recall alerts vs golden dataset<br>
+      RegulatoryCompliance: LLM-as-judge (citation accuracy)<br>
+      ReportAgent: LLM-as-judge (coherence, regulatory citation)
     </div>
     <span class="badge">ADK EVAL</span>
     <span class="badge">PYTEST</span>
@@ -509,9 +592,9 @@
   <div class="card c-ev">
     <div class="t">🗺️ Trajectory Eval</div>
     <div class="d">
-      Golden dataset: apagón 28 abril 2025 (post-mortem REE)<br>
-      ¿ML consultado? ¿RAG consultado? ¿Escaló correctamente?<br>
-      Comparación trayectoria real vs trayectoria golden
+      Golden dataset: blackout 28 April 2025 (REE post-mortem)<br>
+      ML consulted? Markov consulted? RAG consulted? Escalated correctly?<br>
+      RegulatoryCompliance triggered? CrossBorderAgent activated?
     </div>
     <span class="badge">PYTEST + ADK</span>
   </div>
@@ -522,19 +605,19 @@
 <!-- ══════════════════════════════════════════════════════════
      MODEL REGISTRY
 ═══════════════════════════════════════════════════════════ -->
-<div class="section-label">🔄 Model Registry — Modelos siempre actualizados</div>
+<div class="section-label">🔄 Model Registry — Always Up-to-Date</div>
 <div class="card" style="background:#0f172a;border:1px solid #334155;margin-bottom:16px">
   <div class="d" style="color:#94a3b8;margin-bottom:10px">
-    Los modelos Gemini evolucionan rápido (<code style="color:#f87171">gemini-2.0-flash</code> fue marcado <b style="color:#f87171">⛔ SHUT DOWN</b> en junio 2026).
-    Ningún modelo se hardcodea en el código — todos se leen de <code style="color:#86efac">config/model_registry.yaml</code>,
-    actualizado automáticamente cada lunes a las 06:00 UTC desde <a href="https://ai.google.dev/gemini-api/docs/models" style="color:#60a5fa">ai.google.dev/gemini-api/docs/models</a>.
+    Gemini models evolve fast (<code style="color:#f87171">gemini-2.0-flash</code> was marked <b style="color:#f87171">⛔ SHUT DOWN</b> in June 2026).
+    No model is hard-coded — all read from <code style="color:#86efac">config/model_registry.yaml</code>,
+    auto-updated every Monday at 06:00 UTC from <a href="https://ai.google.dev/gemini-api/docs/models" style="color:#60a5fa">ai.google.dev/gemini-api/docs/models</a>.
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
     <div style="background:#1e293b;border:1px solid #22c55e;border-radius:8px;padding:10px;text-align:center">
       <div style="font-size:10px;color:#86efac;text-transform:uppercase;letter-spacing:1px">fast_agent</div>
       <div style="font-size:13px;font-weight:700;color:#f0fdf4;margin:4px 0">gemini-3.5-flash</div>
-      <div style="font-size:10px;color:#4ade80">● Stable · Mayo 2026</div>
-      <div style="font-size:10px;color:#94a3b8;margin-top:3px">1M ctx · Agentic optimized</div>
+      <div style="font-size:10px;color:#4ade80">● Stable · May 2026</div>
+      <div style="font-size:10px;color:#94a3b8;margin-top:3px">1M ctx · Agentic optimised</div>
       <div style="font-size:10px;color:#94a3b8">Orchestrator · Skills · CrossBorder</div>
     </div>
     <div style="background:#1e293b;border:1px solid #a78bfa;border-radius:8px;padding:10px;text-align:center">
@@ -560,12 +643,12 @@
     </div>
   </div>
   <div style="background:#1e293b;border-radius:6px;padding:8px 12px;font-family:monospace;font-size:11px;color:#94a3b8">
-    <span style="color:#38bdf8">🔄 Cron: cada lunes 06:00 UTC</span> →
+    <span style="color:#38bdf8">🔄 Cron: every Monday 06:00 UTC</span> →
     <span style="color:#86efac">fetch ai.google.dev/gemini-api/docs/models</span> →
-    parsea stable/preview/shut_down →
-    valida en API →
-    <span style="color:#fbbf24">actualiza config/model_registry.yaml</span> →
-    loguea cambios detectados
+    parse stable/preview/shut_down →
+    validate against API →
+    <span style="color:#fbbf24">update config/model_registry.yaml</span> →
+    log detected changes
   </div>
 </div>
 
@@ -575,21 +658,29 @@
 <div class="section-label">📋 Model Cards</div>
 <table>
   <tr>
-    <th>Componente</th><th>Tipo</th><th>Modelo / Algoritmo</th><th>Temp</th><th>Tools / Skills</th><th>Hooks</th><th>Métrica Eval</th>
+    <th>Component</th><th>Type</th><th>Model / Algorithm</th><th>Temp</th><th>Tools / Data</th><th>Hooks</th><th>Eval Metric</th>
   </tr>
   <tr>
     <td>ree_poller · normalizer · proxy_calculator · risk_scorer · alert_formatter</td>
     <td><span class="tFn">Function Tool</span></td>
-    <td>— <em>sin LLM</em></td><td>—</td>
+    <td>— <em>no LLM</em></td><td>—</td>
     <td>ESIOS REST · SQLite</td>
     <td>before_tool (rate-limit, .env block)</td>
-    <td>Latencia p95 · error rate API</td>
+    <td>p95 latency · API error rate</td>
+  </tr>
+  <tr>
+    <td>markov_state_tracker</td>
+    <td><span class="tMk">Markov (Function Tool)</span></td>
+    <td>— <em>NumPy pure</em></td><td>—</td>
+    <td>markov_state.npz (A[5×5] + thresholds)</td>
+    <td>before_tool (bounds) · on_state_transition</td>
+    <td>State accuracy vs historical S0–S4 labels</td>
   </tr>
   <tr>
     <td>Anomaly Detector ML</td>
     <td><span class="tML">ML (MCP: ml-models)</span></td>
     <td><span class="mb">Isolation Forest</span></td><td>—</td>
-    <td>ESIOS histórico 2014-2024</td>
+    <td>ESIOS historical 2014–2024</td>
     <td>after_tool (schema, bounds)</td>
     <td>Precision · Recall · F1</td>
   </tr>
@@ -597,51 +688,60 @@
     <td>Load Forecaster ML</td>
     <td><span class="tML">ML (MCP: ml-models)</span></td>
     <td><span class="mb">XGBoost / Prophet</span></td><td>—</td>
-    <td>ESIOS + AEMET histórico</td>
+    <td>ESIOS + AEMET historical</td>
     <td>after_tool (schema, bounds)</td>
-    <td>MAE · MAPE a 6h</td>
+    <td>MAE · MAPE at 6h</td>
   </tr>
   <tr>
     <td>Blackout Risk Classifier ML</td>
     <td><span class="tML">ML (MCP: ml-models)</span></td>
-    <td><span class="mb">Gradient Boosting calibrado</span></td><td>—</td>
+    <td><span class="mb">Calibrated Gradient Boosting</span></td><td>—</td>
     <td>Proxies + forecast + anomaly score</td>
     <td>after_tool (P ∈ [0,1])</td>
-    <td>AUC-ROC · calibración</td>
+    <td>AUC-ROC · calibration</td>
   </tr>
   <tr>
     <td>AnomalyDetectorSkill</td>
     <td><span class="tSk">Skill (AgentTool)</span></td>
     <td><span class="mb">gemini-3.5-flash</span></td>
     <td><span class="tb">0.1</span></td>
-    <td>ML anomaly score · proxy calculator · RAG regulations</td>
+    <td>ML anomaly · proxy calc · Markov state · RAG regulations</td>
     <td>before_model (injection) · after_model (schema)</td>
-    <td>Precision / Recall alertas</td>
+    <td>Precision / Recall alerts</td>
   </tr>
   <tr>
     <td>RenewablesForecastSkill</td>
     <td><span class="tSk">Skill (AgentTool)</span></td>
     <td><span class="mb">gemini-3.5-flash</span></td>
     <td><span class="tb">0.1</span></td>
-    <td>AEMET wind/solar · ML load forecast · get_generation_mix</td>
-    <td>before_model (injection) · after_tool (schema)</td>
-    <td>MAE forecast 6h vs real</td>
+    <td>AEMET wind/solar/24h · ML load forecast · generation mix</td>
+    <td>before_model (injection) · on_forecast_risk_horizon</td>
+    <td>MAE forecast 6h vs actual</td>
+  </tr>
+  <tr>
+    <td>RegulatoryComplianceSkill <span class="new-pill">NEW</span></td>
+    <td><span class="tSk">Skill (AgentTool)</span></td>
+    <td><span class="mb">gemini-3.5-flash</span></td>
+    <td><span class="tb">0.1</span></td>
+    <td>RAG regulations · Markov grid state</td>
+    <td>before_model (injection) · after_model (schema)</td>
+    <td>LLM-as-judge (citation accuracy)</td>
   </tr>
   <tr>
     <td>ReportAgent</td>
     <td><span class="tAg">Sub-agent</span></td>
     <td><span class="mb">gemini-3.1-pro</span></td>
     <td><span class="tb">0.4</span></td>
-    <td>ML blackout prob · RAG incidents · query_incidents · write reports/</td>
+    <td>ML blackout prob · RAG incidents · Markov state history · write reports/</td>
     <td>after_agent (schema) · max_turns=10</td>
-    <td>LLM-as-judge (coherencia, precisión normativa)</td>
+    <td>LLM-as-judge (coherence, regulatory accuracy)</td>
   </tr>
   <tr>
     <td>CrossBorderAgent</td>
     <td><span class="tAg">Sub-agent</span></td>
     <td><span class="mb">gemini-3.5-flash</span></td>
     <td><span class="tb">0.2</span></td>
-    <td>ENTSO-E flows · capacity margin · RAG procedures</td>
+    <td>ENTSO-E flows · capacity margin · market prices · RAG procedures</td>
     <td>before_model (injection) · after_agent (schema) · max_turns=8</td>
     <td>Trajectory eval vs golden</td>
   </tr>
@@ -650,39 +750,40 @@
     <td><span class="tOr">Root Agent</span></td>
     <td><span class="mb">gemini-3.5-flash</span></td>
     <td><span class="tb">0.1</span></td>
-    <td>Todos los Skills y Sub-agents + ML blackout prob directa + alert_formatter</td>
-    <td>Todos los hooks · max_turns=20 · context=1M tokens</td>
-    <td>False positive rate · latencia end-to-end · escalado correcto</td>
+    <td>All Skills + Sub-agents + ML blackout prob + Markov trajectory + alert_formatter</td>
+    <td>All hooks · max_turns=20 · context=1M tokens</td>
+    <td>False positive rate · end-to-end latency · correct escalation</td>
   </tr>
 </table>
 
 <hr class="div">
 
 <!-- ADK CONCEPTS -->
-<div class="section-label">✅ Conceptos ADK demostrados (mínimo requerido: 3 · implementados: 9)</div>
+<div class="section-label">✅ ADK Concepts Demonstrated (minimum required: 3 · implemented: 10)</div>
 <div class="g3">
   <div class="card c-mcp" style="border-color:#22c55e">
-    <div class="t" style="color:#86efac">1–3 · Núcleo ADK</div>
+    <div class="t" style="color:#86efac">1–3 · ADK Core</div>
     <div class="d">
-      ✅ <b>Multi-agent system</b> — Root + 2 Skills + 2 Sub-agents<br>
-      ✅ <b>MCP servers</b> — 6 servidores custom<br>
-      ✅ <b>AgentTool (Skills)</b> — AnomalyDetector + RenewablesForecast
+      ✅ <b>Multi-agent system</b> — Root + 3 Skills + 2 Sub-agents<br>
+      ✅ <b>MCP servers</b> — 7 custom servers<br>
+      ✅ <b>AgentTool (Skills)</b> — AnomalyDetector + RenewablesForecast + RegulatoryCompliance
     </div>
   </div>
   <div class="card c-sk" style="border-color:#a855f7">
-    <div class="t" style="color:#d8b4fe">4–6 · Seguridad y Estado</div>
+    <div class="t" style="color:#d8b4fe">4–7 · Security &amp; State</div>
     <div class="d">
-      ✅ <b>Callbacks / Guardrails</b> — 5 hooks con lógica real<br>
-      ✅ <b>Memory / State</b> — SQLite para snapshots e histórico<br>
-      ✅ <b>Eval framework</b> — Output eval + Trajectory eval
+      ✅ <b>Callbacks / Guardrails</b> — 7 hooks with real logic<br>
+      ✅ <b>Memory / State</b> — SQLite (snapshots, incidents, Markov history)<br>
+      ✅ <b>Eval framework</b> — Output eval + Trajectory eval<br>
+      ✅ <b>Tracing</b> — ADK tracing across all agents
     </div>
   </div>
   <div class="card c-off" style="border-color:#3b82f6">
-    <div class="t" style="color:#93c5fd">7–9 · Diferenciadores</div>
+    <div class="t" style="color:#93c5fd">8–10 · Differentiators</div>
     <div class="d">
-      ✅ <b>Tracing</b> — ADK tracing en todos los agentes<br>
-      ✅ <b>ML integrado</b> — 3 modelos expuestos como MCP tools<br>
-      ✅ <b>RAG</b> — ChromaDB con normativa y post-mortems reales
+      ✅ <b>ML integrated</b> — 3 models exposed as MCP tools<br>
+      ✅ <b>RAG</b> — ChromaDB with real standards and post-mortems<br>
+      ✅ <b>Markov chain</b> — Grid state trajectory (pure Python/NumPy) integrated across MCP layer and agent decision logic
     </div>
   </div>
 </div>

@@ -951,3 +951,54 @@ Trabajando directamente sobre `main` (consolidado por fast-forward desde el work
 - **Bridge DB→serve**: función que lea la ventana 168h de `snapshots` como dicts para
   `serve_feature_row` (usado en Task 9 / orchestrator). Verificado inline; falta encapsular.
 - Tasks 3, 5, 8, 9 **[FRÍO]** y 4, 6, 7, 10, 11 **[PADRE]** siguen pendientes.
+
+## Registro de ejecución — tanda [FRÍO] restante (2026-07-02, sesión previa)
+
+- [x] **Tasks 3, 5, 8, 9** completadas (commits 2afa537, 15d6036, 12e7a60, 69b291d) +
+  bridge DB→serve (`db_rows_to_snapshots`) + `get_serve_features` +
+  `get_blackout_probability_ensemble`. Suite offline 174/174.
+
+## Registro de ejecución — tanda [PADRE] (2026-07-02, GPU RTX 4080)
+
+- [x] **Task 4** (commits 1f6afbc + fix 23ed174) — `build_dataset` delega en `ml.features`
+  (+ modo `--refresh` in-place, sin re-download); ENTSO-E muerto eliminado (también en
+  `retrain_pipeline`). Dataset regenerado: 56.917×71, FEATURE_COLS completas.
+  **BUG cazado por el refresh**: la suma Python de Series propagaba NaN (legacy usaba
+  skipna) → 3 horas-evento del 24-jul-2021 (solar_pv NaN) se caían del clasificador
+  (n_pos 12→9). Fix: tecnología/enlace sin dato aporta 0 MW (paridad con serve);
+  demanda ausente sigue propagando. Test de regresión incluido.
+- [x] **Task 6** — re-entrenamiento completo (~53 min): IF (score_std 0.0324),
+  LSTM (val_mse 0.0166, umbral P99 0.590), CLF **AUC LOEO 0.6875** (esperado ~0.73;
+  hold-out 0.6085, AP 0.0009 — D5). Las 12 horas-evento presentes (fix NaN).
+- [x] **Task 7** — Markov re-fit: **P90=0.724, P97=0.795** (≈ igual que el 0.713
+  absoluto previo — el rolling redistribuye la masa central, el percentil alto apenas
+  se mueve; la expectativa "bajan" del plan NO se cumplió, documentado). Dist
+  S0-S4: 49605/5592/1708/6/6.
+- [x] **Task 10** (commits 7aeaa48 + 4a0f1e1) — **LA EFICACIA VOLTEA EL GOLDEN**:
+  · validate_models reescrito: contexto trailing REAL (semana previa del dataset ESIOS)
+    vía serve_features, también en huecos ENTRE snapshots del golden (sparse baseline
+    creaba saltos ffill artificiales que el LSTM marcaba).
+  · **normal_baseline.json era SINTÉTICO e inconsistente con la realidad** (demanda
+    34.5 vs 26.8 GW reales, eólica ×3.5, carbón inexistente…) → el LSTM lo marcaba
+    (¡correctamente!) como anómalo. Sustituido por valores reales ESIOS del 14-may-2025.
+  · Deuda de paridad MCP cerrada: get_anomaly_score/get_blackout_probability consumen
+    ml.serve_features + scaler/feature_cols del bundle (fallback legacy).
+  · 3 bugs latentes cazados: ensemble leía 'blackout_probability' pero BlackoutRisk
+    expone 'probability' (señal CLF siempre 0 en prod); AnomalyResult.model_type no
+    admitía modo combinado IF+LSTM; _IsotonicCalibrated.feature_importances_ era
+    método, no property.
+  · Señal IF re-normalizada: decision_function centrada en el umbral del propio modelo
+    (normalize_if_signal compartida server/validación); la legacy -score_samples+0.5
+    saturaba ≈1 constante con las features escaladas.
+  · **RESULTADO (candidatos y producción): IF PASS · LSTM PASS (error 0.043→1.53 en
+    T-3min, 2.6× umbral) · ENSEMBLE PASS (media golden 0.21 > normal 0.07, monótono
+    al onset, P=0.70 en T-3min) · CLF FAIL (plano 0.0009 — D5, gate honesto)**.
+  · Promoción ejecutada (backup en ml/models/backup_2026-07-02/). E2E vivo
+    DB→serve→ensemble: P=0.12 (lstm 0.17, if 0.19, clf 0.001).
+- [x] **Task 11** (commit 68c040d) — corpus reconciliado (ES-PT 1400→3000 MW; ES-MA es
+  AC submarino Tarifa–Fardioua 600 MW import, NO HVDC; mitigación por enlace), re-seed
+  ChromaDB ejecutado (gemini-embedding-2 vía model_loader), 2 smoke tests integration PASS.
+- [x] **Cierre**: suite offline **183 passed** · ARCHITECTURE.md actualizado (feature
+  store + ensemble + resultado de eficacia) · spec borrador de los 2 agentes de ingesta
+  RAG en docs/superpowers/specs/2026-07-02-rag-ingestion-agents-design.md (PENDIENTE
+  de brainstorming/aprobación del usuario antes de implementar).

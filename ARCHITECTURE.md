@@ -1,83 +1,88 @@
-# GridGuard España — Especificación de Arquitectura
+# GridGuard España — Architecture Specification
 
-> Sistema multi-agente para monitorización de la estabilidad de la red eléctrica española  
-> Capstone Project · 5-Day AI Agents Intensive (Google × Kaggle) · Junio 2026
+> Multi-agent system for monitoring the stability of the Spanish electrical grid  
+> Capstone Project · 5-Day AI Agents Intensive (Google × Kaggle) · June 2026
 
 ---
 
-## 1. Principios de Diseño
+## 1. Design Principles
 
-### Shift-Left: Determinístico primero, LLM solo cuando aporta valor
+### Shift-Left: Deterministic First, LLM Only When It Adds Value
 
-El principio clave es **no usar un LLM donde una función Python o un modelo ML basta**. Hay tres niveles de inteligencia, cada uno reservado para lo que realmente necesita:
+The core principle is **not to use an LLM where a Python function or ML model suffices**. Three levels of intelligence, each reserved for what truly needs it:
 
-| Si la tarea es... | Usar... |
+| If the task is… | Use… |
 |---|---|
-| Llamada a API + parseo + validación | Function Tool (Python puro) |
-| Detección de patrones estadísticos en series temporales | Modelo ML (determinístico en inferencia) |
-| Recuperación de contexto técnico / normativo | RAG (ChromaDB) |
-| Análisis de múltiples señales con razonamiento | Skill (AgentTool + LLM) |
-| Tarea multi-step con estado interno | Sub-agent (LLM) |
-| Coordinación global + decisiones de escalado | Orchestrator (Root Agent) |
+| API call + parsing + validation | Function Tool (pure Python) |
+| Statistical pattern detection in time series | ML Model (deterministic at inference) |
+| Technical / regulatory context retrieval | RAG (ChromaDB) |
+| Multi-signal analysis with reasoning | Skill (AgentTool + LLM) |
+| Multi-step task with internal state | Sub-agent (LLM) |
+| Global coordination + escalation decisions | Orchestrator (Root Agent) |
 
-### ML vs. Conocimiento de Dominio (RAG) — Roles complementarios
+### ML vs. Domain Knowledge (RAG) — Complementary Roles
 
-- **ML** responde *¿qué está pasando estadísticamente?* — detecta anomalías en series temporales, predice carga, calcula probabilidad de apagón calibrada con datos históricos. Es determinístico en inferencia, reproducible y auditable.
-- **RAG** responde *¿qué significa esto?* — recupera normas ENTSO-E, procedimientos de operación de REE, post-mortems de incidentes anteriores. El LLM sin RAG razona en abstracto; con RAG razona sobre la red española real.
-- **LLM** responde *¿qué hacemos?* — sintetiza señal ML + contexto RAG y decide severidad, ámbito (nacional/zonal) y recomendación accionable.
+- **ML** answers *what is statistically happening?* — detects anomalies in time series, forecasts load, computes blackout probability calibrated on historical data. Deterministic at inference, reproducible and auditable.
+- **Markov Chain** answers *where is the system heading?* — given the current state S0–S4 and the empirical transition matrix, projects the risk trajectory over the next N hours. Pure Python/NumPy, no LLM.
+- **RAG** answers *what does this mean?* — retrieves ENTSO-E standards, REE operating procedures, prior incident post-mortems. The LLM without RAG reasons in the abstract; with RAG it reasons about the real Spanish grid.
+- **LLM** answers *what do we do?* — synthesises ML signal + Markov trajectory + RAG context and decides severity, scope (national/zonal) and actionable recommendation.
 
-### Skills vs Sub-agentes
+### Skills vs Sub-agents
 
-- **Skill (AgentTool)**: agente envuelto como herramienta síncrona. Sin estado entre llamadas. Ideal para análisis focalizados y reutilizables con resultado estructurado único.
-- **Sub-agent**: agente con su propio loop, herramientas y memoria de sesión. Ideal para tareas autónomas multi-step donde el número de pasos es impredecible.
+- **Skill (AgentTool)**: agent wrapped as a synchronous tool. No state between calls. Ideal for focused, reusable analyses with a single structured result.
+- **Sub-agent**: agent with its own loop, tools and session memory. Ideal for autonomous multi-step tasks where the number of steps is unpredictable.
 
 ---
 
-## 2. Arquitectura por Capas
+## 2. Layered Architecture
 
 ```
-╔══════════════════════════════════════════════════════════════╗
-║  OFFLINE: Pipeline de Entrenamiento y Conocimiento           ║
-║  (ESIOS 2014→ · AEMET 2000→ · ENTSO-E 2011→)               ║
-║           ↓                        ↓                         ║
-║   Modelos ML (.pkl)         Knowledge Base (ChromaDB)        ║
-╚═════════════════════╤════════════════════╤═══════════════════╝
-                      │                    │
-[Capa 0] Disparadores (Cron / Event Queue / Eval Runner)
+╔══════════════════════════════════════════════════════════════════════╗
+║  OFFLINE: Training Pipeline & Knowledge Base                         ║
+║  (ESIOS 2014→ · AEMET 2000→ · ENTSO-E 2011→)                       ║
+║           ↓                        ↓                    ↓            ║
+║   ML Models (.pkl/.json)   Markov Matrix (.npz)  Knowledge Base      ║
+║                            A[5×5] + thresholds    (ChromaDB)         ║
+╚════════════╤═══════════════════════╤═══════════════════╤═════════════╝
+             │                       │                   │
+[Layer 0] Triggers (Cron / Event Queue / Eval Runner)
     ↓
-[Capa 1] Function Tools  (Python puro, sin LLM)
-    ↓ [Hook: before_tool_callback — rate-limit, .env block, sanitización]
-[Capa 2] MCP Servers  (6 servidores: ree-grid · weather · entso-e
-                        memory · ml-models · knowledge-base)
-    ↓ [Hook: after_tool_callback — schema, credenciales, truncado]
-[Capa 3] Skills / AgentTools  (AnomalyDetector · RenewablesForecast)
+[Layer 1] Function Tools  (pure Python, no LLM)
+           + markov_state_tracker  (runtime Markov inference, no LLM)
+    ↓ [Hook: before_tool_callback — rate-limit, .env block, sanitisation]
+[Layer 2] MCP Servers  (7 servers: ree-grid · weather · entso-e
+                         memory · ml-models · knowledge-base · markov)
+    ↓ [Hook: after_tool_callback — schema, credentials, truncation]
+           + on_state_transition hook (S→S+1 escalation guard)
+[Layer 3] Skills / AgentTools  (AnomalyDetector · RenewablesForecast · RegulatoryCompliance)
     ↓ [Hook: before_model_callback — anti-injection]
-[Capa 4] Sub-agentes  (ReportAgent · CrossBorderAgent)
+           + on_forecast_risk_horizon hook (24h risk window guard)
+[Layer 4] Sub-agents  (ReportAgent · CrossBorderAgent)
     ↓ [Hook: after_model_callback + after_agent_callback — bounds, schema]
-[Capa 5] OrchestratorAgent  (Root Agent · gemini-3.5-flash)
+[Layer 5] OrchestratorAgent  (Root Agent · gemini-3.5-flash)
     ↓
-[Outputs] Alertas · Risk Score · Dashboard HTML · Informe diario
-                      │
-[Cross-cutting] Tracing (ADK) · Eval (output + trayectoria)
+[Outputs] Alerts · Risk Score · HTML Dashboard · Daily Report
+                       │
+[Cross-cutting] Tracing (ADK) · Eval (output + trajectory)
 ```
 
 ---
 
-## 3. Model Registry — Modelos Siempre Actualizados
+## 3. Model Registry — Always Up-to-Date Models
 
-### Problema resuelto
-Los modelos Gemini evolucionan rápido: `gemini-2.0-flash` fue marcado como **Shut Down** en junio 2026 sin apenas aviso. Hardcodear un nombre de modelo en el código es una deuda técnica garantizada.
+### Problem Solved
+Gemini models evolve quickly: `gemini-2.0-flash` was marked **Shut Down** in June 2026 with little warning. Hard-coding a model name is guaranteed technical debt.
 
-### Solución: Model Registry con auto-update semanal
+### Solution: Model Registry with Weekly Auto-Update
 
-El sistema utiliza un fichero `config/model_registry.yaml` como única fuente de verdad de los modelos. Un job semanal lo actualiza automáticamente consultando la documentación oficial de Google.
+The system uses `config/model_registry.yaml` as the single source of truth for models. A weekly job updates it automatically by querying Google's official documentation.
 
 ```yaml
-# config/model_registry.yaml — generado automáticamente, NO editar manualmente
-# Última actualización: 2026-06-27 | Fuente: ai.google.dev/gemini-api/docs/models
+# config/model_registry.yaml — auto-generated, do NOT edit manually
+# Last updated: 2026-06-27 | Source: ai.google.dev/gemini-api/docs/models
 
 models:
-  fast_agent:          "gemini-3.5-flash"        # Stable · agentic tasks optimized
+  fast_agent:          "gemini-3.5-flash"        # Stable · agentic tasks optimised
   smart_agent:         "gemini-3.1-pro"           # Preview · complex reasoning · 2M ctx
   embedding:           "gemini-embedding-2"        # Stable · multimodal embeddings for RAG
   fallback_fast:       "gemini-3.1-flash-lite"    # Stable · cost-efficient fallback
@@ -86,357 +91,364 @@ registry_meta:
   source_url:   "https://ai.google.dev/gemini-api/docs/models"
   updated_at:   "2026-06-27T10:00:00Z"
   next_update:  "2026-07-04T10:00:00Z"
-  stable_only:  true   # nunca usar modelos Experimental en producción
+  stable_only:  true   # never use Experimental models in production
 ```
 
 ```python
-# config/model_loader.py — todos los agentes importan de aquí
+# config/model_loader.py — all agents import from here
 import yaml
 
 def get_model(role: str) -> str:
-    """Lee el registry actualizado. Nunca usa strings hardcoded."""
+    """Reads the updated registry. Never uses hard-coded strings."""
     with open("config/model_registry.yaml") as f:
         registry = yaml.safe_load(f)
     return registry["models"][role]
-
-# Uso en agentes:
-# model = get_model("fast_agent")   → "gemini-3.5-flash"
-# model = get_model("smart_agent")  → "gemini-3.1-pro"
 ```
 
-### Job de auto-actualización (cron semanal)
+### Current Models (June 2026)
 
-```python
-# tools/model_registry_updater.py
-# Ejecutado cada lunes a las 06:00 UTC por el cron scheduler
-
-def update_model_registry():
-    """
-    1. Fetches ai.google.dev/gemini-api/docs/models
-    2. Parsea modelos disponibles (stable / preview / shut_down)
-    3. Mapea roles → mejor modelo disponible (prioriza stable)
-    4. Valida que los modelos mapeados responden en la API
-    5. Sobreescribe config/model_registry.yaml
-    6. Loguea cambios detectados (ej: "gemini-2.0-flash → SHUT DOWN, migrado a gemini-3.5-flash")
-    """
-```
-
-### Modelos actuales (junio 2026)
-
-| Rol en el sistema | Modelo | Estado | Por qué |
+| Role in the System | Model | Status | Why |
 |---|---|---|---|
-| Agentes rápidos (Orchestrator, Skills) | `gemini-3.5-flash` | **Stable** | Diseñado para tareas agénticas, supera a 3.1 Pro en benchmarks de agentes (MCP Atlas 83.6%) |
-| Agente de razonamiento complejo (ReportAgent) | `gemini-3.1-pro` | Preview | Contexto 2M tokens, razonamiento avanzado para síntesis de informes |
-| Embeddings RAG | `gemini-embedding-2` | **Stable** | Primer modelo multimodal de embeddings, mejor para RAG heterogéneo |
-| Fallback / testing | `gemini-3.1-flash-lite` | **Stable** | Más barato para CI y pruebas de trayectoria |
-| ~~gemini-2.0-flash~~ | ~~gemini-2.0-flash~~ | **⛔ SHUT DOWN** | Eliminado de la arquitectura |
-| ~~gemini-2.5-pro~~ | ~~gemini-2.5-pro~~ | Generación anterior | Reemplazado por gemini-3.1-pro |
+| Fast agents (Orchestrator, Skills) | `gemini-3.5-flash` | **Stable** | Designed for agentic tasks, outperforms 3.1 Pro on agent benchmarks (MCP Atlas 83.6%) |
+| Complex reasoning agent (ReportAgent) | `gemini-3.1-pro` | Preview | 2M token context, advanced reasoning for report synthesis |
+| RAG Embeddings | `gemini-embedding-2` | **Stable** | First multimodal embeddings model, best for heterogeneous RAG |
+| Fallback / testing | `gemini-3.1-flash-lite` | **Stable** | Cheaper for CI and trajectory tests |
+| ~~gemini-2.0-flash~~ | ~~gemini-2.0-flash~~ | **⛔ SHUT DOWN** | Removed from architecture |
 
 ---
 
-## 4. Pipeline Offline — Datos Históricos y Entrenamiento (CUDA) (CUDA)
+## 4. Offline Pipeline — Historical Data and Training
 
-### Fuentes de datos confirmadas
+### Confirmed Data Sources
 
-| Fuente | Desde | Granularidad | Datos clave |
+| Source | Since | Granularity | Key Data |
 |---|---|---|---|
-| **ESIOS / REData** (token gratuito) | 2014-01-01 | 10 min / horaria | Demanda real, generación por tecnología, intercambios, precios, reserva regulación |
-| **REData** (sin token) | 1990 | Mensual / anual | Series estadísticas largas, balance eléctrico |
-| **AEMET OpenData** (token gratuito) | ~2000 | Horaria / diaria | Viento, radiación solar, temperatura por estación |
-| **ENTSO-E Transparency** (token gratuito) | 2011 (legacy CSV) / 2015 (API) | Horaria | Intercambios transfronterizos, generación EU, capacidad interconexión |
+| **ESIOS / REData** (free token) | 2014-01-01 | 10 min / hourly | Real demand, generation by technology, interchanges, prices, regulation reserve |
+| **REData** (no token) | 1990 | Monthly / annual | Long statistical series, electricity balance |
+| **AEMET OpenData** (free token) | ~2000 | Hourly / daily | Wind, solar radiation, temperature per station |
+| **ENTSO-E Transparency** (free token) | 2011 (legacy CSV) / 2015 (API) | Hourly | Cross-border flows, EU generation, interconnection capacity |
 
-**Volumen resultante**: ~10 años × 365 días × 6 lecturas/hora = **~525,000 puntos temporales** a granularidad de 10 min. Más que suficiente para modelos ML robustos.
+**Resulting volume**: ~10 years × 365 days × 6 readings/hour = **~525,000 time points** at 10 min granularity.
 
-### Nota crítica: Frecuencia de red no disponible vía API pública
+### Critical Note: Grid Frequency Not Available via Public API
 
-Los datos de **frecuencia de red (Hz)** no se publican en la API de ESIOS — son telemedidas de tiempo real que REE no expone por seguridad operacional. Se utilizan los siguientes **proxies**, que en la literatura académica son los features estándar para predicción de inestabilidad en redes de alta penetración renovable:
+**Grid frequency (Hz)** data is not published in the ESIOS API — it is real-time telemetry that REE does not expose for operational security reasons. The following **proxies** are used, which are the standard features in academic literature for instability prediction in high-renewable-penetration grids:
 
-| Proxy | Indicador ESIOS | Por qué funciona |
+| Proxy | ESIOS Indicator | Why It Works |
 |---|---|---|
-| Balance oferta/demanda | Generación real − Demanda real | Diferencia directa → presión sobre frecuencia |
-| Reserva de regulación activada | Indicadores de reserva secundaria | Se activa cuando la frecuencia se desvía |
-| Urgencia en intercambios | Variación brusca en flujos FR/PT/MA | Importación de emergencia → tensión de frecuencia |
-| % renovables no gestionables | (Solar + Eólica) / Demanda total | Baja inercia sincrónica → mayor vulnerabilidad |
+| Supply/demand balance | Real generation − Real demand | Direct difference → frequency pressure |
+| Activated regulation reserve | Secondary reserve indicators | Activated when frequency deviates |
+| Interchange urgency | Sharp variation in FR/PT/MA flows | Emergency import → frequency stress |
+| % unmanageable renewables | (Solar + Wind) / Total demand | Low synchronous inertia → higher vulnerability |
 
-### Golden Dataset — Apagón 28 de abril de 2025
+### Golden Dataset — Blackout of 28 April 2025
 
-El informe post-mortem de REE del apagón del 28 de abril de 2025 está publicado con reconstrucción minuto a minuto. Es el caso de test principal del sistema de Eval.
+REE's post-mortem report for the 28 April 2025 blackout is published with minute-by-minute reconstruction. It is the primary test case for the Eval system.
 
-### Modelos ML a entrenar
+### ML Models to Train
 
-| Modelo | Algoritmo | Input | Output | Librería |
+| Model | Algorithm | Input | Output | Library |
 |---|---|---|---|---|
-| **Anomaly Detector** | Isolation Forest / LSTM Autoencoder | Ventana 6h de métricas (demanda, mix, intercambios, proxies frecuencia) | `anomaly_score` [0–1] + features más anómalas | scikit-learn / PyTorch |
-| **Load Forecaster** | XGBoost / Prophet | Hora, día semana, temperatura, festivo, histórico 30 días | Demanda prevista 6h + intervalo confianza | XGBoost / Prophet |
-| **Blackout Risk Classifier** | Gradient Boosting calibrado | `anomaly_score` + `load_forecast` + `renewables_pct` + `margin_reserva` | `P(blackout_1h)` [0–1] + feature importance | scikit-learn |
+| **Anomaly Detector** | Isolation Forest / LSTM Autoencoder | 6h window of metrics (demand, mix, interchanges, frequency proxies) | `anomaly_score` [0–1] + most anomalous features | scikit-learn / PyTorch |
+| **Load Forecaster** | XGBoost / Prophet | Hour, weekday, temperature, holiday, 30-day history | Forecast demand 6h + confidence interval | XGBoost / Prophet |
+| **Blackout Risk Classifier** | Calibrated Gradient Boosting | `anomaly_score` + `load_forecast` + `renewables_pct` + `reserve_margin` | `P(blackout_1h)` [0–1] + feature importance | scikit-learn |
 
-### Documentos para RAG (Knowledge Base)
+### Feature Store with Train/Serve Parity (`ml/features.py` + `ml/serve_features.py`)
 
-| Categoría | Documentos | Para qué |
-|---|---|---|
-| **Normas operacionales** | PO 1.1, PO 1.2, PO 7.4 de REE; Reglamento red ENTSO-E; EN 50160 | El agente sabe qué significa 49.8Hz en contexto normativo europeo |
-| **Post-mortems** | Informe REE apagón 28 abril 2025; Separación ibérica 2006; CEER incidentes 2018-2024 | Reconoce patrones de incidentes anteriores y los cita |
-| **Conocimiento técnico** | Inercia sincrónica y sintética; Reserva regulación primaria/secundaria; Topología peninsular; Alta penetración renovable | Explica causas y recomienda mitigaciones |
+All history-dependent features are computed by a **single feature layer** consumed by
+training (`build_dataset`), serving (`ml_models_server` via `serve_feature_row` /
+`serve_feature_frame` over the trailing 168h window from the `snapshots` table) and
+validation (`validate_models` feeds the golden with its REAL trailing week from the
+ESIOS dataset). Parity is guaranteed by construction and guarded by
+`tests/ml/test_serve_features.py` (serve row == train row at 1e-9).
 
----
+Key derived features (`ml.features.FEATURE_COLS`, 41 columns): physical proxies
+(balance, reserve, interchange, renewables), **inertia proxy** (non-synchronous
+penetration), **ROCOF proxies** (1h deltas + rolling volatility), **per-link
+interconnection stress** (ES-FR/PT/MA vs NTC), trailing 7-day rolling composite
+pressure with absolute-formula cold-start fallback, 7-day z-scores, lags and
+temporal encodings. Missing technology/link readings contribute 0 MW (matching
+serve semantics); missing demand propagates NaN (row not evaluable).
 
-### CUDA — Entrenamiento con GPU
+### Ensemble Fusion — Main Risk Signal (`tools/ensemble_scorer.py`)
 
-Todos los modelos que soportan GPU usan CUDA para el entrenamiento. La selección de device es automática:
+`P(blackout)` fuses three detectors with distinct inductive biases, LSTM
+**load-bearing by design** (weights not tuned on the golden, mitigating D5 n=1):
 
-```python
-# ml/train/device_config.py
-import torch
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Training on: {DEVICE}")  # cuda:0 si hay GPU disponible
-```
-
-| Modelo ML | Framework | Soporte CUDA | Guardado de pesos |
+| Signal | Model | Weight | Role |
 |---|---|---|---|
-| **LSTM Autoencoder** (anomaly) | PyTorch | ✅ Nativo | `torch.save(model.state_dict(), "lstm_ae.pth")` |
-| **XGBoost** (load forecast) | XGBoost | ✅ `device="cuda"` | `model.save_model("xgb_forecast.json")` |
-| **Gradient Boosting** (blackout) | XGBoost GPU | ✅ `device="cuda"` | `model.save_model("xgb_blackout.json")` |
-| **Isolation Forest** (anomaly alt.) | scikit-learn | ❌ CPU only | `joblib.dump(model, "iforest.pkl")` |
+| `lstm_recon_norm` | LSTM Autoencoder (unsupervised) | 0.5 | Primary detector; override floor P≥0.6 if ≥0.9 |
+| `if_score` | Isolation Forest via `decision_function` + `normalize_if_signal` | 0.2 | Point-anomaly corroboration |
+| `clf_proba` | Calibrated XGBoost (supervised, capped by D5) | 0.3 | Secondary vote |
 
-> **Nota**: Si la GPU no está disponible (entorno de desarrollo / CI), todos los modelos tienen fallback automático a CPU. Los pesos son agnósticos al device de inferencia.
+Exposed as `get_ensemble_score` / `get_blackout_probability_ensemble` (MCP:
+ml-models); the orchestrator passes the fused probability as `ml_score` to
+`risk_scorer`. Golden validation (2026-07-02, real trailing context): **IF PASS ·
+LSTM PASS (reconstruction error 0.043 → 1.53 at T-3min) · ENSEMBLE PASS (monotonic
+toward onset) · CLF FAIL (flat 0.0009 — D5, n=1 S4 event, documented honestly)**.
 
-### Pipeline de Reentrenamiento Mensual
+### Markov Chain — Grid State Transition Matrix
 
-El reentrenamiento se ejecuta **el día 1 de cada mes a las 02:00 UTC**, fuera de las horas pico de la red eléctrica:
+The Markov layer is trained offline alongside the ML models and used at runtime without any LLM:
 
-```
-[Cron: día 1 del mes, 02:00 UTC]
-    ↓
-1. download_new_data.py  → descarga datos del mes anterior (ESIOS + AEMET + ENTSO-E)
-    ↓
-2. build_dataset.py      → añade al parquet histórico, recalcula proxies de frecuencia
-    ↓
-3. train_anomaly.py      → reentrena LSTM Autoencoder en CUDA, guarda lstm_ae_candidate.pth
-4. train_forecast.py     → reentrena XGBoost forecast, guarda xgb_forecast_candidate.json
-5. train_classifier.py   → reentrena GBM blackout, guarda xgb_blackout_candidate.json
-    ↓ (en paralelo, 3+4+5 son independientes)
-6. validate_models.py    → evalúa candidatos en hold-out set del mes anterior
-                           Si AUC-ROC ≥ actual y MAE ≤ actual → promueve candidato
-                           Si no mejora → mantiene pesos anteriores + alerta en log
-    ↓
-7. reload_mcp_server.py  → señaliza a MCP: ml-models para recargar pesos en memoria
-                           sin downtime (carga nuevo → swap atómico → descarga viejo)
-    ↓
-8. Notificación en log   → "Reentrenamiento completado. Modelos promovidos: [lista]"
-```
+| Component | Description |
+|---|---|
+| `ml/grid_state_tracker.py` | **Offline**: estimates A[5×5] empirical transition matrix from historical states (S0–S4), blends with expert Dirichlet priors for rare high-severity transitions, persists matrix + thresholds to `ml/models/markov_state.npz` |
+| `tools/markov_state_tracker.py` | **Runtime, no LLM**: loads `.npz`, discretises current state (`compute_state`), returns matrix (`get_transition_matrix`), projects trajectory (`get_trajectory`), computes `prob_reach_severity` |
 
-```
-ml/models/
-├── lstm_ae.pth               ← pesos en producción (activos)
-├── xgb_forecast.json         ← pesos en producción (activos)
-├── xgb_blackout.json         ← pesos en producción (activos)
-├── history/
-│   ├── 2026-06-01/           ← snapshot del mes anterior (rollback si falla)
-│   └── 2026-05-01/
-└── candidates/               ← modelos en validación (borrados tras swap)
-```
+**Grid states:**
+- S0 — Normal
+- S1 — Stress
+- S2 — Notable incident
+- S3 — Major incident
+- S4 — Blackout
 
----
+### Documents for RAG (Knowledge Base)
 
-## 5. Capa 0 — Disparadores
-
-| Componente | Frecuencia | Acción |
+| Category | Documents | Purpose |
 |---|---|---|
-| Cron Scheduler | cada 10 min | Invoca `ree_poller()` → almacena snapshot |
-| Cron Scheduler | cada 1h | Invoca `RenewablesForecastSkill` |
-| Cron Scheduler | cada 24h | Invoca `ReportAgent` |
-| Event Trigger | cuando `ml_risk_score` > umbral | Invoca `OrchestratorAgent` para análisis profundo |
-| Eval Runner | en CI / bajo demanda | Ejecuta golden tests y trajectory evals |
+| **Operating standards** | REE PO 1.1, PO 1.2, PO 7.4; ENTSO-E Network Code; EN 50160 | Agent knows what 49.8 Hz means in the European regulatory context |
+| **Post-mortems** | REE report blackout 28 Apr 2025; Iberian separation 2006; CEER incidents 2018–2024 | Recognises prior incident patterns and cites them |
+| **Technical knowledge** | Synchronous and synthetic inertia; Primary/secondary regulation reserve; Peninsula topology; High renewable penetration | Explains causes and recommends mitigations |
 
 ---
 
-## 5. Capa 1 — Function Tools (Determinísticos, sin LLM)
+## 5. Layer 0 — Triggers
+
+| Component | Frequency | Action |
+|---|---|---|
+| Cron Scheduler | every 10 min | Invokes `ree_poller()` → stores snapshot |
+| Cron Scheduler | every 1h | Invokes `RenewablesForecastSkill` |
+| Cron Scheduler | every 24h | Invokes `ReportAgent` |
+| Event Trigger | when `ml_risk_score` > threshold | Invokes `OrchestratorAgent` for deep analysis |
+| Eval Runner | in CI / on demand | Runs golden tests and trajectory evals |
+
+---
+
+## 6. Layer 1 — Function Tools (Deterministic, No LLM)
 
 ### `ree_poller()`
-- **Qué hace**: GET a ESIOS API, parsea respuesta JSON
-- **Inputs**: endpoint, token (desde env var `ESIOS_TOKEN`, nunca hardcoded)
-- **Outputs**: `dict` normalizado con demanda, generación por tecnología, intercambios, reserva
-- **Error handling**: retry con backoff exponencial (3 intentos), log de gaps
+- **What it does**: GET to ESIOS API, parses JSON response
+- **Inputs**: endpoint, token (from env var `ESIOS_TOKEN`, never hard-coded)
+- **Outputs**: normalised `dict` with demand, generation by technology, interchanges, reserve
+- **Error handling**: retry with exponential backoff (3 attempts), gap logging
 
 ### `data_normalizer(raw: dict) -> GridSnapshot`
-- Convierte unidades a SI, timestamps a UTC, valida schema con Pydantic
-- **Outputs**: `GridSnapshot` (dataclass validada)
+- Converts units to SI, timestamps to UTC, validates schema with Pydantic
+- **Outputs**: `GridSnapshot` (validated dataclass)
 
 ### `stability_proxy_calculator(snapshot: GridSnapshot) -> StabilityProxies`
-- Calcula los 4 proxies de frecuencia: balance, reserva activada, variación intercambios, % renovables
-- Sustituye al antiguo `frequency_checker` — más robusto al no depender de un dato no disponible públicamente
-- **Outputs**: `StabilityProxies(balance_mw: float, reserve_activated_pct: float, interchange_delta_mw: float, renewables_pct: float, composite_pressure: float)`
+- Computes the 4 frequency proxies: balance, activated reserve, interchange variation, % renewables
+- **Outputs**: `StabilityProxies(balance_mw, reserve_activated_pct, interchange_delta_mw, renewables_pct, composite_pressure)`
 
-### `risk_scorer(snapshot: GridSnapshot, ml_score: float, baseline: Baseline) -> RiskScore`
-- Combina el score ML con métricas actuales: `0.5 * ml_score + 0.3 * balance_pressure + 0.2 * renewables_risk`
+### `risk_scorer(snapshot, ml_score, baseline) -> RiskScore`
+- Combines ML score with current metrics: `0.5 * ml_score + 0.3 * balance_pressure + 0.2 * renewables_risk`
 - **Outputs**: `RiskScore(value: int [0-100], components: dict, level: Literal['LOW','MEDIUM','HIGH','CRITICAL'])`
 
-### `alert_formatter(risk: RiskScore, anomalies: list, scope: str) -> Alert`
-- Construye alerta estructurada con ámbito (nacional / zonal)
+### `alert_formatter(risk, anomalies, scope) -> Alert`
+- Builds structured alert with scope (national / zonal)
 - **Outputs**: `Alert(severity, scope, timestamp, summary, details, recommended_action)`
 
+### `markov_state_tracker` (runtime Markov inference, no LLM)
+- **`compute_state(features)`** — discretises current state S0–S4 from `{composite_pressure, renewables_pct, balance_mw}` using persisted thresholds
+- **`get_transition_matrix()`** — returns A[5×5]
+- **`get_trajectory(state, horizon_hours)`** — most probable state sequence for next N hours
+- **`prob_reach_severity(state, target, horizon_hours)`** — P(reaching state ≥ target within horizon)
+
 ---
 
-## 6. Capa 2 — MCP Servers (6 servidores)
+## 7. Layer 2 — MCP Servers (7 servers)
 
 ### `MCP: ree-grid`
-Wrapper autenticado sobre ESIOS API con caché en memoria (TTL 9 min).
+Authenticated wrapper over ESIOS API with in-memory cache (TTL 9 min).
 ```
-get_realtime_demand(region: str) -> DemandSnapshot
-get_generation_mix(start: datetime, end: datetime) -> GenerationMix
-get_interchange_flows(border: str) -> InterchangeFlow
-get_programmed_generation() -> ProgrammedGeneration
-get_reserve_activation() -> ReserveStatus
+get_realtime_demand(region) → DemandSnapshot
+get_generation_mix(start, end) → GenerationMix
+get_interchange_flows(border) → InterchangeFlow
+get_programmed_generation() → ProgrammedGeneration
+get_reserve_activation() → ReserveStatus
 ```
-**Credencial**: `ESIOS_TOKEN` · **Histórico disponible desde**: 2014-01-01
+**Credential**: `ESIOS_TOKEN` · **Historical data from**: 2014-01-01
 
 ### `MCP: weather`
-Wrapper sobre AEMET OpenData + OpenMeteo como fallback.
+Wrapper over AEMET OpenData + OpenMeteo fallback.
 ```
-get_wind_forecast(zone: str, hours: int) -> WindForecast
-get_solar_radiation(zone: str, hours: int) -> RadiationForecast
-get_aemet_alerts() -> list[MeteoAlert]
+get_wind_forecast(zone, hours) → WindForecast
+get_solar_radiation(zone, hours) → RadiationForecast
+get_aemet_alerts() → list[MeteoAlert]
+get_weather_forecast_24h(zones) → dict  ← NEW: hourly 24h forecast per zone
 ```
-**Credencial**: `AEMET_API_KEY` · **Rate limit**: 50 req/min · **Histórico desde**: ~2000
+**Credential**: `AEMET_API_KEY` · **Rate limit**: 50 req/min
 
 ### `MCP: entso-e`
-Acceso a datos de interconexión europea.
+Access to European interconnection and market data.
 ```
-get_cross_border_flows(from_country: str, to_country: str) -> CrossBorderFlow
-get_eu_generation(country: str) -> EUGenerationSnapshot
-get_capacity_margin(country: str) -> CapacityMargin
+get_cross_border_flows(from_country, to_country) → CrossBorderFlow
+get_eu_generation(country) → EUGenerationSnapshot
+get_capacity_margin(country) → CapacityMargin
+get_eu_market_prices(countries, date) → dict  ← NEW: day-ahead prices (€/MWh, A44)
 ```
-**Credencial**: `ENTSOE_TOKEN` · **Histórico desde**: 2011 (legacy CSV) / 2015 (API)
+**Credential**: `ENTSOE_TOKEN`
 
 ### `MCP: memory`
-Persistencia local con SQLite.
+Local persistence with SQLite.
 ```
-store_snapshot(snapshot: GridSnapshot) -> None
-get_baseline(window_hours: int) -> Baseline
-query_incidents(start: datetime, end: datetime) -> list[Incident]
-get_risk_history(hours: int) -> list[RiskScore]
+store_snapshot(snapshot) → None
+get_baseline(window_hours) → Baseline
+query_incidents(start, end) → list[Incident]
+get_risk_history(hours) → list[RiskScore]
+store_grid_state(timestamp, state) → dict    ← NEW: persist Markov state
+get_state_transitions(hours) → list[dict]    ← NEW: Markov state history
 ```
+**Database**: SQLite (`gridguard.db`)
 
-### `MCP: ml-models` ← NUEVO
-Expone los modelos ML entrenados como tools. Carga `.pkl` en memoria al iniciar. Inferencia determinística, sin LLM.
+### `MCP: ml-models`
+Exposes trained ML models as tools. Loads `.pkl` into memory on startup. Deterministic inference, no LLM.
 ```
-get_anomaly_score(window: list[GridSnapshot]) -> AnomalyResult
-  # Isolation Forest: devuelve score [0-1] + features más anómalas
+get_anomaly_score(window) → AnomalyResult
+  # Isolation Forest: score [0-1] + most anomalous features
 
-get_load_forecast(horizon_hours: int, context: dict) -> LoadForecast
-  # XGBoost/Prophet: demanda prevista + intervalo de confianza
+get_load_forecast(horizon_hours, context) → LoadForecast
+  # XGBoost/Prophet: forecast demand + confidence interval
 
-get_blackout_probability(features: StabilityProxies, forecast: LoadForecast) -> BlackoutRisk
-  # Gradient Boosting calibrado: P(blackout_1h) [0-1] + feature importance
+get_blackout_probability(features, forecast) → BlackoutRisk
+  # Calibrated Gradient Boosting: P(blackout_1h) [0-1] + feature importance
 ```
-**Sin credenciales externas** · Modelos en `ml/models/*.pkl`
+**No external credentials** · Models in `ml/models/`
 
-### `MCP: knowledge-base` ← NUEVO
-RAG sobre documentos técnicos embebidos con ChromaDB.
+### `MCP: knowledge-base`
+RAG over technical documents embedded with ChromaDB.
 ```
-search_regulations(query: str, top_k: int = 5) -> list[RegulatoryChunk]
-  # Normas ENTSO-E, POs de REE, EN 50160
+search_regulations(query, top_k=5) → list[RegulatoryChunk]
+  # ENTSO-E standards, REE POs, EN 50160
 
-find_similar_incident(description: str, top_k: int = 3) -> list[IncidentRecord]
-  # Post-mortems: apagón 2025, separación ibérica 2006, CEER reports
+find_similar_incident(description, top_k=3) → list[IncidentRecord]
+  # Post-mortems: blackout 2025, Iberian separation 2006, CEER reports
 
-get_mitigation_procedure(situation: str) -> Procedure
-  # Procedimientos operacionales de REE para situaciones de emergencia
+get_mitigation_procedure(situation) → Procedure
+  # REE operational procedures for emergency situations
 ```
-**Embeddings**: `gemini-embedding-2` (multimodal, primer modelo de embeddings de la serie Gemini 3) · **Vector store**: ChromaDB local
+**Embeddings**: `gemini-embedding-2` · **Vector store**: ChromaDB (local)
+
+### `MCP: markov` ← NEW
+Exposes the Markov layer (`tools/markov_state_tracker.py`) as MCP tools. Pure Python, no LLM.
+```
+get_grid_state(features) → {state, label, confidence, trajectory_6h}
+  # Discretises current state S0–S4 + 6h trajectory
+
+get_transition_probabilities() → {matrix: list[list[float]], states: [0..4]}
+  # Full A[5×5] transition matrix
+
+get_markov_trajectory(features, horizon_hours) → {trajectory, prob_reach_s3, prob_reach_s4}
+  # Projected state trajectory + escalation probabilities
+```
+**No external credentials** · Weights in `ml/models/markov_state.npz`
 
 ---
 
-## 7. Capa 3 — Skills (AgentTools)
+## 8. Layer 3 — Skills (AgentTools)
 
 ### `AnomalyDetectorSkill`
-- **Tipo**: `AgentTool` (síncrono, sin estado entre llamadas)
-- **Modelo**: `get_model("fast_agent")` → `gemini-3.5-flash` · **Temperature**: 0.1
-- **Por qué Skill**: una sola llamada, resultado estructurado, llamado cada 10 min → velocidad crítica
-- **Tools disponibles**: `get_anomaly_score` (ML), `stability_proxy_calculator`, `get_baseline`, `search_regulations` (RAG)
-- **Flujo**: ML detecta → RAG contextualiza → LLM razona y clasifica
-- **Output**: `AnomalyReport(anomalies: list[Anomaly], severity: str, confidence: float, ml_score: float, regulatory_context: str, reasoning: str)`
+- **Type**: `AgentTool` (synchronous, no state between calls)
+- **Model**: `get_model("fast_agent")` → `gemini-3.5-flash` · **Temperature**: 0.1
+- **Why Skill**: single synchronous call, structured result, called every 10 min → speed is critical
+- **Tools**: `get_anomaly_score` (ML), `stability_proxy_calculator`, `get_baseline`, `search_regulations` (RAG), `get_grid_state` (Markov)
+- **Flow**: ML detects → Markov projects trajectory → RAG contextualises → LLM reasons and classifies
+- **Output**: `AnomalyReport(anomalies, severity, confidence, ml_score, markov_trajectory, regulatory_context, reasoning)`
 
 ### `RenewablesForecastSkill`
-- **Tipo**: `AgentTool` (síncrono, sin estado)
-- **Modelo**: `get_model("fast_agent")` → `gemini-3.5-flash` · **Temperature**: 0.1
-- **Por qué Skill**: resultado único y estructurado, reutilizable por Orchestrator y ReportAgent
-- **Tools disponibles**: `get_wind_forecast`, `get_solar_radiation`, `get_generation_mix`, `get_load_forecast` (ML), `get_baseline`
-- **Output**: `RenewablesForecast(risk_level: str, expected_generation_pct: float, critical_window: str, ml_forecast_mw: float, reasoning: str)`
+- **Type**: `AgentTool` (synchronous, no state)
+- **Model**: `get_model("fast_agent")` → `gemini-3.5-flash` · **Temperature**: 0.1
+- **Why Skill**: single structured result, reusable by Orchestrator and ReportAgent
+- **Tools**: `get_wind_forecast`, `get_solar_radiation`, `get_weather_forecast_24h`, `get_load_forecast` (ML), `get_generation_mix`, `get_baseline`
+- **Output**: `RenewablesForecast(risk_level, expected_generation_pct, critical_window_24h, ml_forecast_mw, reasoning)`
+
+### `RegulatoryComplianceSkill` ← NEW
+- **Type**: `AgentTool` (synchronous, no state)
+- **Model**: `get_model("fast_agent")` → `gemini-3.5-flash` · **Temperature**: 0.1
+- **Why Skill**: focused regulatory lookup with single structured output; called when anomaly detected
+- **Tools**: `search_regulations` (RAG), `get_grid_state` (Markov)
+- **Flow**: LLM queries RAG for applicable regulations given current state → returns compliance report
+- **Output**: `ComplianceReport(applicable_regulations, mandatory_actions, compliance_status, reasoning)`
 
 ---
 
-## 8. Capa 4 — Sub-agentes
+## 9. Layer 4 — Sub-agents
 
 ### `ReportAgent`
-- **Modelo**: `get_model("smart_agent")` → `gemini-3.1-pro` · **Temperature**: 0.4 · **Max turns**: 10
-- **Por qué Sub-agent**: múltiples pasos (recopilar → analizar → redactar → formatear), número de pasos varía
-- **Tools**: `query_incidents`, `get_risk_history`, `get_blackout_probability` (ML), `find_similar_incident` (RAG), escritura en `reports/`
-- **Output**: informe HTML + Markdown con resumen ejecutivo, evolución del risk score, incidencias y comparación con eventos históricos similares
+- **Model**: `get_model("smart_agent")` → `gemini-3.1-pro` · **Temperature**: 0.4 · **Max turns**: 10
+- **Why Sub-agent**: multiple steps (collect → analyse → draft → format), variable number of steps
+- **Tools**: `query_incidents`, `get_risk_history`, `get_blackout_probability` (ML), `find_similar_incident` (RAG), `get_state_transitions` (Markov), write to `reports/`
+- **Output**: HTML + Markdown report with executive summary, risk score evolution, incidents, and comparison with similar historical events
 
 ### `CrossBorderAgent`
-- **Modelo**: `get_model("fast_agent")` → `gemini-3.5-flash` · **Temperature**: 0.2 · **Max turns**: 8
-- **Por qué Sub-agent**: razonamiento multi-país con memoria de sesión
-- **Tools**: `get_cross_border_flows`, `get_capacity_margin`, `get_eu_generation`, `get_mitigation_procedure` (RAG)
-- **Output**: `CrossBorderAnalysis(can_import: bool, available_capacity_mw: float, countries: list[str], risk_mitigation: str)`
+- **Model**: `get_model("fast_agent")` → `gemini-3.5-flash` · **Temperature**: 0.2 · **Max turns**: 8
+- **Why Sub-agent**: multi-country reasoning with session memory
+- **Tools**: `get_cross_border_flows`, `get_capacity_margin`, `get_eu_generation`, `get_eu_market_prices`, `get_mitigation_procedure` (RAG)
+- **Output**: `CrossBorderAnalysis(can_import, available_capacity_mw, countries, risk_mitigation)`
 
 ---
 
-## 9. Capa 5 — OrchestratorAgent (Root Agent)
+## 10. Layer 5 — OrchestratorAgent (Root Agent)
 
-- **Modelo**: `get_model("fast_agent")` → `gemini-3.5-flash` · **Temperature**: 0.1 · **Max turns**: 20 · **Context**: 1M tokens
-- **Skills**: `AnomalyDetectorSkill`, `RenewablesForecastSkill`
+- **Model**: `get_model("fast_agent")` → `gemini-3.5-flash` · **Temperature**: 0.1 · **Max turns**: 20 · **Context**: 1M tokens
+- **Skills**: `AnomalyDetectorSkill`, `RenewablesForecastSkill`, `RegulatoryComplianceSkill`
 - **Sub-agents**: `ReportAgent`, `CrossBorderAgent`
 - **Function tools**: `ree_poller`, `stability_proxy_calculator`, `risk_scorer`, `alert_formatter`
-- **MCP directos**: `get_blackout_probability` (para decisiones rápidas de escalado)
+- **MCP direct**: `get_blackout_probability` (for fast escalation decisions), `get_markov_trajectory`
 
-**Lógica de decisión basada en `P(blackout_1h)`**:
+**Escalation logic based on P(blackout_1h) and Markov trajectory**:
 ```
-P < 0.10  → logging pasivo, no acción
-P 0.10–0.30 → AnomalyDetectorSkill → log con contexto
-P 0.30–0.60 → Anomaly + RenewablesForecast → alerta WARNING (ámbito según zona)
-P > 0.60  → todo anterior + CrossBorderAgent + alerta CRITICAL nacional + ReportAgent inmediato
+P < 0.10                    → passive logging, no action
+P 0.10–0.30                 → AnomalyDetectorSkill → log with context
+P 0.30–0.60 or S≥S2 →S3   → Anomaly + RenewablesForecast + WARNING alert (zonal scope)
+P > 0.60  or S≥S3 →S4     → all above + CrossBorderAgent + RegulatoryCompliance + CRITICAL national alert + immediate ReportAgent
 ```
 
 ---
 
-## 10. Guardrails — ADK Hooks
+## 11. Guardrails — ADK Hooks
 
 ### `before_tool_callback`
 ```python
-def before_tool_callback(tool_name: str, tool_args: dict) -> dict | None:
-    # 1. Bloquear acceso a archivos sensibles
+def before_tool_callback(tool_name, tool_args):
+    # 1. Block access to sensitive files
     if tool_name in FILE_READ_TOOLS:
-        path = tool_args.get("path", "")
         BLOCKED = [".env", "secrets", ".key", ".pem", "credentials", "token"]
-        if any(b in path.lower() for b in BLOCKED):
+        if any(b in tool_args.get("path", "").lower() for b in BLOCKED):
             return {"error": "ACCESS_DENIED: sensitive file path blocked"}
 
-    # 2. Rate limiting en APIs externas
+    # 2. Rate limiting on external APIs
     if tool_name in API_TOOLS:
-        last_call = rate_limiter.get(tool_name)
-        if last_call and (now() - last_call) < MIN_INTERVAL[tool_name]:
+        if rate_limiter.is_too_soon(tool_name):
             return {"error": "RATE_LIMITED: too many requests"}
 
-    # 3. Whitelist de tools permitidas por agente
+    # 3. Tool whitelist per agent
     if tool_name not in ALLOWED_TOOLS[current_agent]:
         return {"error": f"UNAUTHORIZED: {tool_name} not allowed for {current_agent}"}
-
-    return None
 ```
 
 ### `after_tool_callback`
 ```python
-def after_tool_callback(tool_name: str, output: dict) -> dict:
-    # Validar schema JSON de respuesta
-    # Escanear output por patrones de credenciales (regex)
-    # Validar rangos físicos (frecuencia [45-55]Hz, demanda > 0, score [0-1])
-    # Truncar si supera 4k tokens antes de pasar al LLM
+def after_tool_callback(tool_name, output):
+    # Validate JSON response schema
+    # Scan output for credential patterns (regex)
+    # Validate physical ranges (demand > 0, score [0-1], state [0-4])
+    # Truncate to 4k tokens before passing to LLM
+```
+
+### `on_state_transition` ← NEW
+```python
+def on_state_transition(prev_state, new_state):
+    # Triggered when Markov state changes
+    # If prev < new (escalation): log + optionally force AnomalyDetectorSkill
+    # If new == S4: emit CRITICAL alert regardless of P(blackout) threshold
+    # Prevents silent state drift going unnoticed between 10-min cron cycles
 ```
 
 ### `before_model_callback`
 ```python
-def before_model_callback(messages: list) -> list:
+def before_model_callback(messages):
     INJECTION_PATTERNS = ["ignore previous", "system:", "jailbreak", "forget your",
                           "new instruction", "disregard", "override"]
     for msg in messages:
@@ -445,124 +457,145 @@ def before_model_callback(messages: list) -> list:
     return messages
 ```
 
+### `on_forecast_risk_horizon` ← NEW
+```python
+def on_forecast_risk_horizon(trajectory, horizon_hours=24):
+    # Triggered after RenewablesForecastSkill runs
+    # If prob_reach_s3 > 0.3 within 24h window → escalate to WARNING
+    # If prob_reach_s4 > 0.1 within 24h window → escalate to CRITICAL
+    # Bridges Markov trajectory and the alert pipeline
+```
+
 ### `after_model_callback`
 ```python
-def after_model_callback(output: str) -> str:
-    # Validar que outputs numéricos están en rangos físicamente plausibles
-    # Verificar JSON válido si se esperaba JSON estructurado
-    # Rechazar outputs que contengan patrones de credenciales
+def after_model_callback(output):
+    # Validate that numeric outputs are in physically plausible ranges
+    # Verify valid JSON if structured JSON was expected
+    # Reject outputs containing credential patterns
 ```
 
 ### `after_agent_callback`
 ```python
-def after_agent_callback(agent_output: AgentOutput) -> AgentOutput:
-    # Validar schema del output final del agente
-    # Comprobar risk_score ∈ [0, 100], P(blackout) ∈ [0, 1]
-    # Comprobar severity ∈ {'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'}
-    # Comprobar scope ∈ {'nacional', 'peninsular', 'zonal', 'local'}
+def after_agent_callback(agent_output):
+    # Validate final agent output schema
+    # Check risk_score ∈ [0, 100], P(blackout) ∈ [0, 1]
+    # Check severity ∈ {'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'}
+    # Check scope ∈ {'national', 'peninsular', 'zonal', 'local'}
 ```
 
 ---
 
-## 11. Eval & Tracing
+## 12. Eval & Tracing
 
 ### Tracing (ADK built-in)
-- Cada tool call: nombre, args, duración, output
-- Cada LLM call: prompt tokens, completion tokens, latencia, modelo
-- Árbol de spans parent-child: `Orchestrator → Skill → Tool → ML Model`
-- Export a JSON local + opcional Cloud Trace
+- Every tool call: name, args, duration, output
+- Every LLM call: prompt tokens, completion tokens, latency, model
+- Parent-child span tree: `Orchestrator → Skill → Tool → ML Model`
+- Export to local JSON + optional Cloud Trace
 
-### Eval de Outputs
+### Output Eval
 
-| Componente | Métrica | Método |
+| Component | Metric | Method |
 |---|---|---|
-| `AnomalyDetector` ML | Precision / Recall / F1 | Dataset etiquetado histórico ESIOS 2014-2024 |
-| `LoadForecaster` ML | MAE, MAPE | Comparar forecast 6h vs demanda real posterior |
-| `BlackoutRisk` ML | AUC-ROC, calibración | Hold-out set con eventos conocidos |
-| `AnomalyDetectorSkill` | Precision / Recall alertas | Golden dataset apagón 28 abril 2025 |
-| `RenewablesForecastSkill` | MAE a 6h | Comparar forecast vs generación real |
-| `ReportAgent` | Calidad narrativa | LLM-as-judge (coherencia, precisión, cita correcta de normativa) |
-| `OrchestratorAgent` | False positive rate, latencia end-to-end | % alertas CRITICAL sin evento real, tiempo 1ª alerta |
+| `AnomalyDetector` ML | Precision / Recall / F1 | Labelled historical dataset ESIOS 2014–2024 |
+| `LoadForecaster` ML | MAE, MAPE | Compare 6h forecast vs actual subsequent demand |
+| `BlackoutRisk` ML | AUC-ROC, calibration | Hold-out set with known events |
+| `AnomalyDetectorSkill` | Precision / Recall alerts | Golden dataset blackout 28 April 2025 |
+| `RenewablesForecastSkill` | MAE at 6h | Compare forecast vs actual generation |
+| `RegulatoryComplianceSkill` | Citation accuracy | LLM-as-judge: are cited regulations actually applicable? |
+| `ReportAgent` | Narrative quality | LLM-as-judge (coherence, accuracy, correct citation of regulations) |
+| `OrchestratorAgent` | False positive rate, end-to-end latency | % CRITICAL alerts without real event, time of 1st alert |
 
-### Eval de Trayectoria
+### Trajectory Eval
 
-- **Golden dataset**: escenario del apagón del 28 de abril de 2025 (post-mortem REE publicado)
-- **Evaluación**: ¿tools correctas? ¿orden correcto? ¿escaló en el momento adecuado? ¿RAG consultado antes de razonar?
+- **Golden dataset**: scenario from the blackout of 28 April 2025 (REE published post-mortem)
+- **Evaluation**: correct tools? correct order? escalated at the right time? RAG consulted before reasoning? Markov trajectory consulted before escalation?
 
 ```python
 def test_critical_scenario_blackout_apr_2025():
     result = orchestrator.run(scenario="blackout_apr_2025")
     trajectory = result.trajectory
 
-    assert "get_anomaly_score" in trajectory          # ML consultado
-    assert "search_regulations" in trajectory          # RAG consultado
+    assert "get_anomaly_score" in trajectory          # ML consulted
+    assert "get_markov_trajectory" in trajectory       # Markov consulted
+    assert "search_regulations" in trajectory          # RAG consulted
     assert "AnomalyDetectorSkill" in trajectory
-    assert "CrossBorderAgent" in trajectory            # escalado correcto
+    assert "RegulatoryComplianceSkill" in trajectory
+    assert "CrossBorderAgent" in trajectory            # correct escalation
     assert result.final_alert.severity == "CRITICAL"
-    assert result.final_alert.scope == "nacional"
+    assert result.final_alert.scope == "national"
     assert result.risk_score > 80
     assert result.blackout_probability > 0.6
 ```
 
 ---
 
-## 12. Estructura del Proyecto
+## 13. Project Structure
 
 ```
 gridguard/
 ├── agents/
 │   ├── orchestrator.py              # Root Agent
-│   ├── anomaly_detector.py          # Skill (AgentTool) — ML + RAG + LLM
+│   ├── anomaly_detector.py          # Skill (AgentTool) — ML + Markov + RAG + LLM
 │   ├── renewables_forecast.py       # Skill (AgentTool) — ML + LLM
-│   ├── report_agent.py              # Sub-agent — ML + RAG + LLM
+│   ├── regulatory_compliance.py     # Skill (AgentTool) — RAG + Markov + LLM  ← NEW
+│   ├── report_agent.py              # Sub-agent — ML + Markov + RAG + LLM
 │   └── cross_border.py              # Sub-agent — RAG + LLM
 ├── tools/
 │   ├── ree_poller.py                # Function Tool
 │   ├── data_normalizer.py           # Function Tool
-│   ├── stability_proxy_calculator.py # Function Tool (sustituye frequency_checker)
-│   ├── risk_scorer.py               # Function Tool (combina ML + métricas)
-│   └── alert_formatter.py           # Function Tool
+│   ├── stability_proxy_calculator.py # Function Tool
+│   ├── risk_scorer.py               # Function Tool
+│   ├── alert_formatter.py           # Function Tool
+│   ├── ensemble_scorer.py           # LSTM+IF+CLF fusion (no LLM)  ← NEW
+│   └── markov_state_tracker.py      # Runtime Markov inference (no LLM)  ← NEW
 ├── mcp_servers/
 │   ├── ree_grid_server.py           # MCP: ree-grid (ESIOS API)
-│   ├── weather_server.py            # MCP: weather (AEMET + OpenMeteo)
-│   ├── entsoe_server.py             # MCP: entso-e
-│   ├── memory_server.py             # MCP: memory (SQLite)
-│   ├── ml_models_server.py          # MCP: ml-models ← NUEVO
-│   └── knowledge_base_server.py     # MCP: knowledge-base (ChromaDB) ← NUEVO
+│   ├── weather_server.py            # MCP: weather (AEMET + OpenMeteo + 24h forecast)
+│   ├── entsoe_server.py             # MCP: entso-e (+ day-ahead market prices)
+│   ├── memory_server.py             # MCP: memory (SQLite + Markov state history)
+│   ├── ml_models_server.py          # MCP: ml-models
+│   ├── knowledge_base_server.py     # MCP: knowledge-base (ChromaDB)
+│   └── markov_server.py             # MCP: markov (state + trajectory)  ← NEW
 ├── ml/
 │   ├── data/
-│   │   ├── download_esios.py        # Descarga histórico ESIOS 2014→
-│   │   ├── download_aemet.py        # Descarga histórico AEMET 2000→
-│   │   ├── download_entsoe.py       # Descarga histórico ENTSO-E 2011→
-│   │   └── build_dataset.py         # Combina fuentes → dataset_training.parquet
+│   │   ├── download_esios.py
+│   │   ├── download_aemet.py
+│   │   ├── download_entsoe.py
+│   │   ├── build_dataset.py         # delegates features to ml/features.py (--refresh in-place)
+│   │   └── incremental_load.py      # ESIOS → snapshots DB (backfill/catch_up)  ← NEW
 │   ├── train/
-│   │   ├── train_anomaly.py         # Isolation Forest / LSTM Autoencoder
-│   │   ├── train_forecast.py        # XGBoost / Prophet
-│   │   └── train_classifier.py      # Gradient Boosting calibrado
+│   │   ├── train_anomaly.py
+│   │   ├── train_forecast.py
+│   │   ├── train_classifier.py
+│   │   └── validate_models.py       # golden w/ real trailing context + validate_ensemble
+│   ├── features.py                  # SINGLE feature layer (train/serve parity)  ← NEW
+│   ├── serve_features.py            # serve-time window assembly + DB bridge  ← NEW
+│   ├── incidents.py                 # State definitions S0–S4 + thresholds  ← NEW
+│   ├── grid_state_tracker.py        # Offline Markov matrix estimation  ← NEW
 │   └── models/
 │       ├── anomaly_detector.pkl
 │       ├── load_forecaster.pkl
-│       └── blackout_classifier.pkl
+│       ├── blackout_classifier.pkl
+│       └── markov_state.npz         # A[5×5] + thresholds  ← NEW
 ├── knowledge/
-│   ├── documents/                   # PDFs y textos fuente
-│   │   ├── po_ree_1_1.pdf
-│   │   ├── po_ree_7_4.pdf
-│   │   ├── entso_e_network_code.pdf
-│   │   ├── postmortem_apagon_2025.pdf
-│   │   └── separacion_iberica_2006.pdf
+│   ├── documents/                   # Source PDFs
 │   ├── build_kb.py                  # Embeddings → ChromaDB
-│   └── chroma_db/                   # Vector store local
+│   └── chroma_db/                   # Local vector store (ChromaDB)
 ├── guardrails/
-│   └── hooks.py                     # Todos los ADK callbacks
+│   └── hooks.py                     # All ADK callbacks (incl. on_state_transition)
 ├── eval/
 │   ├── golden_dataset/
-│   │   ├── blackout_apr_2025.json   # Escenario principal
-│   │   └── normal_baseline.json     # Período estable para control
+│   │   ├── blackout_apr_2025.json
+│   │   └── normal_baseline.json
 │   ├── test_trajectories.py
 │   ├── test_outputs.py
-│   └── test_ml_models.py            # Eval offline de modelos ML
+│   └── test_ml_models.py
 ├── schemas/
-│   └── models.py                    # Pydantic dataclasses
+│   └── models.py                    # Pydantic dataclasses (incl. ComplianceReport, MarketPrice)
+├── config/
+│   ├── model_registry.yaml
+│   └── model_loader.py
 ├── .env.example
 ├── requirements.txt
 └── README.md
@@ -570,11 +603,11 @@ gridguard/
 
 ---
 
-## 13. Variables de Entorno
+## 14. Environment Variables
 
 ```bash
-# .env.example — nunca incluir valores reales en el repo
-ESIOS_TOKEN=your_token_here          # Solicitar en consultasios@ree.es
+# .env.example — never include real values in the repo
+ESIOS_TOKEN=your_token_here          # Request at consultasios@ree.es
 AEMET_API_KEY=your_key_here          # opendata.aemet.es
 ENTSOE_TOKEN=your_token_here         # transparency.entsoe.eu
 GOOGLE_API_KEY=your_gemini_key_here  # Google AI Studio
@@ -582,20 +615,21 @@ DB_PATH=./data/gridguard.db
 CHROMA_DB_PATH=./knowledge/chroma_db
 ML_MODELS_PATH=./ml/models
 LOG_LEVEL=INFO
-RISK_ALERT_THRESHOLD=0.30            # P(blackout) para WARNING
-RISK_CRITICAL_THRESHOLD=0.60         # P(blackout) para CRITICAL
+RISK_ALERT_THRESHOLD=0.30            # P(blackout) for WARNING
+RISK_CRITICAL_THRESHOLD=0.60         # P(blackout) for CRITICAL
 ```
 
 ---
 
-## 14. Conceptos ADK demostrados (requisito: mínimo 3)
+## 15. ADK Concepts Demonstrated (minimum required: 3)
 
-1. ✅ **Multi-agent system** — Orchestrator (Root) + 2 Skills (AgentTool) + 2 Sub-agents con roles diferenciados
-2. ✅ **MCP servers** — 6 servidores MCP custom (ree-grid, weather, entso-e, memory, ml-models, knowledge-base)
-3. ✅ **AgentTool (Skills)** — `AnomalyDetectorSkill` y `RenewablesForecastSkill` como AgentTools síncronos
-4. ✅ **Callbacks / Guardrails** — 5 hooks con lógica real (anti-.env, rate-limit, anti-injection, bounds check, schema validation)
-5. ✅ **Memory / State** — MCP memory (SQLite) para baseline e histórico de snapshots
-6. ✅ **Eval framework** — Output eval (ML metrics + LLM-as-judge) + Trajectory eval con golden dataset real
-7. ✅ **Tracing** — ADK tracing en todos los agentes con árbol de spans
-8. ✅ **ML integrado** — 3 modelos (anomaly detection, forecasting, blackout classifier) expuestos como MCP tools
-9. ✅ **RAG** — Knowledge base con normas ENTSO-E, post-mortems y procedimientos REE vía ChromaDB
+1. ✅ **Multi-agent system** — Orchestrator (Root) + 3 Skills (AgentTool) + 2 Sub-agents with differentiated roles
+2. ✅ **MCP servers** — 7 custom MCP servers (ree-grid, weather, entso-e, memory, ml-models, knowledge-base, markov)
+3. ✅ **AgentTool (Skills)** — `AnomalyDetectorSkill`, `RenewablesForecastSkill`, `RegulatoryComplianceSkill`
+4. ✅ **Callbacks / Guardrails** — 7 hooks with real logic (anti-.env, rate-limit, state transition, injection guard, forecast horizon, bounds check, schema validation)
+5. ✅ **Memory / State** — MCP memory (SQLite) for baseline, snapshot history and Markov state history
+6. ✅ **Eval framework** — Output eval (ML metrics + LLM-as-judge) + Trajectory eval with real golden dataset
+7. ✅ **Tracing** — ADK tracing on all agents with span tree
+8. ✅ **ML integrated** — 3 models (anomaly detection, forecasting, blackout classifier) + Markov chain exposed as MCP tools
+9. ✅ **RAG** — Knowledge base with ENTSO-E standards, post-mortems and REE procedures via ChromaDB
+10. ✅ **Markov chain** — Grid state trajectory model (pure Python/NumPy) integrated across MCP layer and agent decision logic
