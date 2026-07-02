@@ -3,7 +3,7 @@ tools/markov_state_tracker.py — Inferencia de estado y trayectoria de Markov e
 
 Shift-left puro (sin LLM). Carga ml/models/markov_state.npz (matriz + umbrales) y expone:
 discretización del estado actual, matriz de transición, y proyección de trayectoria.
-Envuelto por mcp_servers/markov_server.py (Plan 3).
+Expuesto como tools MCP (get_grid_state, get_markov_trajectory) vía mcp_servers/ml_models_server.py.
 """
 
 from __future__ import annotations

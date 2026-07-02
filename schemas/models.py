@@ -114,7 +114,10 @@ class Alert(BaseModel):
 # ---------------------------------------------------------------------------
 
 class DemandSnapshot(BaseModel):
-    """Demanda en tiempo real. Salida de get_realtime_demand()."""
+    """Demanda en tiempo real. Salida de get_realtime_demand().
+
+    (Sin consumidor actual tras retirar ree_grid_server; conservado para uso futuro — mismo criterio que MeteoAlert.)
+    """
 
     region: str
     timestamp: datetime
@@ -134,7 +137,10 @@ class GenerationMix(BaseModel):
 
 
 class InterchangeFlow(BaseModel):
-    """Flujo de intercambio en una frontera. Salida de get_interchange_flows()."""
+    """Flujo de intercambio en una frontera. Salida de get_interchange_flows().
+
+    (Sin consumidor actual tras retirar ree_grid_server; conservado para uso futuro — mismo criterio que MeteoAlert.)
+    """
 
     border: str = Field(..., description="Frontera: 'ES-FR', 'ES-PT', 'ES-MA'")
     timestamp: datetime
@@ -145,7 +151,10 @@ class InterchangeFlow(BaseModel):
 
 
 class ProgrammedGeneration(BaseModel):
-    """Generación programada. Salida de get_programmed_generation()."""
+    """Generación programada. Salida de get_programmed_generation().
+
+    (Sin consumidor actual tras retirar ree_grid_server; conservado para uso futuro — mismo criterio que MeteoAlert.)
+    """
 
     timestamp: datetime
     scheduled_mw: float = Field(..., gt=0)
@@ -153,7 +162,10 @@ class ProgrammedGeneration(BaseModel):
 
 
 class ReserveStatus(BaseModel):
-    """Estado de las reservas de regulación. Salida de get_reserve_activation()."""
+    """Estado de las reservas de regulación. Salida de get_reserve_activation().
+
+    (Sin consumidor actual tras retirar ree_grid_server; conservado para uso futuro — mismo criterio que MeteoAlert.)
+    """
 
     timestamp: datetime
     secondary_reserve_mw: float = Field(..., ge=0)

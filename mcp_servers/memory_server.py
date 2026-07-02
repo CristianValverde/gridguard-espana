@@ -9,7 +9,7 @@ Herramientas expuestas:
   query_incidents(start, end)                      -> list[Incident] (JSON)
   get_risk_history(hours)                          -> list[RiskScore] (JSON)
 
-Las herramientas store_risk_score y store_incident se registran también
+La herramienta store_risk_score se registra también
 para que otros agentes puedan persistir sus outputs.
 """
 

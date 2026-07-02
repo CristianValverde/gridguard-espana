@@ -55,3 +55,24 @@ class TestAnomalyDetectorLiveTriggers:
         assert tools.index("get_baseline") < tools.index("get_anomaly_score"), (
             "trayectoria invalida: get_anomaly_score antes de get_baseline"
         )
+
+    _NORMAL_PROMPT = (
+        "[EVAL] Analiza este snapshot de la red electrica espanola y determina "
+        "si hay anomalias. Snapshot: "
+        + json.dumps({"demand_mw": 28000, "renewables_pct": 35.0,
+                      "balance_mw": 50, "reserve_mw": 1500})
+    )
+
+    def test_no_regulations_search_on_normal_scenario(self):
+        """Con un escenario claramente NORMAL (demanda ~28000 MW, renovables ~35%,
+        sin desviaciones), el anomaly_score debe quedar muy por debajo del umbral 0.3
+        de la instruction (prompts/anomaly_detector.md, paso 4). Sin implicacion
+        regulatoria, el agente no debe consultar la normativa."""
+        from agents.anomaly_detector import AnomalyDetectorSkill
+        from eval.agents._harness import run_agent_live
+        result = run_agent_live(AnomalyDetectorSkill.agent, self._NORMAL_PROMPT)
+        tools = [step["tool"] for step in result["trajectory"]]
+        assert "search_regulations" not in tools, (
+            "en escenario normal, sin anomalia con implicacion regulatoria "
+            "(anomaly_score <= 0.3), no debe dispararse search_regulations"
+        )
