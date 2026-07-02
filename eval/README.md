@@ -44,3 +44,19 @@ El sistema evalúa tanto **qué tools dispara** (trigger) como **el orden** en q
 ## Extensión futura
 
 Framework nativo de eval de ADK (`.evalset.json` + `agents-cli eval`, LLM-as-judge). No implementado: la suite actual es offline/determinista por diseño (shift-left Python→ML→LLM). Ver spec 2026-07-02.
+
+## Estado de la validación live (primera ejecución: 2026-07-02/03)
+
+Dos corridas completas contra LLM real. Hallazgos corregidos: whitelist del
+orchestrator bloqueaba las skills (nombres CamelCase vs runtime snake_case),
+timeout MCP de 5s insuficiente (ahora 60s), test de Markov con import obsoleto.
+
+Estado por test tras los fixes: 10 de 12 han pasado en al menos una corrida.
+`orchestrator/test_critical` y `renewables/test_load_forecast` nunca han pasado:
+la causa dominante es la tormenta de subprocesos MCP (cada test del orchestrator
+arranca ~15-20 procesos stdio simultáneos que importan torch a la vez; el import
+en frío son ~6s sin carga, pero bajo contención las llamadas superan 60s y el
+orchestrator activa su fallback "ML caído"). Los tests de subagentes individuales
+(anomaly, cross_border) muestran además no-determinismo LLM normal (~1 flip por
+corrida). Trabajo futuro: transporte MCP compartido o sesiones reutilizadas para
+eliminar la tormenta de arranque antes de endurecer estos evals.
