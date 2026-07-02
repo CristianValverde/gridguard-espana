@@ -42,3 +42,9 @@ def test_regulatory_now_connects_ml_models():
 def test_markov_server_file_gone():
     servers = Path(__file__).resolve().parents[2] / "mcp_servers"
     assert not (servers / "markov_server.py").exists()
+
+
+def test_weather_server_has_no_orphan_alerts_tool():
+    servers = Path(__file__).resolve().parents[2] / "mcp_servers"
+    src = (servers / "weather_server.py").read_text(encoding="utf-8")
+    assert "get_aemet_alerts" not in src

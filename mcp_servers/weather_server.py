@@ -2,15 +2,12 @@
 mcp_servers/weather_server.py — MCP: weather
 
 Datos meteorológicos para zonas de generación renovable.
-Primario: AEMET OpenData (token requerido).
-Fallback: Open-Meteo (gratuito, sin token) si AEMET falla o no responde.
-
-Credencial: AEMET_API_KEY (variable de entorno).
+Primario: Open-Meteo (gratuito, sin token).
 
 Herramientas expuestas:
-  get_wind_forecast(zone, hours)    -> WindForecast (JSON)
-  get_solar_radiation(zone, hours)  -> RadiationForecast (JSON)
-  get_aemet_alerts()                -> list[MeteoAlert] (JSON)
+  get_wind_forecast(zone, hours)      -> WindForecast (JSON)
+  get_solar_radiation(zone, hours)    -> RadiationForecast (JSON)
+  get_weather_forecast_24h(zones)     -> dict con previsión horaria a 24h
 
 Zonas disponibles: norte, sur, levante, interior, galicia, nordeste
 """
@@ -29,7 +26,7 @@ from typing import Any
 import requests
 from mcp.server.fastmcp import FastMCP
 
-from schemas.models import MeteoAlert, RadiationForecast, WindForecast
+from schemas.models import RadiationForecast, WindForecast
 
 mcp = FastMCP("gridguard-weather")
 
@@ -195,62 +192,6 @@ def get_solar_radiation(zone: str = "sur", hours: int = 24) -> dict:
             return {"error": f"Error obteniendo radiación para {zone}: {exc}"}
 
     return _cached(f"solar_{zone}_{hours}", build)
-
-
-@mcp.tool()
-def get_aemet_alerts() -> list[dict]:
-    """Alertas meteorológicas activas de AEMET que pueden afectar la generación renovable."""
-    def build():
-        api_key = _aemet_key()
-        if not api_key:
-            return [{"warning": "AEMET_API_KEY no definida. Sin alertas disponibles."}]
-
-        try:
-            meta_resp = requests.get(
-                f"{AEMET_BASE}/avisos_cap/ultimoelaborado/area/P",
-                params={"api_key": api_key},
-                timeout=REQUEST_TIMEOUT,
-            )
-            meta_resp.raise_for_status()
-            meta = meta_resp.json()
-
-            if meta.get("estado") != 200 or not meta.get("datos"):
-                return []
-
-            data_resp = requests.get(meta["datos"], timeout=REQUEST_TIMEOUT)
-            data_resp.raise_for_status()
-            raw_alerts = data_resp.json()
-
-            alerts: list[dict] = []
-            for alert in raw_alerts[:20]:  # limitar a 20 alertas
-                phenomenon = alert.get("evento", "UNKNOWN").upper()
-                nivel = alert.get("nivel", "YELLOW").upper()
-                if nivel not in ("YELLOW", "ORANGE", "RED"):
-                    nivel = "YELLOW"
-
-                try:
-                    model_alert = MeteoAlert(
-                        alert_id=str(alert.get("id", "unknown")),
-                        zone=alert.get("area", "desconocida"),
-                        phenomenon=phenomenon,
-                        severity=nivel,
-                        start=datetime.fromisoformat(
-                            alert.get("fechaIni", datetime.now(timezone.utc).isoformat())
-                        ),
-                        end=datetime.fromisoformat(
-                            alert.get("fechaFin", datetime.now(timezone.utc).isoformat())
-                        ),
-                        description=alert.get("descripcion", ""),
-                    )
-                    alerts.append(model_alert.model_dump(mode="json"))
-                except Exception:
-                    continue
-
-            return alerts
-        except Exception as exc:
-            return [{"error": f"Error obteniendo alertas AEMET: {exc}"}]
-
-    return _cached("aemet_alerts", build)
 
 
 # ---------------------------------------------------------------------------
