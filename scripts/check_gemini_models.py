@@ -140,7 +140,7 @@ def main() -> None:
         resolved = get_model(role)
         print(f"  model_loader.get_model('{role}') = {resolved}  ✓")
 
-    print("\nListo. Ejecuta 'python scripts/seed_knowledge_base.py' para poblar el RAG.")
+    print("\nListo. Ejecuta 'python -m scripts.kb_embed' para poblar el RAG.")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 """Smoke test de recuperación RAG del contexto de interconexiones (Task 11).
 
-Requiere ChromaDB poblado (python -m scripts.seed_knowledge_base) y acceso a
+Requiere ChromaDB poblado (python -m scripts.kb_embed) y acceso a
 embeddings Gemini → marcado integration (deseleccionado en la suite offline).
 """
 import pytest
