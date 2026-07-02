@@ -14,6 +14,8 @@ Herramientas expuestas:
   get_anomaly_score(window_json)               -> AnomalyResult (JSON)
   get_load_forecast(horizon_hours, context)    -> LoadForecast (JSON)
   get_blackout_probability(features_json)      -> BlackoutRisk (JSON)
+  get_grid_state(features)                     -> GridState (JSON)
+  get_markov_trajectory(features, horizon_hours) -> MarkovTrajectory (JSON)
   reload_models()                              -> {"ok": true, "models": [...]}
 
 Ruta de modelos: variable de entorno ML_MODELS_PATH (default: ./ml/models)
@@ -552,6 +554,48 @@ def reload_models() -> dict:
         return {"ok": True, "models": _load_status, "timestamp": datetime.now(timezone.utc).isoformat()}
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# Capa Markov (absorbida de markov_server.py — inferencia determinista, sin LLM)
+# ---------------------------------------------------------------------------
+
+from ml.incidents import S3_MAJOR, S4_BLACKOUT, STATE_LABELS  # noqa: E402
+from tools import markov_state_tracker as mst  # noqa: E402
+
+
+def _get_grid_state_impl(features: dict) -> dict:
+    state = mst.compute_state(features)
+    traj = mst.get_trajectory(state, horizon_hours=6)
+    A = mst.get_transition_matrix()
+    confidence = float(A[state].max())  # masa de la transición dominante
+    return {
+        "state": int(state),
+        "label": STATE_LABELS.get(state, "?"),
+        "confidence": confidence,
+        "trajectory_6h": [int(s) for s in traj],
+    }
+
+
+def _get_markov_trajectory_impl(features: dict, horizon_hours: int) -> dict:
+    state = mst.compute_state(features)
+    return {
+        "trajectory": [int(s) for s in mst.get_trajectory(state, horizon_hours)],
+        "prob_reach_s3": float(mst.prob_reach_severity(state, S3_MAJOR, horizon_hours)),
+        "prob_reach_s4": float(mst.prob_reach_severity(state, S4_BLACKOUT, horizon_hours)),
+    }
+
+
+@mcp.tool()
+def get_grid_state(features: dict) -> dict:
+    """Estado actual S0–S4 + trayectoria probable a 6 h desde los proxies de red."""
+    return _get_grid_state_impl(features)
+
+
+@mcp.tool()
+def get_markov_trajectory(features: dict, horizon_hours: int = 6) -> dict:
+    """Trayectoria de estado proyectada y P(alcanzar S3/S4) en el horizonte dado."""
+    return _get_markov_trajectory_impl(features, horizon_hours)
 
 
 if __name__ == "__main__":

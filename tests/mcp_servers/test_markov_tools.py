@@ -1,7 +1,7 @@
 import json
 import numpy as np
 import pytest
-from mcp_servers import markov_server as srv
+from mcp_servers import ml_models_server as srv
 
 
 @pytest.fixture(autouse=True)
@@ -27,12 +27,6 @@ def test_get_grid_state_shape():
     assert isinstance(out["state"], int)
     assert isinstance(out["confidence"], float)
     assert all(isinstance(s, int) for s in out["trajectory_6h"])
-
-
-def test_transition_probabilities_shape():
-    out = srv._get_transition_probabilities_impl()
-    assert len(out["matrix"]) == 5 and len(out["matrix"][0]) == 5
-    assert out["states"] == [0, 1, 2, 3, 4]
 
 
 def test_markov_trajectory_probs_in_range():
