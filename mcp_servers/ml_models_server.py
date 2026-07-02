@@ -88,6 +88,8 @@ def _load_all_models() -> None:
             checkpoint = torch.load(lstm_path, map_location=device, weights_only=False)
             new_models["lstm_ae"] = checkpoint.get("model")
             new_models["lstm_threshold"] = checkpoint.get("threshold", 0.5)
+            new_models["lstm_scaler"] = checkpoint.get("scaler")
+            new_models["lstm_seq_len"] = checkpoint.get("seq_len", 24)
             new_models["device"] = device
             status["lstm_ae"] = "ok"
         except Exception as exc:
@@ -155,12 +157,54 @@ _load_all_models()
 # Herramientas MCP
 # ---------------------------------------------------------------------------
 
+def _scale_frame(feats, scaler) -> "tuple":
+    """Selecciona las features del scaler del bundle y aplica su z-score.
+
+    Devuelve (X_norm ndarray, nombres). Misma transformación que en train
+    (ml.train.train_anomaly.load_features) → paridad garantizada."""
+    import numpy as np
+
+    names = [f for f in scaler["features"] if f in feats.columns]
+    X = feats[names].fillna(0.0).values.astype(np.float32)
+    mean = np.array([scaler["mean"].get(f, 0.0) for f in names], dtype=np.float32)
+    std = np.array([scaler["std"].get(f, 1.0) for f in names], dtype=np.float32)
+    return (X - mean) / std, names
+
+
+def _legacy_raw_matrix(window: list[dict]) -> "tuple":
+    """Matriz ad-hoc de 9 columnas raw — SOLO para artefactos antiguos sin scaler."""
+    import numpy as np
+
+    feature_names = [
+        "demand_mw", "reserve_mw",
+        "nuclear_mw", "hydro_mw", "wind_mw", "solar_pv_mw",
+        "solar_thermal_mw", "gas_cc_mw", "coal_mw",
+    ]
+    rows = []
+    for snap in window:
+        gen = snap.get("generation_by_tech", {})
+        rows.append([
+            snap.get("demand_mw", 0) or 0,
+            snap.get("reserve_mw", 0) or 0,
+            gen.get("nuclear_mw", 0) or 0,
+            gen.get("hydro_mw", 0) or 0,
+            gen.get("wind_mw", 0) or 0,
+            gen.get("solar_pv_mw", 0) or 0,
+            gen.get("solar_thermal_mw", 0) or 0,
+            gen.get("gas_cc_mw", 0) or 0,
+            gen.get("coal_mw", 0) or 0,
+        ])
+    return np.array(rows, dtype=float), feature_names
+
+
 @mcp.tool()
 def get_anomaly_score(window_json: str) -> dict:
-    """Calcula anomaly score para una ventana de snapshots de red (6h típico).
+    """Calcula anomaly score para una ventana de snapshots de red (168h ideal).
 
-    Usa Isolation Forest (siempre disponible) o LSTM Autoencoder si está entrenado.
-    Devuelve score [0-1] y las features más anómalas.
+    IF y LSTM son señales DISTINTAS que el ensemble fusiona. Con bundles nuevos
+    (con scaler), la ventana pasa por ml.serve_features → ml.features y se escala
+    con el scaler de entrenamiento (paridad train/serve). Artefactos antiguos sin
+    scaler degradan a la matriz raw legacy.
 
     Args:
         window_json: JSON array de GridSnapshot (últimas N horas)
@@ -168,42 +212,31 @@ def get_anomaly_score(window_json: str) -> dict:
     import numpy as np
 
     with _lock:
-        iforest = _models.get("iforest")
+        iforest_obj = _models.get("iforest")
         lstm = _models.get("lstm_ae")
         lstm_threshold = _models.get("lstm_threshold", 0.5)
+        lstm_scaler = _models.get("lstm_scaler")
+        lstm_seq_len = _models.get("lstm_seq_len", 24)
 
     try:
         window = json.loads(window_json)
         if not window:
             return {"error": "Ventana vacía"}
 
-        # Construir matriz de features a partir de los snapshots
-        feature_names = [
-            "demand_mw", "reserve_mw",
-            "nuclear_mw", "hydro_mw", "wind_mw", "solar_pv_mw",
-            "solar_thermal_mw", "gas_cc_mw", "coal_mw",
-        ]
+        # Bundle nuevo {"model", "scaler", ...} o artefacto antiguo (modelo pelado)
+        if isinstance(iforest_obj, dict):
+            iforest, if_scaler = iforest_obj.get("model"), iforest_obj.get("scaler")
+        else:
+            iforest, if_scaler = iforest_obj, None
 
-        rows = []
-        for snap in window:
-            gen = snap.get("generation_by_tech", {})
-            row = [
-                snap.get("demand_mw", 0) or 0,
-                snap.get("reserve_mw", 0) or 0,
-                gen.get("nuclear_mw", 0) or 0,
-                gen.get("hydro_mw", 0) or 0,
-                gen.get("wind_mw", 0) or 0,
-                gen.get("solar_pv_mw", 0) or 0,
-                gen.get("solar_thermal_mw", 0) or 0,
-                gen.get("gas_cc_mw", 0) or 0,
-                gen.get("coal_mw", 0) or 0,
-            ]
-            rows.append(row)
+        # Ventana de features con paridad train/serve (solo si algún modelo la usa)
+        feats = None
+        if (iforest is not None and if_scaler) or (lstm is not None and lstm_scaler):
+            import pandas as pd
+            from ml.serve_features import serve_feature_frame
+            now = pd.Timestamp(window[-1]["timestamp"])
+            feats = serve_feature_frame(window, now)
 
-        X = np.array(rows, dtype=float)
-
-        # IF y LSTM se calculan como señales DISTINTAS (ya no son alternativos):
-        # el ensemble (Task 8) las fusiona. Ambos corren si están disponibles.
         if_score = 0.0
         lstm_recon_norm = 0.0
         is_anomaly = False
@@ -211,33 +244,41 @@ def get_anomaly_score(window_json: str) -> dict:
         feature_scores: dict = {}
         model_types: list = []
 
-        # ── Isolation Forest (anomalía puntual) ─────────────────────────────
+        # ── Isolation Forest (anomalía puntual, última hora) ─────────────────
         if iforest is not None:
-            scores_raw = -iforest.score_samples(X)  # más alto = más anómalo
-            if_score = float(np.clip(
-                (scores_raw.mean() - (-0.5)) / (0.5 - (-0.5)), 0, 1
-            ))
-            is_anomaly = is_anomaly or bool(
-                iforest.predict(X[-1:] if len(X) > 0 else X)[0] == -1
-            )
+            if if_scaler:
+                X_if, if_names = _scale_frame(feats, if_scaler)
+            else:
+                X_if, if_names = _legacy_raw_matrix(window)
+            scores_raw = -iforest.score_samples(X_if[-1:])  # más alto = más anómalo
+            if_score = float(np.clip(scores_raw.mean() + 0.5, 0, 1))
+            is_anomaly = is_anomaly or bool(iforest.predict(X_if[-1:])[0] == -1)
             model_types.append("isolation_forest")
-            last = X[-1]
-            mean = X.mean(axis=0)
-            std = X.std(axis=0) + 1e-8
+            last = X_if[-1]
+            mean = X_if.mean(axis=0)
+            std = X_if.std(axis=0) + 1e-8
             deviations = np.abs((last - mean) / std)
             top_idx = deviations.argsort()[-3:][::-1]
-            top_features = [feature_names[i] for i in top_idx if i < len(feature_names)]
+            top_features = [if_names[i] for i in top_idx if i < len(if_names)]
             feature_scores = {
-                feature_names[i]: round(float(deviations[i]), 3)
-                for i in range(len(feature_names))
+                if_names[i]: round(float(deviations[i]), 3)
+                for i in range(len(if_names))
             }
 
-        # ── LSTM Autoencoder (reconstrucción temporal) ──────────────────────
+        # ── LSTM Autoencoder (reconstrucción temporal, últimas seq_len horas) ─
         if lstm is not None:
             try:
                 import torch
                 device = _models.get("device", "cpu")
-                X_tensor = torch.tensor(X, dtype=torch.float32).unsqueeze(0).to(device)
+                if lstm_scaler:
+                    X_seq, _ = _scale_frame(feats, lstm_scaler)
+                    if len(X_seq) < lstm_seq_len:  # cold-start: pad repitiendo la 1ª fila
+                        pad = np.tile(X_seq[0], (lstm_seq_len - len(X_seq), 1))
+                        X_seq = np.vstack([pad, X_seq])
+                    X_seq = X_seq[-lstm_seq_len:]
+                else:
+                    X_seq, _ = _legacy_raw_matrix(window)
+                X_tensor = torch.tensor(X_seq, dtype=torch.float32).unsqueeze(0).to(device)
                 lstm.eval()
                 with torch.no_grad():
                     reconstructed = lstm(X_tensor)
@@ -285,22 +326,24 @@ def get_ensemble_score(features_json: str, window_json: str) -> dict:
 
     Args:
         features_json: JSON con la fila de features del clasificador (FEATURE_COLS,
-            idealmente de ml.serve_features.serve_feature_row para paridad train/serve).
+            de ml.serve_features.serve_feature_row para paridad train/serve).
         window_json:   JSON array de snapshots (secuencia para IF/LSTM).
 
-    NOTA de paridad: la construcción del vector de features de get_anomaly_score y
-    get_blackout_probability debe alinearse con ml.serve_features durante la
-    integración [PADRE] (Task 10), ya que los modelos re-entrenados usan
-    ml.features.FEATURE_COLS + el scaler del bundle.
+    Paridad train/serve: con bundles nuevos, get_anomaly_score y
+    get_blackout_probability construyen sus vectores vía ml.serve_features +
+    scaler/feature_cols del bundle (cerrado en Task 10).
     """
     from tools.ensemble_scorer import fuse
 
     anomaly = get_anomaly_score(window_json)
     clf = get_blackout_probability(features_json)
+    # BlackoutRisk expone "probability"; los stubs/tests históricos usan
+    # "blackout_probability" — aceptar ambos.
+    clf_proba = clf.get("blackout_probability", clf.get("probability", 0.0))
     return fuse(
         lstm_recon_norm=float(anomaly.get("lstm_recon_norm", 0.0) or 0.0),
         if_score=float(anomaly.get("if_score", 0.0) or 0.0),
-        clf_proba=float(clf.get("blackout_probability", 0.0) or 0.0),
+        clf_proba=float(clf_proba or 0.0),
     )
 
 
@@ -422,23 +465,17 @@ def get_blackout_probability(features_json: str) -> dict:
     """Calcula P(blackout en próxima hora) usando el clasificador calibrado.
 
     Args:
-        features_json: JSON con StabilityProxies + LoadForecast summary:
-            {
-              "balance_mw": float,
-              "reserve_activated_pct": float,
-              "interchange_delta_mw": float,
-              "renewables_pct": float,
-              "composite_pressure": float,
-              "ml_forecast_mw": float,     # demanda prevista próxima hora
-              "anomaly_score": float        # del get_anomaly_score anterior
-            }
+        features_json: JSON con la fila de features. Con bundle nuevo (con
+            feature_cols de ml.features), pasar la fila de get_serve_features /
+            ml.serve_features.serve_feature_row (paridad train/serve). Con
+            artefacto antiguo, el dict legacy de 7 proxies.
     """
     import numpy as np
 
     with _lock:
-        model = _models.get("xgb_blackout")
+        blackout_obj = _models.get("xgb_blackout")
 
-    if model is None:
+    if blackout_obj is None:
         return {
             "error": (
                 "Modelo blackout_classifier no entrenado. Ejecutar: "
@@ -449,15 +486,31 @@ def get_blackout_probability(features_json: str) -> dict:
     try:
         feats = json.loads(features_json)
 
-        X = np.array([[
-            feats.get("balance_mw", 0),
-            feats.get("reserve_activated_pct", 0),
-            feats.get("interchange_delta_mw", 0),
-            feats.get("renewables_pct", 0),
-            feats.get("composite_pressure", 0),
-            feats.get("ml_forecast_mw", 30000),
-            feats.get("anomaly_score", 0),
-        ]])
+        if isinstance(blackout_obj, dict):
+            model = blackout_obj.get("model")
+            feature_names = blackout_obj.get("feature_cols") or []
+        else:
+            model, feature_names = blackout_obj, []
+
+        if feature_names:
+            # Bundle nuevo: vector en el orden exacto de entrenamiento
+            X = np.array([[float(feats.get(f, 0.0) or 0.0) for f in feature_names]],
+                         dtype=np.float32)
+        else:
+            # Artefacto antiguo: vector legacy de 7 proxies
+            feature_names = [
+                "balance_mw", "reserve_activated_pct", "interchange_delta_mw",
+                "renewables_pct", "composite_pressure", "ml_forecast_mw", "anomaly_score",
+            ]
+            X = np.array([[
+                feats.get("balance_mw", 0),
+                feats.get("reserve_activated_pct", 0),
+                feats.get("interchange_delta_mw", 0),
+                feats.get("renewables_pct", 0),
+                feats.get("composite_pressure", 0),
+                feats.get("ml_forecast_mw", 30000),
+                feats.get("anomaly_score", 0),
+            ]])
 
         proba = float(model.predict_proba(X)[0][1])  # P(clase=1 → blackout)
 
@@ -470,11 +523,6 @@ def get_blackout_probability(features_json: str) -> dict:
         else:
             level = "CRITICAL"
 
-        # Feature importance del modelo XGBoost
-        feature_names = [
-            "balance_mw", "reserve_activated_pct", "interchange_delta_mw",
-            "renewables_pct", "composite_pressure", "ml_forecast_mw", "anomaly_score",
-        ]
         importance = {}
         if hasattr(model, "feature_importances_"):
             for name, imp in zip(feature_names, model.feature_importances_):

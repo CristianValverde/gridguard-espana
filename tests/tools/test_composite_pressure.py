@@ -166,21 +166,17 @@ def _make_snapshot(balance_mw, reserve_pct, interchange_delta, renewables_pct, d
     }, 0.0  # prev_net_flow = 0
 
 
-def test_validate_models_snapshot_to_row_uses_shared_function():
-    """_snapshot_to_row debe producir el mismo composite_pressure que la función canónica."""
-    from ml.train.validate_models import _snapshot_to_row
+def test_validate_models_uses_serve_features_pipeline():
+    """La validación del golden usa la MISMA canalización que serve
+    (serve_feature_row/serve_feature_frame) — garantía de paridad más fuerte
+    que la antigua _snapshot_to_row (eliminada en Task 10)."""
+    import inspect
 
-    demand = 25000.0
-    balance_mw = 1500.0
-    reserve_pct = 50.0
-    interchange_delta = 1000.0
-    renewables_pct = 40.0
+    import ml.train.validate_models as VM
 
-    snap, prev_net_flow = _make_snapshot(balance_mw, reserve_pct, interchange_delta, renewables_pct, demand)
-    row, _ = _snapshot_to_row(snap, prev_net_flow=prev_net_flow)
-
-    expected = compute_composite_pressure_score(balance_mw, reserve_pct, interchange_delta, renewables_pct)
-    assert row["composite_pressure"] == pytest.approx(expected, abs=1e-6)
+    assert not hasattr(VM, "_snapshot_to_row"), "camino ad-hoc reintroducido"
+    src = inspect.getsource(VM)
+    assert "serve_feature_row" in src and "serve_feature_frame" in src
 
 
 # ---------------------------------------------------------------------------

@@ -75,9 +75,16 @@ def assemble_window(snapshots: list[dict], now: pd.Timestamp) -> pd.DataFrame:
     return df
 
 
+def serve_feature_frame(snapshots: list[dict], now: pd.Timestamp) -> pd.DataFrame:
+    """assemble_window → build_features → DataFrame completo con FEATURE_COLS.
+
+    Para modelos de secuencia/ventana (LSTM AE, Isolation Forest): misma
+    canalización que serve_feature_row pero devolviendo todas las filas."""
+    df_raw = assemble_window(snapshots, now)
+    return F.build_features(df_raw)[F.FEATURE_COLS]
+
+
 def serve_feature_row(snapshots: list[dict], now: pd.Timestamp) -> dict:
     """assemble_window → build_features → última fila → dict con FEATURE_COLS."""
-    df_raw = assemble_window(snapshots, now)
-    feats = F.build_features(df_raw)
-    last = feats.iloc[-1]
+    last = serve_feature_frame(snapshots, now).iloc[-1]
     return {c: float(last[c]) for c in F.FEATURE_COLS}

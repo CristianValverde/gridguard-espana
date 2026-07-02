@@ -90,6 +90,18 @@ def test_db_rows_to_snapshots_handles_null_json():
     assert snaps[0]["interchange_flows"] == {}
 
 
+def test_serve_feature_frame_last_row_matches_serve_row():
+    df = _full_dataset(400)
+    now = df.index[300]
+    snaps = _df_to_snapshots(df.loc[:now])
+    frame = SF.serve_feature_frame(snaps, now)
+    row = SF.serve_feature_row(snaps, now)
+    assert list(frame.columns) == F.FEATURE_COLS
+    assert len(frame) == F.ROLLING_WINDOW_H + 1
+    for col in F.FEATURE_COLS:
+        assert abs(float(frame.iloc[-1][col]) - row[col]) < 1e-12
+
+
 def test_assemble_window_is_hourly_and_bounded():
     df = _full_dataset(400)
     now = df.index[300]
