@@ -1,0 +1,43 @@
+# Cola de temas del agente investigador (agents/ingest/run_researcher.py).
+# status: pending → generated (el .txt draft existe; su estado vive en manifest.json)
+- id: po_operacion_ree
+  collection: regulations
+  title: >
+    Procedimientos de Operación de REE relevantes para estabilidad: PO 1.1/1.2
+    (funcionamiento y seguridad), PO 3.1 (programación), PO 7.1-7.4 (reservas y
+    regulación), PO 10.1 (medidas). Qué regula cada uno y umbrales operativos clave.
+  status: pending
+- id: entsoe_emergency_restoration
+  collection: regulations
+  title: >
+    Network Code de ENTSO-E on Emergency and Restoration (NC ER) y SO GL:
+    estados del sistema (normal/alerta/emergencia/blackout/restauración),
+    obligaciones de los TSO y coordinación transfronteriza.
+  status: pending
+- id: procedimientos_deslastre_reposicion
+  collection: procedures
+  title: >
+    Deslastre de cargas por subfrecuencia en España (escalones, umbrales Hz) y
+    plan de reposición del servicio (arranque autógeno, islas eléctricas,
+    resincronización con Europa).
+  status: pending
+- id: post_mortem_apagon_2025
+  collection: incidents
+  title: >
+    Post-mortem del apagón ibérico del 28 de abril de 2025: cronología
+    minuto a minuto, causas (oscilaciones, baja inercia sincrónica, cascada),
+    papel de las interconexiones y lecciones aprendidas del informe de REE.
+  status: pending
+- id: separacion_iberica_2006
+  collection: incidents
+  title: >
+    Incidente europeo del 4 de noviembre de 2006: separación del sistema UCTE
+    en tres islas, efecto en la península ibérica, y comparación con 2025.
+  status: pending
+- id: acuerdos_intercambio_fr_pt_ma
+  collection: procedures
+  title: >
+    Acuerdos y mecanismos de intercambio de España con Francia (BALIT, subastas
+    INELFE), Portugal (MIBEL, coupling intradiario) y Marruecos (contrato ONEE):
+    cómo se programan y activan los intercambios de emergencia.
+  status: pending
