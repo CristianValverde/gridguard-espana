@@ -5,7 +5,6 @@ Persistencia local con SQLite. Almacena snapshots, risk scores e incidentes.
 Ruta de la BD: variable de entorno DB_PATH (default: ./data/gridguard.db).
 
 Herramientas expuestas:
-  store_snapshot(snapshot_json)                    -> {"ok": true}
   get_baseline(window_hours)                       -> Baseline (JSON)
   query_incidents(start, end)                      -> list[Incident] (JSON)
   get_risk_history(hours)                          -> list[RiskScore] (JSON)
@@ -109,34 +108,6 @@ def _init_db() -> None:
 # ---------------------------------------------------------------------------
 # Herramientas MCP
 # ---------------------------------------------------------------------------
-
-@mcp.tool()
-def store_snapshot(snapshot_json: str) -> dict:
-    """Persiste un GridSnapshot en la BD local.
-
-    Args:
-        snapshot_json: GridSnapshot serializado como JSON string
-    """
-    try:
-        data = json.loads(snapshot_json)
-        with _conn() as con:
-            con.execute(
-                """INSERT INTO snapshots
-                   (timestamp, region, demand_mw, generation_json, interchange_json, reserve_mw)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
-                (
-                    data.get("timestamp"),
-                    data.get("region", "peninsular"),
-                    data.get("demand_mw"),
-                    json.dumps(data.get("generation_by_tech", {})),
-                    json.dumps(data.get("interchange_flows", {})),
-                    data.get("reserve_mw"),
-                ),
-            )
-        return {"ok": True}
-    except Exception as exc:
-        return {"ok": False, "error": str(exc)}
-
 
 @mcp.tool()
 def store_risk_score(risk_score_json: str) -> dict:

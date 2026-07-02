@@ -26,7 +26,7 @@ Responsabilidades:
        P in [0.10, 0.30)   -> AnomalyDetectorSkill (+ CrossBorder assessment si S1)
        P in [0.30, 0.60)   -> Anomaly + Renewables + RegulatoryCompliance + CrossBorder assessment
        P >= 0.60 (CRITICAL) -> todo anterior + CrossBorderAgent + ReportAgent
-  5. Persistencia en SQLite (store_snapshot, store_risk_score)
+  5. Persistencia del risk score en SQLite (store_risk_score)
   6. Emision de alertas formateadas
 
 Sub-agents: report_agent, cross_border_agent
@@ -83,7 +83,7 @@ PASO 1 -- Adquisicion de datos (OBLIGATORIO en cada ciclo):
       fusiona LSTM (load-bearing) + Isolation Forest + clasificador usando las features
       de serve (paridad train/serve, ventana 168h de la DB). Usa su `blackout_probability`.
   1f. Llama a `risk_scorer` con el snapshot y el ml_score de 1e (el blackout_probability).
-  1g. Llama a `store_snapshot` y `store_risk_score` para persistir los datos.
+  1g. Llama a `store_risk_score` para persistir el risk score. (Los snapshots los persiste el pipeline incremental_load, NO este agente.)
 
 PASO 2 -- Escalacion segun P(blackout_1h) Y estado de Markov:
 

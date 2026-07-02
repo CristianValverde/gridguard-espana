@@ -23,14 +23,17 @@ _DEMAND_INDICATORS = {
     "demand_real_mw": 1293,
     "demand_programmed_mw": 10034,
 }
+# IDs verificados contra producción (ml/data/download_esios.py, junio 2026).
+# Paridad vigilada por tests/tools/test_ree_poller_ids.py.
 _GEN_INDICATORS = {
-    "nuclear_mw": 460, "hydro_mw": 1163, "wind_mw": 551,
-    "solar_thermal_mw": 1160, "solar_pv_mw": 1161,
-    "gas_cc_mw": 545, "coal_mw": 542, "cogeneration_mw": 544,
+    "nuclear_mw": 1153, "hydro_mw": 10035, "wind_mw": 10037,
+    "solar_thermal_mw": 1162, "solar_pv_mw": 1161,
+    "gas_cc_mw": 1156, "coal_mw": 10036, "cogeneration_mw": 10039,
 }
 _INTERCHANGE_INDICATORS = {
-    "es_fr_mw": 10209, "es_pt_mw": 10210, "es_ma_mw": 10211,
+    "es_fr_mw": 10045, "es_pt_mw": 10044, "es_ma_mw": 10046,
 }
+# sin ID verificado alternativo — mantener
 _RESERVE_INDICATORS = {
     "secondary_reserve_mw": 785,
 }
