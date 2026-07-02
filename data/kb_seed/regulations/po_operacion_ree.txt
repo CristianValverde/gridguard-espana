@@ -1,0 +1,76 @@
+PROCEDIMIENTOS DE OPERACIÓN DE REE PARA LA ESTABILIDAD DEL SISTEMA
+
+INTRODUCCIÓN
+
+La operación segura y estable del sistema eléctrico peninsular español se fundamenta en un conjunto de reglas y directrices técnicas conocidas como Procedimientos de Operación (PO). Red Eléctrica de España (REE), como Operador del Sistema (OS), es responsable de su aplicación y desarrollo, bajo la aprobación de la autoridad competente. Estos documentos regulan desde la programación diaria de la energía hasta la actuación en estados de emergencia, garantizando el equilibrio constante entre la generación y la demanda y la integridad de la red frente a contingencias. Este documento detalla los procedimientos más relevantes para la estabilidad del sistema, describiendo su función y los umbrales operativos clave que rigen la seguridad del suministro.
+
+PO 1.1 Y PO 1.2: CRITERIOS DE FUNCIONAMIENTO Y SEGURIDAD
+
+El Procedimiento de Operación 1.1, "Criterios de funcionamiento y seguridad para la operación del sistema eléctrico", es la piedra angular de la seguridad del sistema. Su objetivo principal es establecer los criterios que deben aplicarse tanto en la planificación de la operación como en la operación en tiempo real para garantizar la continuidad y calidad del suministro.
+
+El criterio fundamental que establece el PO 1.1 es el criterio de seguridad "N-1". Este principio exige que el sistema eléctrico debe ser capaz de soportar la pérdida súbita de cualquier elemento individual (una línea de transporte, un transformador o un grupo de generación) sin que se produzcan cortes de suministro a los consumidores, sobrecargas en cascada en otros elementos de la red o una desviación inadmisible de los parámetros operativos como la tensión o la frecuencia. La operación en tiempo real y todos los análisis de seguridad previos a la programación se realizan para asegurar el cumplimiento permanente de este criterio.
+
+El PO 1.1 también define los diferentes estados operativos del sistema: normal, alerta, emergencia, y reposición.
+- Estado Normal: Todos los equipos operan dentro de sus límites y se cumple el criterio N-1.
+- Estado de Alerta: Se cumple el criterio N-1, pero con márgenes reducidos. Existe un riesgo incrementado de que una contingencia pueda llevar al sistema a un estado de emergencia. El OS puede adoptar medidas preventivas.
+- Estado de Emergencia: No se cumple el criterio N-1 o ya se ha producido una violación de los límites operativos (sobrecargas, caídas de tensión, etc.). En este estado se pueden aplicar medidas excepcionales, incluyendo el deslastre de cargas.
+
+En cuanto a los parámetros de control, la frecuencia del sistema peninsular, al estar interconectado con la red síncrona de Europa Continental, se rige por los estándares de la Red Europea de Gestores de Redes de Transporte de Electricidad (ENTSO-E). La frecuencia nominal es de 50 Hz. Las desviaciones significativas activan diferentes mecanismos de control. Los límites de tensión, por su parte, se definen en procedimientos específicos (como el PO 1.3) y varían según el nivel de voltaje de la red (p. ej., 400 kV o 220 kV), pero deben mantenerse dentro de un rango estricto para evitar daños en los equipos y garantizar la estabilidad.
+
+El PO 1.2, "Establecimiento de los niveles admisibles de carga en la red", complementa al PO 1.1 definiendo los límites térmicos (capacidad máxima) que pueden soportar las líneas y transformadores de la red de transporte en diferentes condiciones estacionales (verano/invierno).
+
+PO 3.1: PROCESO DE PROGRAMACIÓN
+
+El Procedimiento de Operación 3.1, "Proceso de programación", estructura la operativa del mercado mayorista de electricidad y la gestión técnica del sistema. Su función es establecer la secuencia y los horarios para casar la oferta de los generadores con la demanda prevista, resultando en un programa de generación que sea a la vez económico y técnicamente factible.
+
+El proceso se desarrolla en varias fases sucesivas:
+1.  Programa Diario Base de Funcionamiento (PDBF): Es el resultado de la casación del mercado diario, gestionado por el Operador del Mercado (OMIE). Se establece un programa de generación para cada hora del día siguiente basado en un criterio puramente económico, sin considerar las limitaciones físicas de la red de transporte.
+2.  Análisis de Restricciones Técnicas: REE analiza el PDBF para identificar posibles violaciones del criterio N-1, como sobrecargas en las interconexiones o en líneas internas.
+3.  Programa Diario Viable Provisional (PDVP): REE resuelve las restricciones técnicas identificadas modificando el PDBF. Esto se hace mediante redespachos, es decir, asignando la producción a otros generadores con un coste superior pero cuya ubicación en la red permite solventar la congestión. El objetivo es obtener un programa seguro y viable.
+4.  Mercados Intradiarios: A lo largo del día, se celebran varias sesiones de mercado intradiario que permiten a los agentes ajustar sus programas para corregir desviaciones en sus previsiones de generación o consumo. Tras cada sesión, REE vuelve a analizar la seguridad del programa resultante.
+5.  Programas Horarios Finales (PHF): Es el programa final resultante tras la última sesión del mercado intradiario.
+6.  Programa Operativo (P48): Es el programa gestionado en tiempo real por REE, que incluye los ajustes de última hora mediante los servicios de balance para corregir los desvíos instantáneos entre generación y demanda.
+
+PO 7.1, 7.2, 7.3 Y 7.4: RESERVAS Y SERVICIOS DE AJUSTE
+
+Estos procedimientos regulan los servicios de ajuste, herramientas esenciales que REE utiliza para mantener el equilibrio instantáneo entre generación y demanda y para controlar la frecuencia y la tensión del sistema.
+
+PO 7.1 - Servicio de Regulación Primaria (FCR): Es la primera y más rápida respuesta ante un desvío de frecuencia. Es un servicio automático y obligatorio que prestan los grupos de generación. Ante una caída de frecuencia, los reguladores de velocidad de las turbinas actúan de forma autónoma para inyectar más potencia a la red. La activación es casi instantánea, debiendo entregar el 50% de la reserva en 15 segundos y el 100% en 30 segundos. La reserva de regulación primaria total requerida para el sistema peninsular español es asignada anualmente por ENTSO-E en función del tamaño relativo del sistema; el valor concreto de cada año se publica en la nota informativa de requerimientos de reserva de REE.
+
+PO 7.2 - Servicio de Regulación Secundaria (aFRR): Este servicio, de activación también automática, tiene un doble objetivo: restaurar la frecuencia a su valor nominal de 50 Hz y llevar a cero el saldo de intercambios programados con Francia. Actúa en un horizonte temporal de segundos hasta 15 minutos. A diferencia de la primaria, la regulación secundaria es un servicio remunerado que se adquiere en un mercado específico. REE establece unos requisitos mínimos de reserva a mantener, que son de 500 MW de capacidad a subir y 400 MW a bajar.
+
+PO 7.3 - Servicio de Regulación Terciaria (mFRR): Es una reserva de activación manual por parte de REE para liberar la reserva secundaria utilizada y para corregir desvíos previsibles de mayor magnitud. Su tiempo de activación completo debe ser inferior a 15 minutos y la potencia asignada debe poder mantenerse durante al menos dos horas. La reserva terciaria mínima a subir se dimensiona para cubrir la pérdida del mayor grupo generador del sistema más un 2% de la demanda prevista.
+
+PO 7.4 - Servicio de Control de Tensión: Este procedimiento establece la obligación de las instalaciones de generación de contribuir al control de la tensión de la red mediante la inyección o absorción de potencia reactiva. Un control de tensión adecuado es vital para la estabilidad del sistema, ya que tanto las subtensiones como las sobretensiones pueden provocar disparos de líneas y centrales, y en casos extremos, colapsos de tensión. El PO 7.4 define las capacidades obligatorias y establece mecanismos de mercado para la provisión de capacidad adicional.
+
+PO 10.1 Y MEDIDAS EXCEPCIONALES (PO 6.1)
+
+El Procedimiento de Operación 10.1, "Condiciones de instalación de los puntos de medida", no regula medidas operativas excepcionales, sino los requisitos técnicos que deben cumplir los equipos de medida (contadores, transformadores de medida, etc.) en los puntos frontera entre agentes. La precisión de estas medidas es fundamental para la correcta liquidación de la energía en el mercado y la supervisión del sistema.
+
+Las medidas operativas excepcionales para situaciones de riesgo se describen en el Procedimiento de Operación 6.1, "Medidas de operación para garantizar la cobertura de la demanda en situaciones de alerta y emergencia". Este PO faculta a REE para adoptar una serie de acciones graduadas cuando los mecanismos de mercado y los servicios de ajuste habituales no son suficientes para garantizar la seguridad del suministro. Las medidas incluyen:
+- Uso de servicios de respuesta de la demanda (interrumpibilidad).
+- Reducciones de tensión controladas en la red de distribución.
+- Deslastre manual y selectivo de cargas (cortes de suministro controlados).
+
+La medida más drástica es el deslastre automático de cargas por subfrecuencia, un automatismo de última defensa para evitar un colapso total del sistema (apagón). Está regulado en el PO 11.2, "Criterios de instalación y funcionamiento de los automatismos". Para el sistema peninsular, el plan establece varios escalones de actuación:
+- 49.5 Hz: Desconexión del 50% de la demanda de bombeo.
+- 49.3 Hz: Desconexión del 50% restante de la demanda de bombeo.
+- 49.0 Hz: Desconexión del 15% de la demanda de consumo.
+- 48.7 Hz: Desconexión de un 15% adicional de la demanda de consumo.
+
+Estos automatismos permiten estabilizar la frecuencia en milisegundos tras la pérdida súbita de una gran cantidad de generación, sacrificando una parte del suministro para salvar la integridad del resto del sistema.
+
+FUENTES
+- Red Eléctrica de España (ree.es), sección "Marco Regulatorio - Procedimientos de Operación".
+- Boletín Oficial del Estado (boe.es), Resoluciones de la Secretaría de Estado de Energía y de la CNMC por las que se aprueban y modifican los Procedimientos de Operación.
+- ENTSO-E (entsoe.eu), "System Operation Guideline" y publicaciones sobre requisitos de reserva.
+- Resolución de 24 de junio de 1999, de la Secretaría de Estado de Industria y Energía, por la que se aprueba el P.O. 11.2 (BOE-A-1999-14770).
+- Resolución de 13 de julio de 2006, de la Secretaría General de Energía, por la que se aprueba el P.O. 1.5 (BOE-A-2006-13170).
+- Resolución de 25 de abril de 2024, de la CNMC, por la que se modifican las condiciones relativas al balance y diversos PO (BOE-A-2024-11535).
+- Nota informativa de REE sobre requerimientos de reserva de regulación primaria.
+- Información pública de REE sobre capacidades de interconexión, por corredor:
+  · España-Francia: capacidad comercial de 2800 MW; ampliación prevista con el
+    proyecto del Golfo de Bizkaia hasta una capacidad de 5000 MW.
+  · España-Portugal: capacidad de 3000 MW (MIBEL), en proceso de ampliación.
+  · España-Marruecos: capacidad instalada de 1400 MW; en sentido comercial,
+    900 MW España→Marruecos y 600 MW Marruecos→España (cable AC submarino).

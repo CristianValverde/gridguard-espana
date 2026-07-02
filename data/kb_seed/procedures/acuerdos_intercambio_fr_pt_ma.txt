@@ -1,0 +1,63 @@
+INTERCAMBIOS INTERNACIONALES DE ELECTRICIDAD Y ASISTENCIA DE EMERGENCIA
+
+INTRODUCCIÓN
+
+El sistema eléctrico peninsular español opera de forma síncrona con la red europea continental y mantiene una interconexión asíncrona con Marruecos. Estas conexiones internacionales son pilares fundamentales para la seguridad de suministro, la optimización de los recursos de generación y la integración de energía renovable. Gestionadas por Red Eléctrica de España (REE) en coordinación con sus homólogos —RTE en Francia, REN en Portugal y ONEE en Marruecos—, las interconexiones permiten tanto los intercambios comerciales programados a través de los mercados de electricidad como la prestación de asistencia mutua en situaciones de emergencia. Los mecanismos para gestionar estos flujos varían según la frontera, abarcando desde mercados acoplados y subastas explícitas de capacidad hasta contratos bilaterales. En estados operativos de emergencia, estos enlaces se convierten en herramientas críticas para evitar o mitigar el impacto de incidentes graves en la red.
+
+INTERCONEXIÓN CON FRANCIA (RTE)
+
+La frontera con Francia es la principal vía de conexión del sistema eléctrico ibérico con el resto de Europa. La capacidad de intercambio canónica de esta interconexión es de 2800 MW. Existe un proyecto estratégico en curso, la interconexión submarina por el Golfo de Vizcaya, que aumentará esta capacidad hasta los 5000 MW.
+
+MECANISMOS DE MERCADO: SUBASTAS DE CAPACIDAD
+La asignación de la capacidad de intercambio comercial entre España y Francia se realiza mediante subastas explícitas gestionadas en la plataforma europea JAO (Joint Allocation Office). Este sistema permite a los agentes del mercado adquirir derechos de uso de la capacidad de interconexión para diferentes horizontes temporales:
+- Anual: Se subastan derechos físicos de capacidad para todo el año siguiente. Para 2026, se asignaron 819 MW en sentido Francia-España y 680 MW en sentido España-Francia.
+- Mensual: Subastas para el mes siguiente.
+- Diario: La capacidad remanente se subasta para cada hora del día siguiente.
+- Intradiario: Se realizan tres subastas intradiarias para ajustar las posiciones de los agentes más cerca del tiempo real.
+
+Los ingresos obtenidos por estas subastas, conocidos como rentas de congestión, se reparten al 50% entre los operadores de ambos sistemas, REE y RTE, y se destinan a la financiación de nuevas interconexiones o a la reducción de los costes regulados del sistema.
+
+ACUERDOS DE BALANCE Y ASISTENCIA
+Históricamente, los intercambios de energía de balance para corregir desvíos entre generación y consumo se gestionaban a través de acuerdos bilaterales. Uno de estos mecanismos fue la plataforma BALIT, un acuerdo entre REE, RTE y REN (Portugal) para el intercambio transfronterizo de reservas de regulación. Sin embargo, en el marco de la integración de los mercados de balance europeos, la plataforma BALIT fue sustituida a partir de marzo de 2020 por las nuevas plataformas europeas para el intercambio de reservas de sustitución (Replacement Reserves), como la plataforma LIBRA.
+
+ACTIVACIÓN DE AYUDA DE EMERGENCIA
+La asistencia mutua en caso de emergencia entre los operadores de sistemas de transporte (TSO) de la Unión Europea está regulada por el Código de Red de Emergencia y Restablecimiento (NC ER), correspondiente al Reglamento (UE) 2017/2196 de la Comisión. Este marco normativo obliga a todos los TSO, incluyendo a REE y RTE, a prestarse asistencia mutua para prevenir la propagación de un incidente o para restablecer el servicio tras un apagón.
+
+La activación de la ayuda de emergencia no sigue los mecanismos de mercado, sino un protocolo operativo de TSO a TSO. El proceso general es el siguiente:
+1.  Detección de la emergencia: El TSO que sufre una contingencia grave (p. ej., una pérdida súbita de generación, una caída de frecuencia por debajo de los umbrales de seguridad) declara el estado de emergencia.
+2.  Solicitud de asistencia: REE contacta directamente con el centro de control de RTE (y otros TSO conectados) solicitando una aportación de potencia activa para estabilizar el sistema. La solicitud especifica la cantidad de MW necesarios y la duración estimada.
+3.  Activación del soporte: RTE, siempre que no ponga en riesgo la seguridad de su propio sistema, modifica los programas de intercambio y moviliza sus reservas de generación para exportar la energía solicitada hacia España.
+Esta asistencia es un servicio de último recurso, activado cuando los mecanismos de balance nacionales son insuficientes para resolver la situación.
+
+INTERCONEXIÓN CON PORTUGAL (REN)
+
+España y Portugal conforman el Mercado Ibérico de la Electricidad (MIBEL), un mercado regional pionero en Europa que funciona de manera integrada. La capacidad de intercambio canónica entre ambos países es de 3000 MW.
+
+EL MERCADO IBÉRICO DE ELECTRICIDAD (MIBEL)
+El MIBEL, gestionado por el operador de mercado OMIE, permite que los agentes de ambos países presenten sus ofertas de compra y venta de energía en un mercado común. La capacidad de interconexión es un dato clave en el proceso de casación:
+- Acoplamiento de mercados (Market Coupling): Si la capacidad de la interconexión es suficiente para evacuar toda la energía que resultaría del flujo comercial entre las dos zonas de precio (España y Portugal), los precios de la electricidad son idénticos en ambos países.
+- Desacoplamiento de mercados: Si el flujo programado excede la capacidad disponible, los mercados se desacoplan y se establecen precios diferentes para cada zona.
+
+Además del mercado diario, el MIBEL cuenta con seis sesiones de mercado intradiario mediante subastas y un mercado intradiario continuo (SIDC), que acopla la Península Ibérica con el resto de mercados europeos, permitiendo ajustar las programaciones hasta una hora antes de la entrega.
+
+PROTOCOLO DE AYUDA MUTUA EN TIEMPO REAL
+Al igual que con Francia, la asistencia de emergencia entre REE y REN se rige por los principios del Código de Red de Emergencia y Restablecimiento (NC ER) de ENTSO-E. Al formar un sistema eléctrico casi único a efectos operativos, la coordinación entre REE y REN es constante. En caso de una perturbación severa en uno de los sistemas, el otro presta apoyo de forma inmediata para mantener la estabilidad del conjunto. La activación sigue el mismo protocolo de solicitud directa entre TSO, movilizando las reservas de potencia para inyectar o absorber energía según sea necesario para estabilizar la frecuencia o la tensión en el sistema afectado.
+
+INTERCONEXIÓN CON MARRUECOS (ONEE)
+
+España y Marruecos están conectados a través de un enlace submarino de corriente alterna (AC) por el Estrecho de Gibraltar. La interconexión consta de dos circuitos de 400 kV, compuestos por un total de siete cables (tres por circuito más uno de reserva), que unen las estaciones de Tarifa (España) y Fardioua (Marruecos). La capacidad comercial canónica es de 900 MW en sentido exportación (España a Marruecos) y 600 MW en sentido importación (Marruecos a España).
+
+CONTRATO DE INTERCAMBIO Y FIABILIDAD
+A diferencia de las interconexiones con Europa, los intercambios con Marruecos no se rigen por un mercado acoplado, sino por un contrato bilateral entre REE y l'Office National de l'Électricité et de l'Eau Potable (ONEE). Los intercambios se programan a través de nominaciones que los agentes presentan en el mercado español. Adicionalmente, el contrato establece un marco de cooperación técnica para garantizar la fiabilidad y seguridad de ambos sistemas. Marruecos es habitualmente un importador neto de energía desde España.
+
+MECANISMO DE ASISTENCIA POR PERTURBACIÓN
+El acuerdo entre REE y ONEE incluye cláusulas de asistencia mutua en caso de emergencia. Al no ser Marruecos parte de ENTSO-E, este protocolo no está bajo el paraguas del NC ER, sino que se basa en un acuerdo técnico bilateral. La eficacia de este mecanismo quedó demostrada durante el incidente que afectó al sur de España en abril de 2025. Tras la pérdida de suministro en la zona, REE solicitó formalmente ayuda de emergencia a ONEE. En respuesta, el operador marroquí movilizó una parte significativa de su parque de generación disponible, revirtiendo el flujo de la interconexión para exportar energía hacia España, contribuyendo de manera decisiva al arranque de las centrales eléctricas del sur de la península y a la reposición del servicio. Esta operación subraya el carácter estratégico de la interconexión como elemento de respaldo y seguridad para ambos sistemas.
+
+FUENTES
+- Red Eléctrica de España (ree.es). Informes del sistema eléctrico, Procedimientos de Operación y notas de prensa sobre capacidad de intercambio.
+- OMIE, Operador del Mercado Ibérico de Energía (omie.es). Reglas y funcionamiento del mercado.
+- ENTSO-E (entsoe.eu). Network Code on Emergency and Restoration (Commission Regulation (EU) 2017/2196).
+- INELFE (inelfe.eu). Información sobre proyectos de interconexión España-Francia.
+- Boletín Oficial del Estado (boe.es) y Comisión Nacional de los Mercados y la Competencia (cnmc.es). Resoluciones sobre regulación del sector eléctrico.
+- Artículos de prensa económica (Cinco Días, El Periódico de la Energía) sobre incidentes y subastas de capacidad.
+- Redeia. (2014). "Interconexiones eléctricas: un paso para el mercado único de la energía en Europa".

@@ -1,0 +1,64 @@
+{
+  "documents": {
+    "incidents/apagon_abril_2025.txt": {
+      "generated_at": "2026-07-02T09:37:24+00:00",
+      "reviewed_by": "bootstrap-legacy-2026-07-02",
+      "sha256": "aab54a98fd61b09666d658ce08f87bb6cd9c69c3c9082d6e77b961bfe79ad3db",
+      "status": "indexed"
+    },
+    "incidents/apagon_noviembre_2006.txt": {
+      "generated_at": "2026-07-02T09:37:24+00:00",
+      "reviewed_by": "bootstrap-legacy-2026-07-02",
+      "sha256": "b293669de42fa6ec7de1463c99d797ea5c8667eac40c9f3e10a443eaeeebd742",
+      "status": "indexed"
+    },
+    "procedures/acuerdos_intercambio_fr_pt_ma.txt": {
+      "generated_at": "2026-07-02T09:41:58+00:00",
+      "reviewed_by": "Cristian Valverde",
+      "sha256": "b5d85a9bf210221d75d5e0f3c95aab14287bd172bc299ec35e9cb06e4a74b2a9",
+      "status": "indexed"
+    },
+    "procedures/alta_penetracion_renovable.txt": {
+      "generated_at": "2026-07-02T09:37:24+00:00",
+      "reviewed_by": "bootstrap-legacy-2026-07-02",
+      "sha256": "42c3078a022256aef07d6d9fa374e45aec5284e5f7ca62b901beb58070240dc7",
+      "status": "indexed"
+    },
+    "procedures/importacion_emergencia.txt": {
+      "generated_at": "2026-07-02T09:37:24+00:00",
+      "reviewed_by": "bootstrap-legacy-2026-07-02",
+      "sha256": "66561e2cd04167598b5492bf84ccb1fefb75fc754ae2c9ce44bf5df9b087ddc3",
+      "status": "indexed"
+    },
+    "procedures/interconexiones_red_espanola.txt": {
+      "generated_at": "2026-07-02T09:37:24+00:00",
+      "reviewed_by": "bootstrap-legacy-2026-07-02",
+      "sha256": "4547e786f0e081f7640f71f55439ac2501fa3f24821231579284a2200a732d60",
+      "status": "indexed"
+    },
+    "regulations/PO_10_1_resolucion_desvios.txt": {
+      "generated_at": "2026-07-02T09:37:24+00:00",
+      "reviewed_by": "bootstrap-legacy-2026-07-02",
+      "sha256": "671e3f5faf2e50dad8edfc862596411a801c0ed934a319d91341d277dd271026",
+      "status": "indexed"
+    },
+    "regulations/PO_3_1_programacion_diaria.txt": {
+      "generated_at": "2026-07-02T09:37:24+00:00",
+      "reviewed_by": "bootstrap-legacy-2026-07-02",
+      "sha256": "2b3720915f9c755a0c645df7c43b8ff3ff9f317abc38481c98814224ade1717a",
+      "status": "indexed"
+    },
+    "regulations/PO_7_1_criterios_seguridad.txt": {
+      "generated_at": "2026-07-02T09:37:24+00:00",
+      "reviewed_by": "bootstrap-legacy-2026-07-02",
+      "sha256": "bb4eae2adb2f81868b3fa33c7d189f7e5b95b7976f51083abd82781a5877ad48",
+      "status": "indexed"
+    },
+    "regulations/po_operacion_ree.txt": {
+      "generated_at": "2026-07-02T09:40:37+00:00",
+      "reviewed_by": "Cristian Valverde",
+      "sha256": "340212fee396a924bfb85d6bce1cb439bdbdd544e5342c3d6aa6aec66fed311e",
+      "status": "indexed"
+    }
+  }
+}
