@@ -43,27 +43,56 @@ Resultado: `grid-data`, `weather`, `memory`, `ml-models`, `knowledge-base`.
    - `store_snapshot` se elimina de `memory_server` si la auditoría de implementación confirma que no queda ningún consumidor (scripts incluidos); si queda alguno, se conserva y solo se retira del orchestrator.
 5. **Conexiones de agentes**: renewables_forecast y cross_border → `grid-data`; las conexiones a markov se sustituyen por `ml-models` (ya presente en 4 de los 5; regulatory la añade).
 
-## Sección 2 — Evals por agente (pytest, offline)
+## Sección 2 — Evals por agente (pytest): trigger · output · trayectoria
 
-Reestructurar `eval/` por agente en vez de por tipo:
+Cada agente se evalúa en **tres ejes**, cada uno con sus particularidades:
+
+1. **Trigger** — ¿se invocan las tools/skills/subagentes cuando deben (positivo) y NO se
+   invocan cuando no toca (negativo)? Ej.: orchestrator debe invocar `CrossBorderAgent`
+   con P≥0.60 y no debe escalarlo en el escenario normal.
+2. **Output** — ¿el resultado final es correcto? (schema, rangos físicos, valores
+   esperados frente al golden dataset).
+3. **Trayectoria** — ¿la secuencia fue la correcta? (shift-left Python→ML→LLM, ML
+   consultado antes de emitir alerta, RAG antes de redactar informe…).
+
+Estructura resultante:
 
 ```
 eval/
   agents/
-    orchestrator/            # test_trajectory.py, test_outputs.py
+    orchestrator/            # test_trigger.py, test_trajectory.py, test_output.py
     anomaly_detector/
     renewables_forecast/
     regulatory_compliance/
     report_agent/
     cross_border/
-  ml/                        # test_ml_models.py (capa ML, transversal)
   golden_dataset/            # sin cambios
 ```
 
-- Los tests actuales de `test_trajectories.py` / `test_outputs.py` se **reparten** entre carpetas, no se reescriben.
-- Invocación individual por path (`python -m pytest eval/agents/report_agent -q`) y por marker (`-m agent_report`), markers registrados en `pytest.ini`.
-- Comando por agente documentado (README de `eval/` o sección en ARCHITECTURE.md).
-- El framework nativo de ADK (`.evalset.json` + `agents-cli eval`, LLM-as-judge) queda como **extensión futura documentada**, no se implementa.
+- **Dos niveles por eje**: offline/determinista (default; gates de decisión son Python
+  puro — umbrales de `risk_scorer`, cadenas de tools deterministas) e `@pytest.mark.integration`
+  (LLM real vía `run_scenario`/equivalente por agente, con asserts sobre la trayectoria
+  registrada — patrón ya existente en `test_run_scenario_critical`). La suite por defecto
+  sigue offline (`addopts = -m "not integration"`).
+- Los tests actuales de `test_trajectories.py` / `test_outputs.py` se **reparten** entre
+  carpetas y ejes, no se reescriben; los huecos de trigger (sobre todo negativos) se añaden.
+- Invocación individual por path (`python -m pytest eval/agents/report_agent -q`) y por
+  marker (`-m agent_report`), markers registrados en `pytest.ini`; modo live:
+  `python -m pytest eval/agents/report_agent -m integration`.
+- Comando por agente (offline y live) documentado (README de `eval/` o sección en ARCHITECTURE.md).
+- Particularidades por agente (tabla orientativa para el plan):
+  - **orchestrator**: triggers de escalado (`AnomalyDetectorSkill` ante anomalía,
+    `CrossBorderAgent` con P≥0.60, `ReportAgent` al cierre); trayectoria shift-left.
+  - **anomaly_detector**: `get_baseline` antes de `get_anomaly_score`; `search_regulations`
+    solo ante anomalía con implicación regulatoria.
+  - **renewables_forecast**: datos meteo (`get_wind_forecast`/`get_solar_radiation`) antes
+    del forecast; `get_generation_mix` para el mix actual.
+  - **regulatory_compliance**: `search_regulations` siempre; output cita fuentes del corpus.
+  - **report_agent**: `find_similar_incident` y `get_markov_trajectory` antes de `write_report`.
+  - **cross_border**: tools ENTSO-E antes de conclusión; `get_mitigation_procedure` solo
+    con margen de capacidad bajo.
+- El framework nativo de ADK (`.evalset.json` + `agents-cli eval`, LLM-as-judge) queda como
+  **extensión futura documentada**, no se implementa.
 
 ## Sección 3 — Prompts versionables
 
