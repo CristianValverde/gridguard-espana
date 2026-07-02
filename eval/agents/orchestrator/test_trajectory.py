@@ -1,5 +1,5 @@
 """
-eval/test_trajectories.py — Tests de trayectoria (ARCHITECTURE.md §11).
+eval/agents/orchestrator/test_trajectory.py — Tests de trayectoria (ARCHITECTURE.md §11).
 
 Verifican que el OrchestratorAgent:
   - Consulta ML antes que LLM (shift-left)
@@ -8,10 +8,10 @@ Verifican que el OrchestratorAgent:
   - Activa CrossBorderAgent y ReportAgent solo en CRITICAL
 
 Ejecutar:
-  pytest eval/test_trajectories.py -v
+  pytest eval/agents/orchestrator/test_trajectory.py -v
 
 Para integración real (requiere ESIOS_TOKEN + modelos entrenados):
-  pytest eval/test_trajectories.py -v -m integration
+  pytest eval/agents/orchestrator/test_trajectory.py -v -m integration
 """
 
 from __future__ import annotations
@@ -23,36 +23,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+pytestmark = pytest.mark.agent_orchestrator
+
 _requires_live_llm = pytest.mark.skipif(
     not os.environ.get("GEMINI_API_KEY"),
     reason="requires GEMINI_API_KEY / live Gemini LLM",
 )
 
 GOLDEN_DIR = Path("eval/golden_dataset")
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-@pytest.fixture
-def blackout_scenario() -> dict:
-    return json.loads((GOLDEN_DIR / "blackout_apr_2025.json").read_text(encoding="utf-8"))
-
-
-@pytest.fixture
-def normal_scenario() -> dict:
-    return json.loads((GOLDEN_DIR / "normal_baseline.json").read_text(encoding="utf-8"))
-
-
-@pytest.fixture
-def critical_snapshot(blackout_scenario) -> dict:
-    """Snapshot más cercano al evento (T-3min)."""
-    return blackout_scenario["snapshots"][-1]
-
-
-@pytest.fixture
-def normal_snapshot(normal_scenario) -> dict:
-    return normal_scenario["snapshots"][0]
 
 
 # ---------------------------------------------------------------------------
