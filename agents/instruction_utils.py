@@ -14,7 +14,20 @@ Este helper envuelve el texto literal en ese callable, preservando las llaves ta
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Callable
+
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
+
+
+def load_prompt(agent_name: str) -> str:
+    """Lee prompts/<agent_name>.md (UTF-8) y devuelve el texto listo para
+    as_static_instruction. Falla alto y pronto si falta o esta vacio."""
+    path = _PROMPTS_DIR / f"{agent_name}.md"
+    text = path.read_text(encoding="utf-8").strip()
+    if not text:
+        raise ValueError(f"Prompt vacío: {path}")
+    return text
 
 
 def as_static_instruction(text: str) -> Callable:
