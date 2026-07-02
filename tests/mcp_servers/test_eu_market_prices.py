@@ -10,7 +10,7 @@
 
 import pytest
 import pandas as pd
-from mcp_servers import entsoe_server as es
+from mcp_servers import grid_data_server as es
 
 
 def _fake_fetch(country, day):
