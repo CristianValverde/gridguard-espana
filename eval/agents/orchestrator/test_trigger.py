@@ -30,3 +30,30 @@ def test_connected_servers_serve_the_whitelist():
     src = (Path(__file__).resolve().parents[3] / "agents" / "orchestrator.py").read_text(encoding="utf-8")
     for server in _EXPECTED_SERVERS:
         assert server in src, f"server no conectado: {server}"
+
+
+# ---------------------------------------------------------------------------
+# Task 11: trigger + trayectoria live (integration) — usa run_scenario
+# (no el harness genérico: el orchestrator ya expone su propio entrypoint).
+# ---------------------------------------------------------------------------
+
+_SKILL_TOOLS = {"AnomalyDetectorSkill", "RenewablesForecastSkill",
+                "RegulatoryComplianceSkill", "CrossBorderAgent", "ReportAgent"}
+
+
+@pytest.mark.integration
+class TestOrchestratorLiveTriggers:
+    def test_critical_scenario_triggers_full_escalation(self, blackout_scenario):
+        from agents.orchestrator import run_scenario
+        result = run_scenario(blackout_scenario)
+        tools = {step["tool"] for step in result["trajectory"]}
+        missing = _SKILL_TOOLS - tools
+        assert not missing, f"Escalación ROJA incompleta; faltan: {missing}"
+        assert "alert_formatter" in tools
+
+    def test_normal_scenario_triggers_nothing(self, normal_scenario):
+        from agents.orchestrator import run_scenario
+        result = run_scenario(normal_scenario)
+        tools = {step["tool"] for step in result["trajectory"]}
+        fired = _SKILL_TOOLS & tools
+        assert not fired, f"Escenario VERDE no debe escalar; disparó: {fired}"
