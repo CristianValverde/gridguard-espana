@@ -191,7 +191,7 @@ class RadiationForecast(BaseModel):
 
 
 class MeteoAlert(BaseModel):
-    """Alerta meteorológica de AEMET. Salida de get_aemet_alerts()."""
+    """Alerta meteorológica AEMET (schema conservado para uso futuro)."""
 
     alert_id: str
     zone: str

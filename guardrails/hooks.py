@@ -71,7 +71,6 @@ _MIN_INTERVAL: dict[str, float] = {
     "get_reserve_activation": 60.0,
     "get_wind_forecast": 300.0,
     "get_solar_radiation": 300.0,
-    "get_aemet_alerts": 600.0,
     "get_cross_border_flows": 300.0,
     "get_eu_generation": 300.0,
 }
