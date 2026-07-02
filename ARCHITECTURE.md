@@ -271,13 +271,13 @@ get_eu_market_prices(countries, date) → dict  # day-ahead prices (€/MWh, A44
 **Credentials**: `ESIOS_TOKEN` + `ENTSOE_TOKEN` (each tool uses its own) · **Historical data from**: 2014-01-01 (ESIOS)
 
 ### `MCP: weather`
-Wrapper over AEMET OpenData + OpenMeteo fallback.
+Wrapper over Open-Meteo forecast API.
 ```
 get_wind_forecast(zone, hours) → WindForecast
 get_solar_radiation(zone, hours) → RadiationForecast
 get_weather_forecast_24h(zones) → dict  # hourly 24h forecast per zone
 ```
-**Credential**: `AEMET_API_KEY` · **Rate limit**: 50 req/min
+**Credential**: none · **Rate limit**: no limit (free tier)
 
 ### `MCP: memory`
 Local persistence with SQLite.
@@ -544,7 +544,7 @@ gridguard/
 │   └── markov_state_tracker.py      # Runtime Markov inference (no LLM)  ← NEW
 ├── mcp_servers/
 │   ├── grid_data_server.py          # MCP: grid-data (ESIOS + ENTSO-E, incl. day-ahead market prices)  ← NEW
-│   ├── weather_server.py            # MCP: weather (AEMET + OpenMeteo + 24h forecast)
+│   ├── weather_server.py            # MCP: weather (Open-Meteo + 24h forecast)
 │   ├── memory_server.py             # MCP: memory (SQLite + Markov state history)
 │   ├── ml_models_server.py          # MCP: ml-models (incl. Markov state + trajectory)
 │   └── knowledge_base_server.py     # MCP: knowledge-base (ChromaDB)

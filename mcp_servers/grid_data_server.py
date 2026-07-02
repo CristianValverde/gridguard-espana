@@ -5,6 +5,13 @@ Datos de red externos en un único server: ESIOS (mix de generación español)
 + ENTSO-E (interconexión europea y precios day-ahead).
 Consolida los antiguos ree_grid_server (solo la tool consumida) y entsoe_server
 (íntegro). Credenciales: ESIOS_TOKEN y ENTSOE_TOKEN (cada tool usa la suya).
+
+Herramientas expuestas:
+  get_generation_mix(market_zone)           -> GenerationMix (JSON)
+  get_cross_border_flows(country)           -> list[CrossBorderFlow] (JSON)
+  get_eu_generation(country)                -> EUGenerationSnapshot (JSON)
+  get_capacity_margin(country)              -> CapacityMargin (JSON)
+  get_eu_market_prices(country, start, end) -> list[MarketPrice] (JSON)
 """
 
 from __future__ import annotations

@@ -65,10 +65,7 @@ _BLOCKED_PATH_PATTERNS = [
 # Rate limiting: segundos mínimos entre llamadas al mismo tool
 _MIN_INTERVAL: dict[str, float] = {
     "ree_poller": 60.0,
-    "get_realtime_demand": 60.0,
     "get_generation_mix": 60.0,
-    "get_interchange_flows": 60.0,
-    "get_reserve_activation": 60.0,
     "get_wind_forecast": 300.0,
     "get_solar_radiation": 300.0,
     "get_cross_border_flows": 300.0,
