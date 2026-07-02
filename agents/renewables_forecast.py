@@ -100,15 +100,6 @@ _memory_toolset = McpToolset(
     )
 )
 
-_markov_toolset = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="python",
-            args=["-m", "mcp_servers.markov_server"],
-        )
-    )
-)
-
 _inner_agent = Agent(
     model=get_model("fast_agent"),
     name="renewables_forecast_skill",
@@ -118,7 +109,6 @@ _inner_agent = Agent(
         _grid_data_toolset,
         _ml_toolset,
         _memory_toolset,
-        _markov_toolset,
     ],
     output_schema=RenewablesForecast,
     generate_content_config=genai_types.GenerateContentConfig(temperature=0.1),

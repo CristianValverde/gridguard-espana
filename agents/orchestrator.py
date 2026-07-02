@@ -175,15 +175,6 @@ _memory_toolset = McpToolset(
     )
 )
 
-_markov_toolset = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="python",
-            args=["-m", "mcp_servers.markov_server"],
-        )
-    )
-)
-
 orchestrator = Agent(
     model=get_model("fast_agent"),
     name="gridguard_orchestrator",
@@ -195,10 +186,9 @@ orchestrator = Agent(
         stability_proxy_calculator,
         risk_scorer,
         alert_formatter,
-        # Capa 2: MCP Tools (ML inference + memoria + Markov)
+        # Capa 2: MCP Tools (ML inference + Markov + memoria)
         _ml_toolset,
         _memory_toolset,
-        _markov_toolset,
         # Capa 3: Skills (AgentTools -- LLM con contexto especifico)
         AnomalyDetectorSkill,
         RenewablesForecastSkill,

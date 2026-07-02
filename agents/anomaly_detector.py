@@ -97,15 +97,6 @@ _kb_toolset = McpToolset(
     )
 )
 
-_markov_toolset = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="python",
-            args=["-m", "mcp_servers.markov_server"],
-        )
-    )
-)
-
 _weather_toolset = McpToolset(
     connection_params=StdioConnectionParams(
         server_params=StdioServerParameters(
@@ -124,7 +115,6 @@ _inner_agent = Agent(
         _ml_toolset,
         _memory_toolset,
         _kb_toolset,
-        _markov_toolset,
         _weather_toolset,
     ],
     output_schema=AnomalyReport,

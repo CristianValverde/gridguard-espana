@@ -50,11 +50,11 @@ _kb_toolset = McpToolset(
     )
 )
 
-_markov_toolset = McpToolset(
+_ml_toolset = McpToolset(
     connection_params=StdioConnectionParams(
         server_params=StdioServerParameters(
             command="python",
-            args=["-m", "mcp_servers.markov_server"],
+            args=["-m", "mcp_servers.ml_models_server"],
         )
     )
 )
@@ -63,7 +63,7 @@ _inner_agent = Agent(
     model=get_model("fast_agent"),
     name="regulatory_compliance_skill",
     instruction=as_static_instruction(_INSTRUCTION),
-    tools=[_kb_toolset, _markov_toolset],
+    tools=[_kb_toolset, _ml_toolset],
     output_schema=ComplianceReport,
     generate_content_config=genai_types.GenerateContentConfig(temperature=0.1),
 )

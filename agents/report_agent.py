@@ -164,15 +164,6 @@ _kb_toolset = McpToolset(
     )
 )
 
-_markov_toolset = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="python",
-            args=["-m", "mcp_servers.markov_server"],
-        )
-    )
-)
-
 report_agent = Agent(
     model=get_model("smart_agent"),
     name="report_agent",
@@ -182,7 +173,6 @@ report_agent = Agent(
         _memory_toolset,
         _ml_toolset,
         _kb_toolset,
-        _markov_toolset,
     ],
     generate_content_config=genai_types.GenerateContentConfig(temperature=0.4),
 )

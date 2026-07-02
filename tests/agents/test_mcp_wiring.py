@@ -26,3 +26,19 @@ def test_retired_servers_gone():
     servers = Path(__file__).resolve().parents[2] / "mcp_servers"
     assert not (servers / "ree_grid_server.py").exists()
     assert not (servers / "entsoe_server.py").exists()
+
+
+def test_markov_server_retired_from_all_agents():
+    for mod in ("orchestrator", "anomaly_detector", "renewables_forecast",
+                "regulatory_compliance", "report_agent"):
+        assert "mcp_servers.markov_server" not in _agent_source(mod), mod
+
+
+def test_regulatory_now_connects_ml_models():
+    src = _agent_source("regulatory_compliance")
+    assert "mcp_servers.ml_models_server" in src
+
+
+def test_markov_server_file_gone():
+    servers = Path(__file__).resolve().parents[2] / "mcp_servers"
+    assert not (servers / "markov_server.py").exists()
