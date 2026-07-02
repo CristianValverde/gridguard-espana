@@ -73,11 +73,11 @@ _weather_toolset = McpToolset(
     )
 )
 
-_ree_toolset = McpToolset(
+_grid_data_toolset = McpToolset(
     connection_params=StdioConnectionParams(
         server_params=StdioServerParameters(
             command="python",
-            args=["-m", "mcp_servers.ree_grid_server"],
+            args=["-m", "mcp_servers.grid_data_server"],
         )
     )
 )
@@ -115,7 +115,7 @@ _inner_agent = Agent(
     instruction=as_static_instruction(_INSTRUCTION),
     tools=[
         _weather_toolset,
-        _ree_toolset,
+        _grid_data_toolset,
         _ml_toolset,
         _memory_toolset,
         _markov_toolset,

@@ -6,10 +6,10 @@ Modelo: gemini fast_agent · Temperature 0.2
 Invocado por OrchestratorAgent cuando P(blackout) >= 0.30 como medida de mitigación.
 
 Tools disponibles:
-  - get_cross_border_flows   (MCP: entsoe_server)
-  - get_capacity_margin      (MCP: entsoe_server)
-  - get_eu_generation        (MCP: entsoe_server)
-  - get_eu_market_prices     (MCP: entsoe_server)
+  - get_cross_border_flows   (MCP: grid_data_server)
+  - get_capacity_margin      (MCP: grid_data_server)
+  - get_eu_generation        (MCP: grid_data_server)
+  - get_eu_market_prices     (MCP: grid_data_server)
   - get_mitigation_procedure (MCP: knowledge_base_server)
 
 Output: CrossBorderAnalysis — respuesta a "¿podemos importar energía de emergencia/proactivamente?"
@@ -76,11 +76,11 @@ citando el número de procedimiento operacional si se encontró en el paso 3.
 Devuelve ÚNICAMENTE el CrossBorderAnalysis en formato JSON estructurado.
 """.strip()
 
-_entsoe_toolset = McpToolset(
+_grid_data_toolset = McpToolset(
     connection_params=StdioConnectionParams(
         server_params=StdioServerParameters(
             command="python",
-            args=["-m", "mcp_servers.entsoe_server"],
+            args=["-m", "mcp_servers.grid_data_server"],
         )
     )
 )
@@ -99,7 +99,7 @@ cross_border_agent = Agent(
     name="cross_border_agent",
     instruction=as_static_instruction(_INSTRUCTION),
     tools=[
-        _entsoe_toolset,
+        _grid_data_toolset,
         _kb_toolset,
     ],
     output_schema=CrossBorderAnalysis,
