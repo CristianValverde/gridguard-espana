@@ -50,8 +50,8 @@ The core principle is **not to use an LLM where a Python function or ML model su
 [Layer 1] Function Tools  (pure Python, no LLM)
            + markov_state_tracker  (runtime Markov inference, no LLM)
     ↓ [Hook: before_tool_callback — rate-limit, .env block, sanitisation]
-[Layer 2] MCP Servers  (7 servers: ree-grid · weather · entso-e
-                         memory · ml-models · knowledge-base · markov)
+[Layer 2] MCP Servers  (5 servers: grid-data · weather ·
+                         memory · ml-models · knowledge-base)
     ↓ [Hook: after_tool_callback — schema, credentials, truncation]
            + on_state_transition hook (S→S+1 escalation guard)
 [Layer 3] Skills / AgentTools  (AnomalyDetector · RenewablesForecast · RegulatoryCompliance)
@@ -217,7 +217,7 @@ The Markov layer is trained offline alongside the ML models and used at runtime 
 
 | Component | Frequency | Action |
 |---|---|---|
-| Cron Scheduler | every 10 min | Invokes `ree_poller()` → stores snapshot |
+| Cron Scheduler | every 10 min | Invokes `incremental_load.catch_up()` → stores snapshots (training scale) |
 | Cron Scheduler | every 1h | Invokes `RenewablesForecastSkill` |
 | Cron Scheduler | every 24h | Invokes `ReportAgent` |
 | Event Trigger | when `ml_risk_score` > threshold | Invokes `OrchestratorAgent` for deep analysis |
@@ -257,64 +257,71 @@ The Markov layer is trained offline alongside the ML models and used at runtime 
 
 ---
 
-## 7. Layer 2 — MCP Servers (7 servers)
+## 7. Layer 2 — MCP Servers (5 servers)
 
-### `MCP: ree-grid`
-Authenticated wrapper over ESIOS API with in-memory cache (TTL 9 min).
+### `MCP: grid-data`
+Authenticated wrapper over ESIOS (Spanish generation mix) + ENTSO-E (European interconnection and market data). Consolidates the former `ree-grid` and `entso-e` servers into one, in-memory cache (TTL 9 min for ESIOS, 1 h for ENTSO-E).
 ```
-get_realtime_demand(region) → DemandSnapshot
 get_generation_mix(start, end) → GenerationMix
-get_interchange_flows(border) → InterchangeFlow
-get_programmed_generation() → ProgrammedGeneration
-get_reserve_activation() → ReserveStatus
+get_cross_border_flows(from_country, to_country) → CrossBorderFlow
+get_eu_generation(country) → EUGenerationSnapshot
+get_capacity_margin(country) → CapacityMargin
+get_eu_market_prices(countries, date) → dict  # day-ahead prices (€/MWh, A44)
 ```
-**Credential**: `ESIOS_TOKEN` · **Historical data from**: 2014-01-01
+**Credentials**: `ESIOS_TOKEN` + `ENTSOE_TOKEN` (each tool uses its own) · **Historical data from**: 2014-01-01 (ESIOS)
 
 ### `MCP: weather`
 Wrapper over AEMET OpenData + OpenMeteo fallback.
 ```
 get_wind_forecast(zone, hours) → WindForecast
 get_solar_radiation(zone, hours) → RadiationForecast
-get_aemet_alerts() → list[MeteoAlert]
-get_weather_forecast_24h(zones) → dict  ← NEW: hourly 24h forecast per zone
+get_weather_forecast_24h(zones) → dict  # hourly 24h forecast per zone
 ```
 **Credential**: `AEMET_API_KEY` · **Rate limit**: 50 req/min
-
-### `MCP: entso-e`
-Access to European interconnection and market data.
-```
-get_cross_border_flows(from_country, to_country) → CrossBorderFlow
-get_eu_generation(country) → EUGenerationSnapshot
-get_capacity_margin(country) → CapacityMargin
-get_eu_market_prices(countries, date) → dict  ← NEW: day-ahead prices (€/MWh, A44)
-```
-**Credential**: `ENTSOE_TOKEN`
 
 ### `MCP: memory`
 Local persistence with SQLite.
 ```
-store_snapshot(snapshot) → None
+store_risk_score(risk_score) → dict
 get_baseline(window_hours) → Baseline
 query_incidents(start, end) → list[Incident]
 get_risk_history(hours) → list[RiskScore]
-store_grid_state(timestamp, state) → dict    ← NEW: persist Markov state
-get_state_transitions(hours) → list[dict]    ← NEW: Markov state history
+store_grid_state(timestamp, state) → dict    # persist Markov state
+get_state_transitions(hours) → list[dict]    # Markov state history
 ```
 **Database**: SQLite (`gridguard.db`)
 
 ### `MCP: ml-models`
-Exposes trained ML models as tools. Loads `.pkl` into memory on startup. Deterministic inference, no LLM.
+Exposes trained ML models and the Markov layer as tools. Loads `.pkl`/`.npz` into memory on startup. Deterministic inference, no LLM.
 ```
 get_anomaly_score(window) → AnomalyResult
   # Isolation Forest: score [0-1] + most anomalous features
+
+get_ensemble_score(features, window) → EnsembleResult
+  # LSTM + Isolation Forest + Classifier fusion score
+
+get_serve_features(window_hours) → dict
+  # Train/serve-parity feature window assembly
+
+get_blackout_probability_ensemble() → BlackoutRisk
+  # Ensemble-fused P(blackout) using latest persisted state
 
 get_load_forecast(horizon_hours, context) → LoadForecast
   # XGBoost/Prophet: forecast demand + confidence interval
 
 get_blackout_probability(features, forecast) → BlackoutRisk
   # Calibrated Gradient Boosting: P(blackout_1h) [0-1] + feature importance
+
+reload_models() → dict
+  # Hot-reloads all models/weights from disk
+
+get_grid_state(features) → {state, label, confidence, trajectory_6h}
+  # Discretises current state S0–S4 + 6h trajectory
+
+get_markov_trajectory(features, horizon_hours) → {trajectory, prob_reach_s3, prob_reach_s4}
+  # Projected state trajectory + escalation probabilities
 ```
-**No external credentials** · Models in `ml/models/`
+**No external credentials** · Models in `ml/models/` (includes `markov_state.npz`)
 
 ### `MCP: knowledge-base`
 RAG over technical documents embedded with ChromaDB.
@@ -329,20 +336,6 @@ get_mitigation_procedure(situation) → Procedure
   # REE operational procedures for emergency situations
 ```
 **Embeddings**: `gemini-embedding-2` · **Vector store**: ChromaDB (local)
-
-### `MCP: markov` ← NEW
-Exposes the Markov layer (`tools/markov_state_tracker.py`) as MCP tools. Pure Python, no LLM.
-```
-get_grid_state(features) → {state, label, confidence, trajectory_6h}
-  # Discretises current state S0–S4 + 6h trajectory
-
-get_transition_probabilities() → {matrix: list[list[float]], states: [0..4]}
-  # Full A[5×5] transition matrix
-
-get_markov_trajectory(features, horizon_hours) → {trajectory, prob_reach_s3, prob_reach_s4}
-  # Projected state trajectory + escalation probabilities
-```
-**No external credentials** · Weights in `ml/models/markov_state.npz`
 
 ---
 
@@ -550,13 +543,11 @@ gridguard/
 │   ├── ensemble_scorer.py           # LSTM+IF+CLF fusion (no LLM)  ← NEW
 │   └── markov_state_tracker.py      # Runtime Markov inference (no LLM)  ← NEW
 ├── mcp_servers/
-│   ├── ree_grid_server.py           # MCP: ree-grid (ESIOS API)
+│   ├── grid_data_server.py          # MCP: grid-data (ESIOS + ENTSO-E, incl. day-ahead market prices)  ← NEW
 │   ├── weather_server.py            # MCP: weather (AEMET + OpenMeteo + 24h forecast)
-│   ├── entsoe_server.py             # MCP: entso-e (+ day-ahead market prices)
 │   ├── memory_server.py             # MCP: memory (SQLite + Markov state history)
-│   ├── ml_models_server.py          # MCP: ml-models
-│   ├── knowledge_base_server.py     # MCP: knowledge-base (ChromaDB)
-│   └── markov_server.py             # MCP: markov (state + trajectory)  ← NEW
+│   ├── ml_models_server.py          # MCP: ml-models (incl. Markov state + trajectory)
+│   └── knowledge_base_server.py     # MCP: knowledge-base (ChromaDB)
 ├── ml/
 │   ├── data/
 │   │   ├── download_esios.py
@@ -624,7 +615,7 @@ RISK_CRITICAL_THRESHOLD=0.60         # P(blackout) for CRITICAL
 ## 15. ADK Concepts Demonstrated (minimum required: 3)
 
 1. ✅ **Multi-agent system** — Orchestrator (Root) + 3 Skills (AgentTool) + 2 Sub-agents with differentiated roles
-2. ✅ **MCP servers** — 7 custom MCP servers (ree-grid, weather, entso-e, memory, ml-models, knowledge-base, markov)
+2. ✅ **MCP servers** — 5 custom MCP servers (grid-data, weather, memory, ml-models, knowledge-base)
 3. ✅ **AgentTool (Skills)** — `AnomalyDetectorSkill`, `RenewablesForecastSkill`, `RegulatoryComplianceSkill`
 4. ✅ **Callbacks / Guardrails** — 7 hooks with real logic (anti-.env, rate-limit, state transition, injection guard, forecast horizon, bounds check, schema validation)
 5. ✅ **Memory / State** — MCP memory (SQLite) for baseline, snapshot history and Markov state history

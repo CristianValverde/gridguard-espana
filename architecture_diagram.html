@@ -30,7 +30,6 @@
   .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
   .g4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
   .g5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-  .g7 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
 
   /* ── Base card ── */
   .card {
@@ -73,11 +72,6 @@
   .c-mcp-new { background:#0f2318; border:2px solid #22c55e; }
   .c-mcp-new .t { color:#86efac; }
   .c-mcp-new .badge { background:#166534; color:#bbf7d0; }
-
-  /* Markov MCP */
-  .c-mcp-mk { background:#0d1f1f; border:2px solid #14b8a6; }
-  .c-mcp-mk .t { color:#5eead4; }
-  .c-mcp-mk .badge { background:#134e4a; color:#99f6e4; }
 
   .c-sk   { background:#1e1040; border:1.5px solid #7c3aed; }
   .c-sk .t { color:#c084fc; }
@@ -319,7 +313,7 @@
 ═══════════════════════════════════════════════════════════ -->
 <div class="section-label">⏱ Layer 0 — Triggers</div>
 <div class="g4">
-  <div class="card c-src"><div class="t">⏰ Cron every 10 min</div><div class="d">Invokes ree_poller()<br>→ snapshot + ML inference + Markov state update</div><span class="badge">APScheduler</span></div>
+  <div class="card c-src"><div class="t">⏰ Cron every 10 min</div><div class="d">Invokes incremental_load.catch_up()<br>→ stores snapshots (training scale) + ML inference + Markov state update</div><span class="badge">APScheduler</span></div>
   <div class="card c-src"><div class="t">⏰ Cron every 1h</div><div class="d">Invokes RenewablesForecastSkill<br>→ next 6h forecast + 24h weather window</div><span class="badge">APScheduler</span></div>
   <div class="card c-src"><div class="t">⏰ Cron every 24h</div><div class="d">Invokes ReportAgent<br>→ daily report</div><span class="badge">APScheduler</span></div>
   <div class="card c-src"><div class="t">🔔 Event: P(blackout) &gt; threshold</div><div class="d">Fires OrchestratorAgent<br>for immediate deep analysis</div><span class="badge">Python Queue</span></div>
@@ -366,36 +360,30 @@
 <!-- ══════════════════════════════════════════════════════════
      LAYER 2: MCP SERVERS
 ═══════════════════════════════════════════════════════════ -->
-<div class="section-label">🔌 Layer 2 — MCP Servers (7 servers)</div>
-<div class="g7">
+<div class="section-label">🔌 Layer 2 — MCP Servers (5 servers)</div>
+<div class="g5">
   <div class="card c-mcp">
-    <div class="t">MCP: ree-grid</div>
-    <div class="d">get_realtime_demand()<br>get_generation_mix()<br>get_interchange_flows()<br>get_reserve_activation()<br>get_programmed_generation()</div>
+    <div class="t">MCP: grid-data <span class="upd-pill">UPD</span></div>
+    <div class="d">get_generation_mix()<br>get_cross_border_flows()<br>get_eu_generation()<br>get_capacity_margin()<br><b>get_eu_market_prices()</b><br>→ day-ahead €/MWh (A44)</div>
     <span class="badge">ESIOS TOKEN</span><br>
-    <span class="badge">from 2014</span>
+    <span class="badge">ENTSOE TOKEN</span>
   </div>
   <div class="card c-mcp">
     <div class="t">MCP: weather <span class="upd-pill">UPD</span></div>
-    <div class="d">get_wind_forecast()<br>get_solar_radiation()<br>get_aemet_alerts()<br><b>get_weather_forecast_24h()</b><br>→ hourly 24h per zone</div>
+    <div class="d">get_wind_forecast()<br>get_solar_radiation()<br><b>get_weather_forecast_24h()</b><br>→ hourly 24h per zone</div>
     <span class="badge">AEMET KEY</span><br>
     <span class="badge">from 2000</span>
   </div>
   <div class="card c-mcp">
-    <div class="t">MCP: entso-e <span class="upd-pill">UPD</span></div>
-    <div class="d">get_cross_border_flows()<br>get_eu_generation()<br>get_capacity_margin()<br><b>get_eu_market_prices()</b><br>→ day-ahead €/MWh (A44)</div>
-    <span class="badge">ENTSOE TOKEN</span><br>
-    <span class="badge">from 2011</span>
-  </div>
-  <div class="card c-mcp">
     <div class="t">MCP: memory <span class="upd-pill">UPD</span></div>
-    <div class="d">store_snapshot()<br>get_baseline()<br>query_incidents()<br>get_risk_history()<br><b>store_grid_state()</b><br><b>get_state_transitions()</b></div>
+    <div class="d">store_risk_score()<br>get_baseline()<br>query_incidents()<br>get_risk_history()<br><b>store_grid_state()</b><br><b>get_state_transitions()</b></div>
     <span class="badge">SQLITE</span>
     <span class="db-pill db-sqlite" style="margin-top:3px;display:inline-flex">🗄 gridguard.db</span>
   </div>
   <div class="card c-mcp-new">
     <div class="t">MCP: ml-models <span class="new-pill">NEW</span></div>
-    <div class="d">get_anomaly_score()<br>→ Isolation Forest<br>get_load_forecast()<br>→ XGBoost/Prophet<br>get_blackout_probability()<br>→ Calibrated GBM</div>
-    <span class="badge">PKL IN MEMORY</span><br>
+    <div class="d">get_anomaly_score()<br>→ Isolation Forest<br>get_ensemble_score()<br>→ LSTM+IF+CLF fusion<br>get_load_forecast()<br>→ XGBoost/Prophet<br>get_blackout_probability()<br>→ Calibrated GBM<br><b>get_grid_state()</b><br>→ S0–S4 + 6h trajectory<br><b>get_markov_trajectory()</b><br>→ trajectory + P(S3)/P(S4)</div>
+    <span class="badge">PKL/NPZ IN MEMORY</span><br>
     <span class="badge">NO LLM</span>
   </div>
   <div class="card c-mcp-new">
@@ -403,12 +391,6 @@
     <div class="d">search_regulations()<br>→ ENTSO-E / REE norms<br>find_similar_incident()<br>→ RAG post-mortems<br>get_mitigation_procedure()<br>→ REE procedures</div>
     <span class="badge">CHROMADB</span>
     <span class="db-pill db-chroma" style="margin-top:3px;display:inline-flex">🔮 chroma_db/</span>
-  </div>
-  <div class="card c-mcp-mk">
-    <div class="t">MCP: markov <span class="new-pill">NEW</span></div>
-    <div class="d">get_grid_state()<br>→ {state, label, confidence, trajectory_6h}<br>get_transition_probabilities()<br>→ A[5×5] matrix<br>get_markov_trajectory()<br>→ trajectory + P(S3) + P(S4)</div>
-    <span class="badge" style="background:#134e4a;color:#99f6e4">NPZ IN MEMORY</span><br>
-    <span class="badge" style="background:#134e4a;color:#99f6e4">NO LLM</span>
   </div>
 </div>
 
