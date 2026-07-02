@@ -35,6 +35,7 @@ class _IsotonicCalibrated:
     def predict(self, X):
         return (self.predict_proba(X)[:, 1] >= 0.5).astype(int)
 
+    @property
     def feature_importances_(self):
         return self._base.feature_importances_
 

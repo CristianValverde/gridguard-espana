@@ -276,7 +276,7 @@ class AnomalyResult(BaseModel):
         ..., description="Features con mayor contribución a la anomalía"
     )
     feature_scores: dict[str, float]
-    model_type: Literal["isolation_forest", "lstm_ae"]
+    model_type: Literal["isolation_forest", "lstm_ae", "isolation_forest+lstm_ae"]
     inference_time_ms: float = Field(..., ge=0)
 
 

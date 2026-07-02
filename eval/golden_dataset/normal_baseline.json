@@ -1,59 +1,62 @@
 {
   "scenario_name": "normal_wednesday",
-  "description": "Miércoles 14 de mayo de 2025, operación normal de red. Demanda media de semana laboral, generación renovable estándar, sin incidentes. Sirve como caso de control (no debe escalar).",
+  "description": "Miércoles 14 de mayo de 2025, operación normal de red. Valores REALES del dataset ESIOS (los sintéticos originales chocaban con la semana trailing real y el LSTM los marcaba, correctamente, como anómalos — corregido en Task 10). Sirve como caso de control (no debe escalar).",
   "metadata": {
     "date": "2025-05-14",
     "region": "peninsular",
     "root_cause": null,
     "max_affected_mw": 0,
-    "duration_hours": 0
+    "duration_hours": 0,
+    "data_source": "ESIOS (dataset_training.parquet), valores redondeados a MW"
   },
   "snapshots": [
     {
       "timestamp": "2025-05-14T09:00:00Z",
       "region": "peninsular",
-      "demand_mw": 31200,
+      "demand_mw": 27252,
       "generation_by_tech": {
-        "nuclear_mw": 7100,
-        "hydro_mw": 3200,
-        "wind_mw": 5800,
-        "solar_pv_mw": 4200,
-        "solar_thermal_mw": 900,
-        "gas_cc_mw": 6800,
-        "coal_mw": 1500,
-        "cogeneration_mw": 3100
+        "nuclear_mw": 5103,
+        "hydro_mw": 3203,
+        "wind_mw": 474,
+        "solar_pv_mw": 16103,
+        "solar_thermal_mw": 1305,
+        "gas_cc_mw": 2543,
+        "coal_mw": 216,
+        "cogeneration_mw": 1676,
+        "pumping_mw": -2445
       },
       "interchange_flows": {
-        "es_fr_mw": -800,
-        "es_pt_mw": -200,
-        "es_ma_mw": 150
+        "es_fr_mw": 278,
+        "es_pt_mw": -843,
+        "es_ma_mw": -723
       },
-      "reserve_mw": 180,
-      "programmed_generation_mw": 31400,
-      "label": "Operación normal — mezcla diversificada, CCGT activos, balance positivo"
+      "reserve_mw": 276,
+      "programmed_generation_mw": 28178,
+      "label": "Operación normal — solar dominante de media mañana, bombeo absorbiendo excedente, exportación a PT/MA"
     },
     {
       "timestamp": "2025-05-14T12:00:00Z",
       "region": "peninsular",
-      "demand_mw": 34500,
+      "demand_mw": 26808,
       "generation_by_tech": {
-        "nuclear_mw": 7100,
-        "hydro_mw": 2800,
-        "wind_mw": 4500,
-        "solar_pv_mw": 8900,
-        "solar_thermal_mw": 2100,
-        "gas_cc_mw": 7200,
-        "coal_mw": 1800,
-        "cogeneration_mw": 3100
+        "nuclear_mw": 5102,
+        "hydro_mw": 2830,
+        "wind_mw": 1295,
+        "solar_pv_mw": 13956,
+        "solar_thermal_mw": 1243,
+        "gas_cc_mw": 2551,
+        "coal_mw": 217,
+        "cogeneration_mw": 1677,
+        "pumping_mw": -2714
       },
       "interchange_flows": {
-        "es_fr_mw": -600,
-        "es_pt_mw": -150,
-        "es_ma_mw": 200
+        "es_fr_mw": 1766,
+        "es_pt_mw": -773,
+        "es_ma_mw": -652
       },
-      "reserve_mw": 140,
-      "programmed_generation_mw": 34800,
-      "label": "Pico mediodía — solar alto pero demanda también alta, balance estable"
+      "reserve_mw": 63,
+      "programmed_generation_mw": 26157,
+      "label": "Mediodía estable — solar alto con demanda cubierta, importación desde FR, sistema sin tensión"
     }
   ],
   "expected_trajectory": {

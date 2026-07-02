@@ -40,9 +40,9 @@ class _StubIF:
     def __init__(self):
         self.seen = None
 
-    def score_samples(self, X):
+    def decision_function(self, X):
         self.seen = np.asarray(X)
-        return np.full(len(self.seen), -0.3)
+        return np.full(len(self.seen), 0.05)  # inlier suave
 
     def predict(self, X):
         return np.ones(len(np.asarray(X)), dtype=int)
@@ -96,6 +96,32 @@ def test_blackout_probability_bundle_uses_feature_cols(monkeypatch):
     assert "error" not in out, out
     assert abs(out["probability"] - 0.7) < 1e-9
     assert stub.seen.shape == (1, len(FEATURE_COLS))
+
+
+def test_anomaly_result_schema_accepts_combined_model_type():
+    """Con IF y LSTM disponibles a la vez, model_type es 'isolation_forest+lstm_ae'."""
+    from schemas.models import AnomalyResult
+
+    r = AnomalyResult(anomaly_score=0.5, is_anomaly=False, top_features=[],
+                      feature_scores={}, model_type="isolation_forest+lstm_ae",
+                      inference_time_ms=0.0)
+    assert r.model_type == "isolation_forest+lstm_ae"
+
+
+def test_isotonic_calibrated_feature_importances_is_iterable():
+    """feature_importances_ debe ser property (no método) para que
+    zip(names, model.feature_importances_) funcione en ml_models_server."""
+    import numpy as np
+    from ml.train.calibration import _IsotonicCalibrated
+
+    class _Base:
+        feature_importances_ = np.array([0.5, 0.5])
+
+        def set_params(self, **kw):
+            return self
+
+    wrapped = _IsotonicCalibrated(_Base(), ir=None)
+    assert list(wrapped.feature_importances_) == [0.5, 0.5]
 
 
 def test_ensemble_reads_probability_key_from_blackout_risk(monkeypatch):

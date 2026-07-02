@@ -16,10 +16,23 @@ from __future__ import annotations
 DEFAULT_WEIGHTS = {"lstm": 0.5, "if": 0.2, "clf": 0.3}
 OVERRIDE_THRESHOLD = 0.9   # lstm_recon_norm ∈ [0,1]; ≥ esto = anomalía temporal fuerte
 OVERRIDE_FLOOR = 0.6       # suelo de P(blackout) cuando el override dispara
+IF_DF_FULL_SCALE = 0.2     # decision_function de ∓0.1 → señal 1.0/0.0
 
 
 def _clip01(x: float) -> float:
     return max(0.0, min(1.0, float(x)))
+
+
+def normalize_if_signal(decision_fn_value: float) -> float:
+    """IsolationForest.decision_function → señal [0,1].
+
+    Centrada en el umbral de contaminación del PROPIO modelo (df=0 → 0.5;
+    df=-0.1, anomalía clara → 1.0; df=+0.1, inlier claro → 0.0). Sustituye a la
+    normalización legacy `-score_samples + 0.5`, que con las features escaladas
+    del feature store saturaba a ~1 también en operación normal (sesgo
+    constante en vez de señal). Compartida por ml_models_server y
+    validate_models — paridad de la señal servida y la validada."""
+    return _clip01(0.5 - float(decision_fn_value) / IF_DF_FULL_SCALE)
 
 
 def fuse(lstm_recon_norm: float, if_score: float, clf_proba: float,

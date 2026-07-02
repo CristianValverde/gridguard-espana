@@ -246,12 +246,14 @@ def get_anomaly_score(window_json: str) -> dict:
 
         # ── Isolation Forest (anomalía puntual, última hora) ─────────────────
         if iforest is not None:
+            from tools.ensemble_scorer import normalize_if_signal
             if if_scaler:
                 X_if, if_names = _scale_frame(feats, if_scaler)
             else:
                 X_if, if_names = _legacy_raw_matrix(window)
-            scores_raw = -iforest.score_samples(X_if[-1:])  # más alto = más anómalo
-            if_score = float(np.clip(scores_raw.mean() + 0.5, 0, 1))
+            # decision_function: >0 inlier, <0 anomalía (umbral del propio modelo)
+            df_last = float(iforest.decision_function(X_if[-1:])[0])
+            if_score = normalize_if_signal(df_last)
             is_anomaly = is_anomaly or bool(iforest.predict(X_if[-1:])[0] == -1)
             model_types.append("isolation_forest")
             last = X_if[-1]

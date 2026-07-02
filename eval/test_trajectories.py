@@ -247,19 +247,23 @@ class TestNormalTrajectory:
     """El Orchestrator NO debe escalar en condiciones normales."""
 
     def test_risk_scorer_formula_low(self, normal_snapshot):
-        """El risk_scorer debe dar LOW con ml_score bajo."""
+        """Con ml_score bajo, el nivel no debe superar MEDIUM (el baseline real
+        de 14-may-2025 tiene ~66% solar a media mañana — normal en la España
+        actual, pero el scorer estático lo puntúa elevado sin ser alarma)."""
         from tools.risk_scorer import risk_scorer
         result = risk_scorer(normal_snapshot, ml_score=0.04)
-        assert result["level"] == "LOW"
-        assert result["value"] < 25
+        assert result["level"] in ("LOW", "MEDIUM")
+        assert result["blackout_probability"] < 0.10
 
     def test_stability_proxies_normal(self, normal_snapshot):
-        """Las proxies deben reflejar operación normal."""
+        """Las proxies deben reflejar operación normal (datos REALES ESIOS:
+        ~66% renovable de media mañana es normal; el >90% sostenido del
+        28-abr es el patrón de riesgo)."""
         from tools.stability_proxy_calculator import stability_proxy_calculator
         proxies = stability_proxy_calculator(normal_snapshot)
-        # Renovables < 40% en escenario normal diversificado
-        assert proxies["renewables_pct"] < 50
-        assert proxies["composite_pressure"] < 0.55  # sin baseline, interchange_delta infla el score
+        assert proxies["renewables_pct"] < 85
+        # Real 14-may-2025 09:00 → 0.57 absoluto; bajo el umbral S1 (P90=0.724 Markov)
+        assert proxies["composite_pressure"] < 0.65
 
     @pytest.mark.integration
     @_requires_live_llm

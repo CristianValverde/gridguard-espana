@@ -69,25 +69,32 @@ def _dataset_rows_to_snapshots(df: pd.DataFrame) -> list[dict]:
 
 
 def _golden_context_snapshots(scenario: dict, dataset_path: Path = DATASET_PATH) -> list[dict]:
-    """Semana previa (168h) al primer snapshot del golden, como snapshots crudos
-    reconstruidos del dataset (misma fuente ESIOS que el entrenamiento)."""
+    """Contexto real ESIOS para el golden: la semana previa (168h) al primer
+    snapshot MÁS las horas reales que caen en huecos ENTRE snapshots del golden
+    (p. ej. baseline con snapshots a 3h — en producción la DB tiene todas las
+    horas; sin esto, el ffill crea saltos artificiales que el LSTM marca).
+    Las horas definidas por el propio golden se excluyen (sus valores mandan)."""
     if not dataset_path.exists():
         raise FileNotFoundError(
             f"Dataset no encontrado: {dataset_path}. "
             "Ejecutar: python -m ml.data.build_dataset"
         )
-    t0 = pd.Timestamp(scenario["snapshots"][0]["timestamp"])
-    t0 = t0.tz_localize("UTC") if t0.tz is None else t0.tz_convert("UTC")
+    golden_ts = [pd.Timestamp(s["timestamp"]) for s in scenario["snapshots"]]
+    golden_ts = [t.tz_localize("UTC") if t.tz is None else t.tz_convert("UTC") for t in golden_ts]
+    t0, t_last = golden_ts[0], golden_ts[-1]
 
     df = pd.read_parquet(dataset_path)
     df.index = pd.DatetimeIndex(df.index, tz="UTC")
-    ctx = df[(df.index >= t0 - pd.Timedelta(hours=F.ROLLING_WINDOW_H + 1)) & (df.index < t0)]
-    if len(ctx) < 24:
+    in_range = (df.index >= t0 - pd.Timedelta(hours=F.ROLLING_WINDOW_H + 1)) & (df.index <= t_last)
+    ctx = df[in_range & ~df.index.isin(golden_ts)]
+    n_trailing = int((ctx.index < t0).sum())
+    if n_trailing < 24:
         raise RuntimeError(
-            f"Contexto trailing insuficiente ({len(ctx)}h) antes de {t0} — "
+            f"Contexto trailing insuficiente ({n_trailing}h) antes de {t0} — "
             "el dataset no cubre la semana previa al golden."
         )
-    log.info("Contexto trailing: %dh reales [%s → %s]", len(ctx), ctx.index[0], ctx.index[-1])
+    log.info("Contexto real: %dh trailing + %dh en huecos del golden [%s → %s]",
+             n_trailing, len(ctx) - n_trailing, ctx.index[0], ctx.index[-1])
     return _dataset_rows_to_snapshots(ctx)
 
 
@@ -119,10 +126,12 @@ def _scale(feats: pd.DataFrame, scaler: dict) -> tuple[np.ndarray, list[str]]:
 # ---------------------------------------------------------------------------
 
 def _if_scores(sc: dict, bundle: dict) -> np.ndarray:
-    """Score IF crudo (-score_samples) por snapshot del golden."""
+    """Señal IF normalizada [0,1] por snapshot (misma que sirve ml_models_server)."""
+    from tools.ensemble_scorer import normalize_if_signal
+
     model, scaler = bundle["model"], bundle["scaler"]
     X, _ = _scale(sc["feats"], scaler)
-    return -model.score_samples(X)
+    return np.array([normalize_if_signal(v) for v in model.decision_function(X)])
 
 
 def _lstm_errors(sc: dict, checkpoint: dict) -> np.ndarray:
@@ -189,7 +198,7 @@ def validate_iforest(sc_blackout: dict, sc_normal: dict, models_dir: Path) -> bo
     log.info("[IF] Normal  scores:                  %s", np.round(scores_n, 4))
     log.info("[IF] Media blackout=%.4f  media normal=%.4f", scores_b.mean(), scores_n.mean())
 
-    passed = scores_b.mean() > scores_n.mean()
+    passed = bool(scores_b.mean() > scores_n.mean())  # bool nativo: `ok is False` del resumen
     log.info("[IF] %s", "PASS — apagón más anómalo que normal" if passed
              else "FAIL — no discrimina escenarios")
     return passed
@@ -209,7 +218,7 @@ def validate_lstm(sc_blackout: dict, sc_normal: dict, models_dir: Path) -> bool 
     log.info("[LSTM] media blackout=%.6f  normal=%.6f  threshold(P99 train)=%.6f",
              err_b.mean(), err_n.mean(), threshold)
 
-    passed = err_b.mean() > err_n.mean()
+    passed = bool(err_b.mean() > err_n.mean())
     log.info("[LSTM] %s", "PASS — blackout más difícil de reconstruir" if passed
              else "FAIL — no discrimina escenarios")
     return passed
@@ -233,7 +242,7 @@ def validate_classifier(sc_blackout: dict, sc_normal: dict, models_dir: Path) ->
     log.info("[CLF] P(blackout) escenario normal: %s", np.round(probas_n, 4))
     log.info("[CLF] Umbral óptimo (F1): %.4f", threshold)
 
-    passed = probas_b.max() >= 0.60 and probas_n.max() < 0.40
+    passed = bool(probas_b.max() >= 0.60 and probas_n.max() < 0.40)
     log.info("[CLF] %s  (max_blackout=%.4f  max_normal=%.4f)",
              "PASS" if passed else "FAIL", probas_b.max(), probas_n.max())
     return passed
@@ -254,15 +263,14 @@ def validate_ensemble(sc_blackout: dict, sc_normal: dict, models_dir: Path) -> b
     lstm_threshold = lstm_ckpt.get("threshold", 0.5)
 
     def _fused(sc: dict) -> np.ndarray:
-        if_raw = _if_scores(sc, if_bundle)
+        if_sig = _if_scores(sc, if_bundle)  # ya normalizada (normalize_if_signal)
         lstm_err = _lstm_errors(sc, lstm_ckpt)
         clf = _clf_probas(sc, clf_bundle)
         out = []
-        for r, e, c in zip(if_raw, lstm_err, clf):
-            # mismas normalizaciones que ml_models_server.get_anomaly_score
-            if_norm = float(np.clip(r + 0.5, 0, 1))
+        for i_sig, e, c in zip(if_sig, lstm_err, clf):
+            # misma normalización LSTM que ml_models_server.get_anomaly_score
             lstm_norm = float(min(e / lstm_threshold, 1.0))
-            out.append(fuse(lstm_norm, if_norm, c)["blackout_probability"])
+            out.append(fuse(lstm_norm, float(i_sig), c)["blackout_probability"])
         return np.array(out)
 
     p_b = _fused(sc_blackout)
@@ -273,7 +281,7 @@ def validate_ensemble(sc_blackout: dict, sc_normal: dict, models_dir: Path) -> b
         log.info("  %s  %.4f  %s", ts, p, str(label)[:60])
     log.info("[ENSEMBLE] P fusionada normal: %s", np.round(p_n, 4))
 
-    discriminates = p_b.mean() > p_n.mean()
+    discriminates = bool(p_b.mean() > p_n.mean())
     tail = p_b[-3:]
     monotonic = bool(np.all(np.diff(tail) >= -1e-6))
     log.info("[ENSEMBLE] media golden=%.4f > media normal=%.4f: %s | "
