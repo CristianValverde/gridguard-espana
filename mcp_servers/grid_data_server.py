@@ -149,7 +149,15 @@ def _client():
         from entsoe import EntsoePandasClient
     except ImportError as exc:
         raise ImportError("entsoe-py no instalado. pip install entsoe-py") from exc
-    return EntsoePandasClient(api_key=_entsoe_token())
+    # Acotado en tiempo: los defaults (retry_count=3, retry_delay=10, sin
+    # timeout) permiten llamadas >60s que bloquean el event loop del server
+    # y agotan el timeout del cliente MCP (corrida live 2026-07-03).
+    return EntsoePandasClient(
+        api_key=_entsoe_token(),
+        retry_count=1,
+        retry_delay=0,
+        timeout=30,
+    )
 
 
 def _now_window() -> tuple[pd.Timestamp, pd.Timestamp]:

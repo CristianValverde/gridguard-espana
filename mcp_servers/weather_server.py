@@ -15,6 +15,7 @@ Zonas disponibles: norte, sur, levante, interior, galicia, nordeste
 from __future__ import annotations
 
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -234,19 +235,25 @@ def _forecast_24h_impl(zones: list[str], fetch_fn) -> dict:
     fetch_fn(zone, coords) -> {"timestamps": [...], "wind_speed_ms": [...], "radiation_wm2": [...]}
     Las listas se truncan a las primeras 24 entradas.
     Zonas desconocidas (no en ZONE_COORDS) se saltan silenciosamente.
+
+    Las zonas se piden en paralelo: N zonas secuenciales × REQUEST_TIMEOUT
+    superan el timeout del cliente MCP y bloquean el server (los tools
+    síncronos corren inline en su event loop).
     """
+    known = [(zone, ZONE_COORDS[zone]) for zone in zones if zone in ZONE_COORDS]
     out: dict = {}
-    for zone in zones:
-        coords = ZONE_COORDS.get(zone)
-        if coords is None:
-            continue
-        data = fetch_fn(zone, coords)
-        out[zone] = {
-            "forecast_hours": 24,
-            "timestamps": data["timestamps"][:24],
-            "wind_speed_ms": data["wind_speed_ms"][:24],
-            "radiation_wm2": data["radiation_wm2"][:24],
-        }
+    if not known:
+        return out
+    with ThreadPoolExecutor(max_workers=len(known)) as pool:
+        futures = [(zone, pool.submit(fetch_fn, zone, coords)) for zone, coords in known]
+        for zone, future in futures:
+            data = future.result()
+            out[zone] = {
+                "forecast_hours": 24,
+                "timestamps": data["timestamps"][:24],
+                "wind_speed_ms": data["wind_speed_ms"][:24],
+                "radiation_wm2": data["radiation_wm2"][:24],
+            }
     return out
 
 

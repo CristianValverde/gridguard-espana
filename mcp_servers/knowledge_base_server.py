@@ -43,6 +43,8 @@ COLLECTION_PROCEDURES = "procedures"
 _chroma_client: Any = None
 _embed_model: str = ""
 
+EMBED_TIMEOUT_MS = 30_000  # timeout HTTP para la API de embeddings de Gemini
+
 
 def _chroma_path() -> str:
     return os.environ.get("CHROMA_DB_PATH", _DEFAULT_CHROMA)
@@ -70,7 +72,14 @@ def _embed_text(texts: list[str]) -> list[list[float]]:
 
     try:
         from google import genai
-        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+        from google.genai import types as genai_types
+        # Timeout acotado: sin el, una llamada lenta (throttling de cuota)
+        # bloquea el event loop del server y encola al resto de requests
+        # mas alla de los 60s del cliente MCP (corrida live 2026-07-03).
+        client = genai.Client(
+            api_key=os.environ["GEMINI_API_KEY"],
+            http_options=genai_types.HttpOptions(timeout=EMBED_TIMEOUT_MS),
+        )
         result = client.models.embed_content(
             model=_embed_model,
             contents=texts,

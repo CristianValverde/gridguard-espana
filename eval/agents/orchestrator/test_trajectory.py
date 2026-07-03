@@ -167,9 +167,12 @@ class TestBlackoutTrajectory:
         trajectory = result.get("trajectory", [])
         tool_names = [step["tool"] for step in trajectory]
 
-        # Verificar que ML fue consultado
-        assert any(t in tool_names for t in ["get_anomaly_score", "get_blackout_probability"]), \
-            f"ML no consultado. Tools llamadas: {tool_names}"
+        # Verificar que ML fue consultado (el ensemble es la via promovida
+        # desde la promocion de modelos; el clasificador directo sigue valido)
+        assert any(t in tool_names for t in [
+            "get_anomaly_score", "get_blackout_probability",
+            "get_blackout_probability_ensemble",
+        ]), f"ML no consultado. Tools llamadas: {tool_names}"
 
         # Verificar que RAG fue consultado
         assert any(t in tool_names for t in ["search_regulations", "find_similar_incident"]), \

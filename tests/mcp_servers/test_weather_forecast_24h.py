@@ -47,6 +47,22 @@ def test_forecast_24h_truncates_48_to_24():
     assert len(out["norte"]["radiation_wm2"]) == 24
 
 
+def test_forecast_24h_fetches_zones_en_paralelo():
+    """Regresión live 2026-07-03: N zonas secuenciales × 30s de HTTP timeout
+    superan los 60s del cliente MCP. Las zonas deben pedirse en paralelo:
+    la barrier de 2 solo se libera si ambas peticiones están en vuelo a la vez."""
+    import threading
+
+    barrier = threading.Barrier(2, timeout=5)
+
+    def _blocking_fetch(zone, coords):
+        barrier.wait()
+        return _fake_fetch(zone, coords)
+
+    out = ws._forecast_24h_impl(["norte", "sur"], fetch_fn=_blocking_fetch)
+    assert set(out) == {"norte", "sur"}
+
+
 @pytest.mark.integration
 def test_forecast_24h_real_openmeteo():
     """Integration test: live Open-Meteo call for zone 'norte'. No token needed."""

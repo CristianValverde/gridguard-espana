@@ -23,7 +23,10 @@ def _stdio_toolset(module: str) -> McpToolset:
                 command="python",
                 args=["-m", module],
             ),
-            timeout=60.0,
+            # 120s: handlers acotados a <=30s, pero los tools sincronos corren
+            # inline en el event loop del server (head-of-line blocking) y 60s
+            # no absorbia una cola de 2-3 requests (corrida live 2026-07-03).
+            timeout=120.0,
         )
     )
 

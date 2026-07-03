@@ -22,13 +22,16 @@ def test_expone_cinco_toolsets_mcp():
         assert isinstance(getattr(mcp_toolsets, name), McpToolset), name
 
 
-def test_cada_toolset_apunta_a_su_server_con_timeout_60():
+def test_cada_toolset_apunta_a_su_server_con_timeout_120():
+    # 120s: los handlers estan acotados a <=30s, pero los tools sincronos
+    # corren inline en el event loop del server (head-of-line blocking) y
+    # 60s no absorbia una cola de 2-3 requests (corrida live 2026-07-03).
     from agents import mcp_toolsets
 
     for name, module in EXPECTED.items():
         toolset = getattr(mcp_toolsets, name)
         params = toolset._connection_params
-        assert params.timeout == 60.0, name
+        assert params.timeout == 120.0, name
         assert params.server_params.command == "python", name
         assert params.server_params.args == ["-m", module], name
 
