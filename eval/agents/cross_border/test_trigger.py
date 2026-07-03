@@ -16,7 +16,7 @@ _EXPECTED_TOOLS = {
     "get_eu_generation", "get_mitigation_procedure",
     "get_eu_market_prices",
 }
-_EXPECTED_SERVERS = {"mcp_servers.grid_data_server", "mcp_servers.knowledge_base_server"}
+_EXPECTED_SERVERS = {"GRID_DATA_TOOLSET", "KB_TOOLSET"}
 
 
 def test_whitelist_is_exactly_expected():
@@ -24,6 +24,8 @@ def test_whitelist_is_exactly_expected():
 
 
 def test_connected_servers_serve_the_whitelist():
+    # Task 2: los toolsets son singletons compartidos importados de
+    # agents/mcp_toolsets.py (ya no hay cadenas mcp_servers.* en el agente).
     src = (Path(__file__).resolve().parents[3] / "agents" / "cross_border.py").read_text(encoding="utf-8")
     for server in _EXPECTED_SERVERS:
         assert server in src, f"server no conectado: {server}"

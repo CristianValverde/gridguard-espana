@@ -21,65 +21,24 @@ from __future__ import annotations
 
 from google.adk.agents import Agent
 from google.adk.tools.agent_tool import AgentTool
-from google.adk.tools.mcp_tool.mcp_toolset import McpToolset, StdioConnectionParams
 from google.genai import types as genai_types
-from mcp.client.stdio import StdioServerParameters
 
+from agents.mcp_toolsets import GRID_DATA_TOOLSET, MEMORY_TOOLSET, ML_TOOLSET, WEATHER_TOOLSET
 from config.model_loader import get_model
 from agents.instruction_utils import as_static_instruction, load_prompt
 from schemas.models import RenewablesForecast
 
 _INSTRUCTION = load_prompt("renewables_forecast")
 
-_weather_toolset = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="python",
-            args=["-m", "mcp_servers.weather_server"],
-        ),
-        timeout=60.0,
-    )
-)
-
-_grid_data_toolset = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="python",
-            args=["-m", "mcp_servers.grid_data_server"],
-        ),
-        timeout=60.0,
-    )
-)
-
-_ml_toolset = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="python",
-            args=["-m", "mcp_servers.ml_models_server"],
-        ),
-        timeout=60.0,
-    )
-)
-
-_memory_toolset = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="python",
-            args=["-m", "mcp_servers.memory_server"],
-        ),
-        timeout=60.0,
-    )
-)
-
 _inner_agent = Agent(
     model=get_model("fast_agent"),
     name="renewables_forecast_skill",
     instruction=as_static_instruction(_INSTRUCTION),
     tools=[
-        _weather_toolset,
-        _grid_data_toolset,
-        _ml_toolset,
-        _memory_toolset,
+        WEATHER_TOOLSET,
+        GRID_DATA_TOOLSET,
+        ML_TOOLSET,
+        MEMORY_TOOLSET,
     ],
     output_schema=RenewablesForecast,
     generate_content_config=genai_types.GenerateContentConfig(temperature=0.1),

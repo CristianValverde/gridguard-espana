@@ -26,10 +26,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from google.adk.agents import Agent
-from google.adk.tools.mcp_tool.mcp_toolset import McpToolset, StdioConnectionParams
 from google.genai import types as genai_types
-from mcp.client.stdio import StdioServerParameters
 
+from agents.mcp_toolsets import KB_TOOLSET, MEMORY_TOOLSET, ML_TOOLSET
 from config.model_loader import get_model
 from agents.instruction_utils import as_static_instruction, load_prompt
 
@@ -91,45 +90,15 @@ def write_report(content_html: str, content_md: str, report_type: str = "daily")
     }
 
 
-_memory_toolset = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="python",
-            args=["-m", "mcp_servers.memory_server"],
-        ),
-        timeout=60.0,
-    )
-)
-
-_ml_toolset = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="python",
-            args=["-m", "mcp_servers.ml_models_server"],
-        ),
-        timeout=60.0,
-    )
-)
-
-_kb_toolset = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="python",
-            args=["-m", "mcp_servers.knowledge_base_server"],
-        ),
-        timeout=60.0,
-    )
-)
-
 report_agent = Agent(
     model=get_model("smart_agent"),
     name="report_agent",
     instruction=as_static_instruction(_INSTRUCTION),
     tools=[
         write_report,
-        _memory_toolset,
-        _ml_toolset,
-        _kb_toolset,
+        MEMORY_TOOLSET,
+        ML_TOOLSET,
+        KB_TOOLSET,
     ],
     generate_content_config=genai_types.GenerateContentConfig(temperature=0.4),
 )

@@ -38,3 +38,33 @@ def test_las_cinco_instancias_son_distintas():
 
     ids = {id(getattr(mcp_toolsets, name)) for name in EXPECTED}
     assert len(ids) == 5
+
+
+def test_todos_los_agentes_comparten_los_singletons():
+    from agents import mcp_toolsets
+    from agents.anomaly_detector import AnomalyDetectorSkill
+    from agents.cross_border import cross_border_agent
+    from agents.orchestrator import orchestrator
+    from agents.regulatory_compliance import RegulatoryComplianceSkill
+    from agents.renewables_forecast import RenewablesForecastSkill
+    from agents.report_agent import report_agent
+
+    shared_ids = {id(getattr(mcp_toolsets, name)) for name in EXPECTED}
+    agentes = [
+        orchestrator,
+        report_agent,
+        cross_border_agent,
+        AnomalyDetectorSkill.agent,
+        RenewablesForecastSkill.agent,
+        RegulatoryComplianceSkill.agent,
+    ]
+    encontrados = set()
+    for agente in agentes:
+        for tool in agente.tools:
+            if isinstance(tool, McpToolset):
+                assert id(tool) in shared_ids, (
+                    f"{agente.name} usa un McpToolset propio en vez del compartido"
+                )
+                encontrados.add(id(tool))
+    # Los 5 servers estan en uso por al menos un agente
+    assert encontrados == shared_ids

@@ -5,7 +5,8 @@ Modelo: gemini-3.5-flash (fast_agent) - Temperature 0.1 (via GenerateContentConf
 Contexto: 1M tokens (permite ingestar semanas de historico en una sola llamada)
 
 ADK 2.3.0 migration notes:
-- MCPToolset -> McpToolset; StdioServerParameters wrapped in StdioConnectionParams.
+- MCPToolset -> McpToolset; los toolsets stdio son singletons compartidos en
+  agents/mcp_toolsets.py (un subproceso por server, no por agente x server).
 - temperature -> generate_content_config=genai_types.GenerateContentConfig(temperature=...).
 - max_turns removed (not permitted in ADK 2.3.0; turn-limiting moves to the runner).
 - register_hooks: ADK 2.3.0 exposes before_tool_callback / after_tool_callback /
@@ -43,12 +44,11 @@ from typing import Any
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
-from google.adk.tools.mcp_tool.mcp_toolset import McpToolset, StdioConnectionParams
 from google.genai import types as genai_types
-from mcp.client.stdio import StdioServerParameters
 
 from agents.anomaly_detector import AnomalyDetectorSkill
 from agents.cross_border import cross_border_agent
+from agents.mcp_toolsets import MEMORY_TOOLSET, ML_TOOLSET
 from agents.regulatory_compliance import RegulatoryComplianceSkill
 from agents.renewables_forecast import RenewablesForecastSkill
 from agents.report_agent import report_agent
@@ -65,26 +65,6 @@ log = logging.getLogger("gridguard.orchestrator")
 
 _INSTRUCTION = load_prompt("orchestrator")
 
-_ml_toolset = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="python",
-            args=["-m", "mcp_servers.ml_models_server"],
-        ),
-        timeout=60.0,
-    )
-)
-
-_memory_toolset = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="python",
-            args=["-m", "mcp_servers.memory_server"],
-        ),
-        timeout=60.0,
-    )
-)
-
 orchestrator = Agent(
     model=get_model("fast_agent"),
     name="gridguard_orchestrator",
@@ -97,8 +77,8 @@ orchestrator = Agent(
         risk_scorer,
         alert_formatter,
         # Capa 2: MCP Tools (ML inference + Markov + memoria)
-        _ml_toolset,
-        _memory_toolset,
+        ML_TOOLSET,
+        MEMORY_TOOLSET,
         # Capa 3: Skills (AgentTools -- LLM con contexto especifico)
         AnomalyDetectorSkill,
         RenewablesForecastSkill,

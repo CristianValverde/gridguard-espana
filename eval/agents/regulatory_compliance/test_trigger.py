@@ -14,7 +14,7 @@ pytestmark = pytest.mark.agent_regulatory
 _EXPECTED_TOOLS = {
     "search_regulations", "get_grid_state",
 }
-_EXPECTED_SERVERS = {"mcp_servers.knowledge_base_server", "mcp_servers.ml_models_server"}
+_EXPECTED_SERVERS = {"KB_TOOLSET", "ML_TOOLSET"}
 
 
 def test_whitelist_is_exactly_expected():
@@ -22,6 +22,8 @@ def test_whitelist_is_exactly_expected():
 
 
 def test_connected_servers_serve_the_whitelist():
+    # Task 2: los toolsets son singletons compartidos importados de
+    # agents/mcp_toolsets.py (ya no hay cadenas mcp_servers.* en el agente).
     src = (Path(__file__).resolve().parents[3] / "agents" / "regulatory_compliance.py").read_text(encoding="utf-8")
     for server in _EXPECTED_SERVERS:
         assert server in src, f"server no conectado: {server}"

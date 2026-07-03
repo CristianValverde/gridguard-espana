@@ -17,8 +17,8 @@ _EXPECTED_TOOLS = {
     "get_weather_forecast_24h", "get_grid_state",
 }
 _EXPECTED_SERVERS = {
-    "mcp_servers.weather_server", "mcp_servers.grid_data_server",
-    "mcp_servers.ml_models_server", "mcp_servers.memory_server",
+    "WEATHER_TOOLSET", "GRID_DATA_TOOLSET",
+    "ML_TOOLSET", "MEMORY_TOOLSET",
 }
 
 
@@ -27,6 +27,8 @@ def test_whitelist_is_exactly_expected():
 
 
 def test_connected_servers_serve_the_whitelist():
+    # Task 2: los toolsets son singletons compartidos importados de
+    # agents/mcp_toolsets.py (ya no hay cadenas mcp_servers.* en el agente).
     src = (Path(__file__).resolve().parents[3] / "agents" / "renewables_forecast.py").read_text(encoding="utf-8")
     for server in _EXPECTED_SERVERS:
         assert server in src, f"server no conectado: {server}"
