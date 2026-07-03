@@ -259,6 +259,14 @@ The Markov layer is trained offline alongside the ML models and used at runtime 
 
 ## 7. Layer 2 — MCP Servers (5 servers)
 
+**Shared stdio transport:** all agents share **a single `McpToolset` instance per
+server**, defined in `agents/mcp_toolsets.py`. ADK's `MCPSessionManager` caches the
+session (and its subprocess) per toolset instance, so a full orchestrator run spawns
+at most 5 subprocesses (one per server) instead of one per agent×server (~17). This
+removes the simultaneous-import storm (torch, ~6s cold) that made stdio calls exceed
+the 60s timeout during live evals. Design:
+`docs/superpowers/specs/2026-07-03-mcp-shared-transport-design.md`.
+
 ### `MCP: grid-data`
 Authenticated wrapper over ESIOS (Spanish generation mix) + ENTSO-E (European interconnection and market data). Consolidates the former `ree-grid` and `entso-e` servers into one, in-memory cache (TTL 9 min for ESIOS, 1 h for ENTSO-E).
 ```
