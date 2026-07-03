@@ -7,10 +7,20 @@ Importar desde aquí en tools, mcp_servers, agents y eval.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
+
+
+def _utcnow_iso() -> str:
+    """Timestamp UTC como str ISO 8601.
+
+    Los output_schema de agentes NO pueden usar datetime: el
+    SetModelResponseTool de ADK 2.3.0 hace model_dump() en modo python +
+    json.dumps sin default, y un datetime rompe el nodo con TypeError.
+    """
+    return datetime.now(timezone.utc).isoformat()
 
 
 # ---------------------------------------------------------------------------
@@ -389,7 +399,7 @@ class AnomalyReport(BaseModel):
         "renewable_ramp", "demand_surge", "generation_failure", "interconnection", "unknown"
     ] = "unknown"
     causal_chain: str = Field(default="", description="Cadena causal que explica la anomalía")
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: str = Field(default_factory=_utcnow_iso, description="ISO 8601 UTC")
 
 
 class RenewablesForecast(BaseModel):
@@ -405,7 +415,7 @@ class RenewablesForecast(BaseModel):
     )
     ml_forecast_mw: float = Field(..., ge=0, description="Previsión ML de demanda en MW")
     reasoning: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: str = Field(default_factory=_utcnow_iso, description="ISO 8601 UTC")
 
 
 class ComplianceReport(BaseModel):
@@ -418,7 +428,7 @@ class ComplianceReport(BaseModel):
     mandatory_actions: list[str] = Field(default_factory=list)
     compliance_status: Literal["compliant", "warning", "violation"]
     reasoning: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: str = Field(default_factory=_utcnow_iso, description="ISO 8601 UTC")
 
 
 # ---------------------------------------------------------------------------
@@ -434,7 +444,7 @@ class CrossBorderAnalysis(BaseModel):
     risk_mitigation: str = Field(
         ..., description="Procedimiento de mitigación recomendado"
     )
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: str = Field(default_factory=_utcnow_iso, description="ISO 8601 UTC")
 
 
 # ---------------------------------------------------------------------------
