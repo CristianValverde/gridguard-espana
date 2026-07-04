@@ -109,6 +109,28 @@ register_hooks(orchestrator)
 # API de ejecucion
 # ---------------------------------------------------------------------------
 
+def _consume_events_safely(result) -> list:
+    """Consume el generador de Events del Runner, tolerando que un sub-agente
+    (AgentTool con output_schema estricto) lance una excepcion no capturada
+    por ADK 2.3.0 (ej. pydantic.ValidationError en agent_tool.py::run_async
+    cuando la skill responde texto libre en vez de JSON). Sin esto, UN turno
+    mal formateado aborta TODO el ciclo de monitorizacion sin producir ningun
+    resultado; con esto, se degrada a "esa skill no produjo output valido" y
+    el flujo continua (incluido escalation_enforcer, que puede reparar el hueco).
+    """
+    events: list = []
+    try:
+        for event in result:
+            events.append(event)
+    except Exception as exc:
+        log.warning(
+            "Runner.run() interrumpido por excepcion no capturada (probable "
+            "output_schema invalido de una skill): %s. Continuando con %d "
+            "eventos ya capturados.", exc, len(events),
+        )
+    return events
+
+
 def run(region: str = "peninsular") -> dict[str, Any]:
     """Ejecuta un ciclo de monitorizacion en tiempo real.
 
@@ -132,7 +154,7 @@ def run(region: str = "peninsular") -> dict[str, Any]:
         parts=[genai_types.Part(text=f"Ejecuta ciclo de monitorizacion para region: {region}")],
     )
     # ADK 2.3.0: runner.run() returns a Generator[Event, None, None] — consume it.
-    events = list(runner.run(
+    events = _consume_events_safely(runner.run(
         session_id=session.id,
         user_id="gridguard-system",
         new_message=message,
@@ -185,7 +207,7 @@ def run_scenario(scenario: dict) -> dict[str, Any]:
     )
 
     # ADK 2.3.0: runner.run() returns a Generator[Event, None, None] — consume it.
-    events = list(result)
+    events = _consume_events_safely(result)
     output = _extract_result(events)
     # Agregar trayectoria de tools para los tests de eval
     output["trajectory"] = _extract_trajectory(events)
