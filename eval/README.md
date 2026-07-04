@@ -52,29 +52,31 @@ orchestrator bloqueaba las skills (nombres CamelCase vs runtime snake_case),
 timeout MCP de 5s insuficiente (ahora 60s), test de Markov con import obsoleto.
 
 Tras compartir los toolsets MCP (spec 2026-07-03, un subproceso por server en vez
-de ~17): corrida del 2026-07-03 → **7/12 passed** (5 failed, 1028.90s / 17m08s).
-`renewables/test_load_forecast` (`test_consults_weather_and_load_forecast`)
-**PASSED**. `orchestrator/test_critical` (`test_run_scenario_critical`) **FAILED**:
-el log muestra `McpError: Timed out while waiting for response to ClientRequest.
-Waited 60.0 seconds.` dentro del mismo bloque de captura del test — la tormenta de
-subprocesos ya no es la causa (solo hay 1 proceso por server ahora), pero el
-timeout MCP de 60s sigue apareciendo (4 ocurrencias en el log completo, repartidas
-entre `test_ample_margin_scenario_skips_mitigation`, `test_run_scenario_critical`,
-`test_critical_scenario_triggers_full_escalation` y
-`test_normal_scenario_triggers_nothing`, todos del orchestrator salvo el primero).
-Sin fallback "ML caído" espurio (0 ocurrencias) y sin bloqueos del guardrail
-("no permitido": 0 ocurrencias). De los 5 fallos, 4 tienen un timeout MCP de 60s
-dentro de su propio bloque de captura (`test_ample_margin_scenario_skips_mitigation`,
-`test_run_scenario_critical`, `test_critical_scenario_triggers_full_escalation`,
-`test_normal_scenario_triggers_nothing`); el quinto
-(`test_consults_ml_and_baseline`, subagente anomaly_detector) falla por assertion
-pura sin timeout visible en su bloque — no-determinismo LLM (nombre de tool
-distinto al esperado, ej. `get_blackout_probability_ensemble` en vez de
-`get_blackout_probability` en el caso del orchestrator). La hipótesis de la
-tormenta de subprocesos queda REFUTADA como causa única: persisten timeouts individuales de 60s con
-transporte compartido (1 proceso/server), lo que apunta a una causa distinta
-(posible contención SQLite en gridguard.db o latencia real de alguna tool/API
-externa bajo el patrón de llamadas concurrentes del orchestrator). Próximo paso:
-`superpowers:systematic-debugging` con hipótesis de contención SQLite y cleanup de
-event loops de ADK (`Error cleaning up session stdio_session: original event loop
-is closed` aparece repetidamente antes de cada timeout).
+de ~17): corrida del 2026-07-03 → 7/12 passed en 17m08s, con 4 timeouts MCP de 60s
+persistentes — la tormenta de subprocesos quedó refutada como causa única.
+
+**Causa raíz encontrada y corregida (2026-07-04, systematic-debugging con py-spy):**
+el kb server hacía el import de `chromadb` (que arrastra numpy) de forma perezosa
+dentro del primer tool call, con el event loop de anyio ya corriendo; la carga de
+la extensión C de numpy se quedaba colgada minutos en `create_module` y el cliente
+MCP agotaba su timeout. Repro determinista sin LLM: `search_regulations` vía stdio
+pasaba de colgarse >90s a responder en 0.8s moviendo el import al arranque del
+módulo (mismo patrón que torch en `ml_models_server`). Fixes acompañantes de la
+misma sesión: `timestamp` como str ISO en los 4 output_schema (un `datetime`
+rompía `SetModelResponseTool` de ADK 2.3.0 con TypeError), IO externo acotado
+(embeddings Gemini con timeout de 30s, ENTSO-E con `timeout=30` y sin retries
+largos, forecast 24h con zonas en paralelo), cota dura de 45s por build en
+grid-data con caché que ya no guarda errores, y timeout del cliente MCP a 120s.
+
+**Última corrida (2026-07-04, post-fixes): 7/12 passed en 9m41s** (antes 17-27 min)
+con **0 timeouts MCP y 0 cotas disparadas** — la causa infra está eliminada.
+`renewables/test_load_forecast` PASSED (3 corridas seguidas). Los 5 fallos
+restantes son AssertionError de comportamiento del agente, no de infraestructura:
+el orchestrator detiene la escalación tras `anomaly_detector_skill` (afecta a
+`test_run_scenario_critical`, `test_critical_scenario_triggers_full_escalation` y
+al assert de RAG, que solo se satisface si la escalación llega a los sub-agentes),
+dispara anomaly en el escenario VERDE (`test_normal_scenario_triggers_nothing`), y
+cross_border muestra flips LLM en sus 2 triggers. Próximo paso (decisión de
+producto): prompts más directivos para la escalación por capas y/o
+`pytest-rerunfailures` para el no-determinismo residual — cada iteración de
+validación cuesta ~10 min de cuota Gemini.
