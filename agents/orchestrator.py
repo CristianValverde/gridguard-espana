@@ -149,6 +149,8 @@ def run_scenario(scenario: dict) -> dict[str, Any]:
     Returns:
         Dict con resultado + trayectoria de tools llamadas (para asserts de eval).
     """
+    from agents.escalation_enforcer import enforce_escalation_plan  # import diferido: evita ciclo con escalation_enforcer, que importa de este modulo
+
     session_service = InMemorySessionService()
     runner = Runner(
         agent=orchestrator,
@@ -187,6 +189,10 @@ def run_scenario(scenario: dict) -> dict[str, Any]:
     output = _extract_result(events)
     # Agregar trayectoria de tools para los tests de eval
     output["trajectory"] = _extract_trajectory(events)
+    # Enforcer determinista: repara por codigo lo que el LLM no ejecuto de lo
+    # que escalation_planner marco como obligatorio (ver
+    # docs/superpowers/specs/2026-07-04-escalation-enforcer-design.md).
+    output = enforce_escalation_plan(output, output["trajectory"], snapshot)
     return output
 
 

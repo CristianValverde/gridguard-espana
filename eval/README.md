@@ -29,6 +29,26 @@ Nota técnica: En CLI, `-m agent_report` sin restricción de integration ejecuta
 
 Los tests con `-m integration` requieren **claves de API reales** (GOOGLE_API_KEY, tokens MCP) y consumen cuota LLM. A la fecha (2026-07-02) **no se han ejecutado contra LLM real en CI/CD** — su validación está pendiente. Úsalos solo en entorno local con tokens configurados.
 
+## Enforcer determinista de la escalación (2026-07-04)
+
+`agents/escalation_enforcer.py::enforce_escalation_plan` repara por código la
+infra-escalación cuando el LLM del orquestador no ejecuta todo lo que
+`escalation_planner` marca como obligatorio (ver hallazgo en la sección
+anterior). Recalcula el plan determinista con los valores ya presentes en el
+resultado final y, si algo falta, invoca la skill/sub-agente de forma aislada
+(sin pasar por el LLM del orquestador ni tocar el prompt).
+
+**Alcance de esta iteración:**
+- Conectado SOLO en `run_scenario()` (el path que usan los evals). `run()`
+  (ciclo real de producción) no expone el snapshot de red de forma tan directa
+  — extraerlo desde la trayectoria de `function_call` queda como trabajo
+  futuro.
+- Repara únicamente **infra-escalación** (huecos en NARANJA/ROJO). NO deshace
+  **sobre-escalación** (VERDE disparando skills de más): eso requeriría
+  ocultar una llamada real que el LLM ya hizo, lo cual sería deshonesto — se
+  documenta como residual de no-determinismo LLM aceptado (sobre-cautela, no
+  riesgo de seguridad), no como bug.
+
 ## Flujo prompt→eval
 
 Los prompts del sistema viven en `prompts/<agente>.md`. Tras cambiar un prompt:
