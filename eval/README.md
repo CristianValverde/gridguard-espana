@@ -49,6 +49,58 @@ resultado final y, si algo falta, invoca la skill/sub-agente de forma aislada
   documenta como residual de no-determinismo LLM aceptado (sobre-cautela, no
   riesgo de seguridad), no como bug.
 
+### Resultado medido de la validación dirigida (2026-07-04, 2 tests, LLM real)
+
+Corrida dirigida a los 2 tests que ejercitan `enforce_escalation_plan` end-to-end
+(no la suite completa de 12 — ver `.superpowers/sdd/eval_live_enforcer_targeted.log`,
+gitignored):
+
+```
+python -m pytest eval/agents/orchestrator/test_trajectory.py::TestBlackoutTrajectory::test_run_scenario_critical \
+  eval/agents/orchestrator/test_trigger.py::TestOrchestratorLiveTriggers::test_critical_scenario_triggers_full_escalation \
+  -m integration -v
+```
+
+**Resultado: 0/2 PASSED (2 failed, 58.86s).** El enforcer en sí no se llegó a
+poner a prueba en ninguno de los dos casos — ambos fallos ocurren en la
+ejecución LLM normal del orchestrator, **antes** de que
+`enforce_escalation_plan` se invoque:
+
+- `test_run_scenario_critical` — **FAILED.** `tool_names` capturado fue
+  `['data_normalizer']`: el LLM del orchestrator no llamó a ninguna tool de
+  ML (`get_anomaly_score` / `get_blackout_probability[_ensemble]`) en esta
+  corrida. Es una falla de trayectoria del LLM orchestrator (no-determinismo
+  de turno), no relacionada con el enforcer.
+- `test_critical_scenario_triggers_full_escalation` — **FAILED.** Traceback:
+  `pydantic_core._pydantic_core.ValidationError: 1 validation error for
+  AnomalyReport / Invalid JSON: expected ident ... input_value='Necesito un
+  snapshot de ... el snapshot de la red.'`, lanzado desde
+  `google.adk.tools.agent_tool.py:299 (validate_schema)`. El orchestrator
+  invocó `AnomalyDetectorSkill` (AgentTool con `output_schema=AnomalyReport`,
+  ver `agents/anomaly_detector.py:45`) dentro de su árbol normal, y el LLM de
+  esa skill respondió con texto conversacional en vez de JSON válido según
+  su schema. ADK no captura ese `ValidationError` — lo relanza y aborta
+  `runner.run()` completo en `agents/orchestrator.py:188` (`list(result)`),
+  **antes** de llegar a la línea 195 donde se invoca
+  `enforce_escalation_plan`. Por tanto el enforcer nunca se ejecutó en este
+  test; el fallo es anterior en la cadena y no está en el alcance de
+  `agents/escalation_enforcer.py`.
+
+**Conclusión:** esta iteración no logró ejercitar el código del enforcer con
+LLM real — ambos tests tropezaron con inestabilidad pre-existente del árbol
+LLM normal (mismo patrón de no-determinismo documentado en la sección
+siguiente: el LLM del orchestrator/sub-agentes no siempre obedece
+consistentemente su contrato, sea el plan de escalación o el output_schema).
+No se repitió la corrida (cuota limitada) tras leer y entender ambos
+tracebacks — ver `.superpowers/sdd/ee-task-3-report.md` para el detalle
+completo entregado al controlador.
+
+Como en ninguno de los dos casos se alcanzó a ejercitar `enforce_escalation_plan`,
+tampoco hay evidencia nueva sobre `test_normal_scenario_triggers_nothing`
+(el residual conocido de sobre-escalación en VERDE); sigue sin corregirse
+por la razón ya documentada arriba (deshacer una llamada real del LLM sería
+deshonesto).
+
 ## Flujo prompt→eval
 
 Los prompts del sistema viven en `prompts/<agente>.md`. Tras cambiar un prompt:
