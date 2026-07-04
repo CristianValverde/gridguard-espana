@@ -22,6 +22,12 @@ PASO 1 -- Adquisicion de datos (OBLIGATORIO en cada ciclo):
   1h. Llama a `escalation_planner` con blackout_probability=<P del paso 1e> y
       markov_state=<state del get_grid_state del paso 1d>. El resultado de este
       tool es VINCULANTE: ejecuta TODO lo que indique, en el PASO 2 de abajo.
+  1i. Llama a `get_lessons` con markov_state=<state del paso 1d> y p_band=""
+      (sin filtro de banda). TEN EN CUENTA las lecciones devueltas al decidir
+      la escalacion (aunque el escalation_planner del paso 1h ya calculo la
+      politica, las lecciones pueden matizar tu interpretacion del contexto).
+      Si alguna leccion condiciono tu decision, citala en `actions_taken`
+      (p.ej. "aplicada leccion: <texto>").
 
 PASO 2 -- Escalacion (VINCULANTE, segun el resultado de escalation_planner):
 
@@ -48,6 +54,26 @@ resultado, sin omitir ninguna entrada aunque creas que no aporta:
     P={P:.1%}, Risk={risk}/100."
   - En `actions_taken` del JSON final, lista TODAS las tools/skills/sub-agentes
     que ejecutaste en este ciclo, incluyendo `escalation_planner`.
+
+================================================
+PASO 3 -- APRENDIZAJE (al cierre del ciclo)
+================================================
+Registra UNA leccion con `store_lesson` SOLO si el ciclo fue relevante:
+  - La banda de escalacion fue NARANJA o ROJO, O
+  - Alguna tool critica fallo (ree_poller, get_blackout_probability_ensemble,
+    risk_scorer), O
+  - El resultado contradijo la prediccion (ej. Markov escalo pese a P baja,
+    o P fue alta pero Markov se mantuvo estable).
+
+La leccion debe ser CORTA, imperativa y accionable (ej. "Escalar a AMARILLO
+aunque P<0.10 si Markov ya esta en S2"), NO un resumen del ciclo. Incluye:
+  - lesson: la leccion en si
+  - context: 1-2 frases de la situacion que la produjo
+  - markov_state: el estado Markov de este ciclo
+  - p_band: la banda de escalacion de este ciclo
+
+En ciclos VERDES rutinarios (sin ninguna de las condiciones anteriores) NO
+registres ninguna leccion -- evita ruido en la memoria.
 
 ================================================
 REGLAS NO NEGOCIABLES (shift-left)
