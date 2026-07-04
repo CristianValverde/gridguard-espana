@@ -31,6 +31,32 @@ The core principle is **not to use an LLM where a Python function or ML model su
 
 - **Skill (AgentTool)**: agent wrapped as a synchronous tool. No state between calls. Ideal for focused, reusable analyses with a single structured result.
 - **Sub-agent**: agent with its own loop, tools and session memory. Ideal for autonomous multi-step tasks where the number of steps is unpredictable.
+- This is a shift-left decision, not a stylistic one: a Skill hands the LLM exactly the
+  autonomy a bounded, single-result analysis needs and no more; a sub-agent is reserved for
+  tasks whose step count is genuinely unpredictable (`ReportAgent`'s multi-source synthesis,
+  `CrossBorderAgent`'s per-country evaluation). Verified against ADK source
+  (`agent_tool.py` vs `runners.py`): an `AgentTool` spawns a nested `Runner` whose internal
+  events do **not** bubble up to the parent trajectory (a synthetic trajectory entry must be
+  added by hand); a sub-agent shares the parent's own event generator, so its tool calls
+  appear in the trajectory automatically. `agents/escalation_enforcer.py` treats the two
+  cases differently for exactly this reason.
+
+### Why MCP Servers (Layer 2), not plain function imports
+
+Every tool in Layer 2 could have been a plain Python function imported directly by each
+agent. MCP servers were chosen instead for three shift-left reasons — moving responsibility
+out of agent code and into a deterministic, auditable boundary:
+
+- **Credential isolation**: `ESIOS_TOKEN`, `AEMET_API_KEY`, `ENTSOE_TOKEN` live only inside
+  their MCP server's process — never in agent code or prompt context. The trust boundary is
+  the process, not prompt discipline (a non-negotiable project rule).
+- **One implementation, many consumers**: several agents call the same tool (e.g.
+  `get_blackout_probability_ensemble` is used by both the Orchestrator and
+  `AnomalyDetectorSkill`). MCP defines it once; without it, each agent would import and
+  maintain its own copy of the same data-access logic.
+- **Centralised guardrails**: `before_tool_callback`/`after_tool_callback` hooks (rate-limit,
+  `.env` blocking, schema validation) apply once at the MCP boundary instead of once per
+  agent — adding a guardrail doesn't mean touching every agent that calls that tool.
 
 ---
 

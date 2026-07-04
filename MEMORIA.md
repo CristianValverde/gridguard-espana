@@ -78,8 +78,69 @@ ENTSO-E), y la capa Markov se plegó dentro de `ml-models`. Resultado: 7 → 5 M
 
 ## 3. Aplicación del principio shift-left (ejemplos concretos)
 
-El shift-left no es solo un eslogan del diseño — se aplicó de forma repetida y verificable
-a lo largo del proyecto, incluso para *corregir* comportamiento de agentes:
+El shift-left no es solo un eslogan del diseño — es el criterio que decidió, una por una,
+casi todas las decisiones estructurales del proyecto: qué se convierte en servidor MCP, qué
+agente es un Skill y cuál es un sub-agente, y qué lógica se escribe como función determinista
+en vez de delegarse al LLM. Antes de los ejemplos de funciones deterministas (que ya estaban
+documentados), vale la pena explicar el razonamiento detrás de esas otras dos decisiones,
+porque no son solo estilo de código: son shift-left aplicado a la *arquitectura*, no solo a
+los *cálculos*.
+
+### 3.1 Por qué servidores MCP y no funciones Python sueltas
+
+Podríamos haber conectado cada agente directamente a funciones Python locales (`ree_poller()`,
+`get_ensemble_score()`, etc.) sin pasar por el protocolo MCP. Se eligió MCP por tres razones,
+todas shift-left en el sentido de "mover la responsabilidad fuera del código del agente y
+del LLM, hacia una capa determinista y auditable":
+
+- **Aislamiento de credenciales**: `ESIOS_TOKEN`, `AEMET_API_KEY` y `ENTSOE_TOKEN` viven
+  únicamente en el proceso del servidor MCP correspondiente. Ni el código del agente ni el
+  prompt del LLM los ven nunca — el límite de confianza está en el proceso, no en la
+  disciplina del prompt (regla NO NEGOCIABLE del proyecto, ver `CLAUDE.md`).
+- **Una sola implementación, muchos consumidores**: varios agentes necesitan la misma
+  herramienta (p.ej. `get_blackout_probability_ensemble` la usan tanto el Orchestrator como
+  `AnomalyDetectorSkill`). Sin MCP, cada agente importaría y mantendría su propia copia de la
+  lógica de acceso a datos. Con MCP, la herramienta se define una vez en el servidor y se
+  comparte — lo mismo que motivó consolidar 17 subprocesos en 5 toolsets compartidos
+  (`agents/mcp_toolsets.py`, ver §2.1).
+- **Guardrails centralizados**: los hooks `before_tool_callback`/`after_tool_callback`
+  (rate-limit, bloqueo de `.env`, validación de esquema) se aplican una vez en la frontera
+  MCP, no una vez por agente. Añadir un guardrail nuevo no requiere tocar cada agente que use
+  esa tool.
+
+El coste — un protocolo adicional en vez de una llamada de función directa — se acepta porque
+la alternativa (credenciales y lógica de acceso repartidas entre agentes) es exactamente el
+tipo de responsabilidad que shift-left dice que no debe vivir en el código del agente.
+
+### 3.2 Por qué algunos agentes son Skills (AgentTool) y otros son sub-agentes
+
+La arquitectura original (ver diagrama regenerado, `architecture_diagram.html`) tiene 3
+Skills (`AnomalyDetectorSkill`, `RenewablesForecastSkill`, `RegulatoryComplianceSkill`) y 2
+sub-agentes (`ReportAgent`, `CrossBorderAgent`). La diferencia no es estética — es shift-left
+aplicado a cuánta autonomía se le da al LLM:
+
+- **Skill (`AgentTool`)**: se comporta como una función síncrona — sin estado entre llamadas,
+  un único resultado estructurado. Se usa cuando la tarea es un análisis acotado y repetible
+  (detectar anomalía, pronosticar renovables, verificar cumplimiento regulatorio): el número
+  de pasos internos es predecible, así que no hace falta darle al LLM un bucle propio con
+  memoria de sesión. Es la opción "más barata" en autonomía, coherente con no delegar al LLM
+  más control del que la tarea realmente necesita.
+- **Sub-agente**: tiene su propio bucle, sus propias tools y memoria de sesión. Se reserva
+  para tareas donde el número de pasos genuinamente no se puede predecir de antemano —
+  `ReportAgent` sintetiza múltiples fuentes en un informe con hasta 10 turnos y 6 tools;
+  `CrossBorderAgent` evalúa opciones de importación con varios países y acuerdos, cuyo número
+  de sub-consultas depende del caso. Forzar esas tareas a un `AgentTool` de un solo turno
+  las rompería; forzar tareas de un solo turno a un sub-agente les daría autonomía y coste
+  que no necesitan.
+- Un detalle técnico verificado en el código fuente de ADK (`agent_tool.py` vs `runners.py`)
+  reforzó esta distinción: un `AgentTool` crea un `Runner` anidado cuyos eventos internos NO
+  se propagan a la trayectoria del padre (hay que sintetizar una entrada de trayectoria a
+  mano), mientras que un sub-agente comparte el mismo generador de eventos que el padre, así
+  que sus llamadas a tools SÍ aparecen en la trayectoria automáticamente. Esto se documentó
+  explícitamente al construir `escalation_enforcer.py` (§6.3), que necesita tratar cada tipo
+  de agente distinto por esta razón exacta.
+
+### 3.3 Funciones deterministas — ejemplos concretos
 
 - **`tools/markov_state_tracker.py`**: la trayectoria de estado de la red (S0–S4, próximas
   6h) se calcula con una matriz de transición Markov entrenada offline (NumPy puro) — cero

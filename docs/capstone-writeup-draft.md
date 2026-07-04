@@ -61,6 +61,19 @@ Layer 4  Sub-agents — ReportAgent · CrossBorderAgent
 Layer 5  OrchestratorAgent (Root Agent) — coordinates everything above
 ```
 
+Two structural choices here are themselves shift-left decisions, not stylistic ones. First,
+Layer 2 is built as **MCP servers rather than plain function imports**: several agents call the
+same tool (both the orchestrator and the anomaly-detection skill need the same blackout
+probability), so defining it once behind a shared protocol boundary — with credentials
+(`ESIOS_TOKEN`, `AEMET_API_KEY`) living only inside that server's process, never in agent code
+or prompt context — beats every agent importing and re-implementing its own copy. Second, three
+agents are **Skills** (`AgentTool`, stateless, single structured result) while two are **full
+sub-agents** with their own multi-turn loop and memory — reserved specifically for tasks whose
+step count can't be predicted in advance (`ReportAgent` synthesizing several sources into a
+report, `CrossBorderAgent` evaluating a variable number of import options). Giving every agent
+a full autonomous loop "just in case" would be handing the LLM more control than most of these
+tasks actually need — the same shift-left instinct that later produced `escalation_planner`.
+
 Built on **Google ADK 2.3.0 + Gemini**, with **5 custom MCP servers** (consolidated from an
 original 7 as the design matured), **3 Skills** (`AgentTool`-wrapped, single structured output
 each), **2 Sub-agents** with their own tool loops, and a **guardrails layer**
