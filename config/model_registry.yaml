@@ -1,17 +1,20 @@
 models:
   fast_agent: gemini-3.5-flash
-  smart_agent: gemini-3.1-pro-preview
+  smart_agent: gemini-3.1-pro-preview-customtools
   embedding: gemini-embedding-2
   fallback_fast: gemini-3.1-flash-lite
 registry_meta:
   source_url: https://ai.google.dev/gemini-api/docs/models
-  updated_at: '2026-07-04T20:00:00Z'
-  next_update: '2026-07-11T20:00:00Z'
+  updated_at: '2026-07-04T21:00:00Z'
+  next_update: '2026-07-11T21:00:00Z'
   stable_only: true
   note: >
     Manual update 2026-07-04: el job semanal automatico no habia corrido pese a
     next_update=2026-07-04 vencido. Verificado contra client.models.list() real:
-    gemini-3.5-flash y gemini-3.1-flash-lite existen sin sufijo -preview (estables);
-    gemini-3.1-pro-preview es la unica opcion "pro" de la familia 3.x, se mantiene
-    como excepcion deliberada a stable_only para smart_agent (mismo criterio que
-    ya documentaba ARCHITECTURE.md antes de esta actualizacion).
+    gemini-3.5-flash y gemini-3.1-flash-lite existen sin sufijo -preview (estables).
+    smart_agent usa gemini-3.1-pro-preview-customtools (no la variante generica
+    3.1-pro-preview): su descripcion real via la API es "Gemini 3.1 Pro Preview
+    optimized for custom tool usage" -- encaja mejor con ReportAgent, un sub-agente
+    con bucle de 10 turnos y 6 tools, dado que la fiabilidad de tool-calling fue
+    el hallazgo central de esta sesion. Excepcion deliberada a stable_only para
+    smart_agent (mismo criterio que ya documentaba ARCHITECTURE.md).

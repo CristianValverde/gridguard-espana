@@ -248,7 +248,7 @@ el registry real simplemente aún no se había actualizado a ellos (su metadato
 `next_update: '2026-07-04T10:00:00Z'` ya había vencido cuando se probó).
 
 Tras actualizar el registry (`fast_agent: gemini-3.5-flash`,
-`smart_agent: gemini-3.1-pro-preview`) y repetir el smoke test:
+`smart_agent: gemini-3.1-pro-preview-customtools`) y repetir el smoke test:
 
 - **`MALFORMED_FUNCTION_CALL` desaparece por completo** — 0 ocurrencias en la corrida.
 - El orchestrator ejecuta las 9-11 tools de PASO 1 sin cortes: `data_normalizer` →

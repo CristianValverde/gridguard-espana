@@ -344,7 +344,7 @@ Se añadió (2026-07-04) una tabla `lessons` + tools MCP `store_lesson`/`get_les
 | 2026-07-04 | Memoria de lecciones (`lessons` + `store_lesson`/`get_lessons`) | El orquestador no aprendía nada entre ciclos |
 | 2026-07-04 | `escalation_enforcer`: red de seguridad post-LLM | El LLM seguía sin obedecer el plan incluso "vinculante" |
 | 2026-07-04 | `_consume_events_safely`: resiliencia ante ValidationError de ADK | Un solo turno mal formateado abortaba el ciclo completo |
-| 2026-07-04 | Registry actualizado a modelos frontera (`gemini-3.5-flash`/`gemini-3.1-pro-preview`) + `_strip_markdown_json_fence` | Benchmark empírico: el modelo económico causaba `MALFORMED_FUNCTION_CALL` y no seguía el plan de escalación |
+| 2026-07-04 | Registry actualizado a modelos frontera (`gemini-3.5-flash`/`gemini-3.1-pro-preview-customtools`) + `_strip_markdown_json_fence` | Benchmark empírico: el modelo económico causaba `MALFORMED_FUNCTION_CALL` y no seguía el plan de escalación |
 
 ---
 
