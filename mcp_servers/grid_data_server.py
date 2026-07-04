@@ -341,11 +341,15 @@ def _market_prices_impl(countries: list[str], date: str, fetch_fn) -> dict:
         Dict[country → MarketPrice.model_dump(mode='json')].
         Resolución real ENTSO-E: 15-min (96 valores/día), NO horaria.
     """
+    known = [c for c in countries if c in AREA_CODES]
     out: dict = {}
-    for country in countries:
-        if country not in AREA_CODES:
-            continue
-        series = fetch_fn(country, date)
+    if not known:
+        return out
+    # En paralelo: N países secuenciales × 30s de timeout HTTP superan la
+    # cota BUILD_TIMEOUT_S del handler (review final 2026-07-04).
+    futures = [(c, _QUERY_POOL.submit(fetch_fn, c, date)) for c in known]
+    for country, future in futures:
+        series = future.result()
         out[country] = MarketPrice(
             country=country,
             timestamps=list(series.index.to_pydatetime()),
@@ -385,7 +389,14 @@ def get_eu_market_prices(countries: list[str], date: str) -> dict:
     Heurística spread: ES-FR > 20 €/MWh → Francia probablemente tiene excedente
     de generación (importación más fácil hacia España).
     """
-    return _market_prices_impl(countries, date, fetch_fn=_fetch_day_ahead)
+    def build():
+        try:
+            return _market_prices_impl(countries, date, fetch_fn=_fetch_day_ahead)
+        except Exception as exc:
+            return {"error": f"Error ENTSO-E day-ahead {countries} {date}: {exc}"}
+
+    key = f"prices_{'-'.join(sorted(set(countries)))}_{date}"
+    return _cached(key, build, CACHE_TTL_ENTSOE)
 
 
 if __name__ == "__main__":

@@ -75,6 +75,41 @@ def test_market_prices_mixed_known_unknown():
     assert set(out) == {"ES", "FR"}
 
 
+def test_market_prices_fetches_paises_en_paralelo():
+    """Review final 2026-07-04: N países secuenciales × 30s de timeout HTTP
+    bloquean el event loop del server más allá de la cota. La barrier de 2
+    solo se libera si ambos fetches están en vuelo a la vez."""
+    import threading
+
+    barrier = threading.Barrier(2, timeout=5)
+
+    def _blocking_fetch(country, day):
+        barrier.wait()
+        return _fake_fetch(country, day)
+
+    out = es._market_prices_impl(["ES", "FR"], "2026-06-30", fetch_fn=_blocking_fetch)
+    assert set(out) == {"ES", "FR"}
+
+
+def test_get_eu_market_prices_pasa_por_cache_y_cota(monkeypatch):
+    """El tool debe enrutar por _cached (cota de 45s + caché sin errores),
+    como el resto de handlers de grid-data."""
+    es._cache.clear()
+    calls = {"n": 0}
+
+    def _fake_impl(countries, date, fetch_fn):
+        calls["n"] += 1
+        return {"ES": {"timestamps": [], "price_eur_mwh": []}}
+
+    monkeypatch.setattr(es, "_market_prices_impl", _fake_impl)
+    first = es.get_eu_market_prices(["ES"], "2026-06-30")
+    second = es.get_eu_market_prices(["ES"], "2026-06-30")
+    es._cache.clear()
+
+    assert first == second
+    assert calls["n"] == 1, "misma (countries, date) debe servirse de la caché"
+
+
 # ---------------------------------------------------------------------------
 # Integration test (requires ENTSOE_TOKEN env var + live ENTSO-E access)
 # ---------------------------------------------------------------------------
