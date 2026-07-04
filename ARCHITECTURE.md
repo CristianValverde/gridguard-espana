@@ -296,6 +296,8 @@ query_incidents(start, end) → list[Incident]
 get_risk_history(hours) → list[RiskScore]
 store_grid_state(timestamp, state) → dict    # persist Markov state
 get_state_transitions(hours) → list[dict]    # Markov state history
+store_lesson(lesson_json) → dict              # persist a learned lesson
+get_lessons(markov_state, p_band, limit) → list[dict]  # retrieve past lessons
 ```
 **Database**: SQLite (`gridguard.db`)
 

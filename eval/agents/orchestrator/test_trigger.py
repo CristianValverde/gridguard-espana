@@ -18,6 +18,7 @@ _EXPECTED_TOOLS = {
     "anomaly_detector_skill", "renewables_forecast_skill",
     "cross_border_agent", "report_agent",
     "get_grid_state", "store_grid_state", "regulatory_compliance_skill",
+    "store_lesson", "get_lessons",
 }
 _EXPECTED_SERVERS = {"ML_TOOLSET", "MEMORY_TOOLSET"}
 
