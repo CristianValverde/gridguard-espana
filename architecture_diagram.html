@@ -353,7 +353,7 @@
   <div><div class="hook-label">🛡 before_tool_callback</div>
     <span>🚫 Blocks .env, *.key, secrets.*, credentials.*</span></div>
   <div><div class="hook-label" style="opacity:0"> </div>
-    <span>⏱ Rate-limit: min 9 min between ESIOS polls · 50 req/min AEMET</span></div>
+    <span>⏱ Rate-limit: min 1 min ESIOS/ree_poller · min 5 min Open-Meteo/ENTSO-E calls</span></div>
   <div><div class="hook-label" style="opacity:0"> </div>
     <span>🔐 Per-agent tool whitelist (includes new Markov tools)</span></div>
 </div>
@@ -439,7 +439,7 @@
   <div class="card c-sk">
     <div class="t">🌬️ RenewablesForecastSkill</div>
     <div class="d">
-      <b>Flow</b>: ML forecasts load → AEMET 24h weather data → LLM correlates and estimates risk from low renewable generation<br>
+      <b>Flow</b>: ML forecasts load → Open-Meteo 24h weather data → LLM correlates and estimates risk from low renewable generation<br>
       <b>Tools</b>: get_wind_forecast · get_solar_radiation · get_weather_forecast_24h · get_load_forecast (ML) · get_generation_mix · get_baseline<br>
       <b>Why Skill</b>: single structured result, reusable by Orchestrator and ReportAgent
     </div>
@@ -741,7 +741,7 @@
     <td><span class="tSk">Skill (AgentTool)</span></td>
     <td><span class="mb">gemini-3.5-flash</span></td>
     <td><span class="tb">0.1</span></td>
-    <td>AEMET wind/solar/24h · ML load forecast · generation mix</td>
+    <td>Open-Meteo wind/solar/24h · ML load forecast · generation mix</td>
     <td>before_model (injection) · on_forecast_risk_horizon</td>
     <td>MAE forecast 6h vs actual</td>
   </tr>
