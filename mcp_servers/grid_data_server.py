@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -41,13 +43,31 @@ CACHE_TTL_ENTSOE = 3600  # 1 h — cadencia ENTSO-E
 
 _cache: dict[str, tuple[Any, float]] = {}
 
+# Cota dura por handler: los tools sincronos corren inline en el event loop
+# del server; un build de ENTSO-E llego a ~125s (2 queries + parseo bs4) y
+# la siguiente request en cola agoto el timeout del cliente MCP (live
+# 2026-07-03/04). Dos pools separados para que el build (outer) pueda
+# despachar sus queries (inner) sin riesgo de deadlock por anidamiento.
+BUILD_TIMEOUT_S = 45
+_BUILD_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="grid-build")
+_QUERY_POOL = ThreadPoolExecutor(max_workers=8, thread_name_prefix="grid-query")
+
 
 def _cached(key: str, build_fn, ttl: int):
     mono = time.monotonic()
     if key in _cache and _cache[key][1] > mono:
         return _cache[key][0]
-    result = build_fn()
-    _cache[key] = (result, mono + ttl)
+    future = _BUILD_POOL.submit(build_fn)
+    try:
+        result = future.result(timeout=BUILD_TIMEOUT_S)
+    except FuturesTimeoutError:
+        # El hilo runaway sigue en background, pero el handler devuelve ya:
+        # el event loop del server queda libre para la siguiente request.
+        return {"error": f"Fuente externa excedió la cota de {BUILD_TIMEOUT_S}s para '{key}'"}
+    # Los errores no se cachean: un fallo transitorio de ENTSO-E/ESIOS no
+    # debe envenenar el tool durante todo el TTL (hasta 1 h).
+    if not (isinstance(result, dict) and "error" in result):
+        _cache[key] = (result, mono + ttl)
     return result
 
 
@@ -268,14 +288,18 @@ def get_capacity_margin(country: str = "ES") -> dict:
             client = _client()
             start, end = _now_window()
 
-            gen_df = client.query_generation(
-                country_code=AREA_CODES[country],
-                start=start, end=end,
+            # En paralelo: secuenciales suman 2 x 30s de timeout HTTP y
+            # superan la cota BUILD_TIMEOUT_S del handler.
+            gen_future = _QUERY_POOL.submit(
+                client.query_generation,
+                country_code=AREA_CODES[country], start=start, end=end,
             )
-            demand_series = client.query_load(
-                country_code=AREA_CODES[country],
-                start=start, end=end,
+            load_future = _QUERY_POOL.submit(
+                client.query_load,
+                country_code=AREA_CODES[country], start=start, end=end,
             )
+            gen_df = gen_future.result()
+            demand_series = load_future.result()
 
             if gen_df is None or gen_df.empty or demand_series is None or demand_series.empty:
                 return {"error": f"Sin datos suficientes para calcular margen en {country}"}
