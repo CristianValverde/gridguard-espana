@@ -175,7 +175,7 @@
 
 <div class="header">
   <h1>⚡ GridGuard España — Full Architecture</h1>
-  <p>Multi-Agent · 7 MCP Servers · ML Models · Markov Chain · RAG (ChromaDB) · Guardrails · Eval &amp; Tracing &nbsp;·&nbsp; Capstone Project Google × Kaggle 2026</p>
+  <p>Multi-Agent · 5 Shared MCP Servers · ML Ensemble · Markov Chain · RAG (ChromaDB) · Deterministic Escalation + Enforcer · Guardrails · Eval &amp; Tracing &nbsp;·&nbsp; Capstone Project Google × Kaggle 2026</p>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
@@ -345,6 +345,28 @@
 
 <div class="arrow">↓</div>
 
+<!-- ══════════════════════════════════════════════════════════
+     ESCALATION POLICY — the headline engineering decision
+═══════════════════════════════════════════════════════════ -->
+<div class="card c-fn" style="border:2px solid #38bdf8; margin: 6px 0 2px">
+  <div class="t">🎯 escalation_planner() <span class="new-pill" style="background:#0c4a6e;color:#7dd3fc">DECISION MOVED FROM PROMPT → CODE</span></div>
+  <div class="d">
+    The Orchestrator's escalation policy (which skills/sub-agents to invoke per risk band) used
+    to live as <b>prose inside the Gemini system prompt</b>. Live testing showed the LLM didn't
+    reliably follow it — stopping early in critical scenarios, over-triggering in calm ones — even
+    after reinforcing the wording twice. Fix: a <b>pure, deterministic Python function</b>
+    (17 truth-table unit tests) computes <code style="color:#7dd3fc">band</code>,
+    <code style="color:#7dd3fc">mandatory_skills</code>, <code style="color:#7dd3fc">cross_border_mode</code>,
+    <code style="color:#7dd3fc">emit_alert</code> from <code style="color:#7dd3fc">(blackout_probability, markov_state)</code>.
+    The LLM no longer <em>decides</em> the policy — it only executes what this function returns.
+  </div>
+  <span class="badge" style="background:#0c4a6e;color:#7dd3fc">DETERMINISTIC</span>
+  <span class="badge" style="background:#0c4a6e;color:#7dd3fc">17 UNIT TESTS</span>
+  <span class="badge" style="background:#0c4a6e;color:#7dd3fc">NO LLM</span>
+</div>
+
+<div class="arrow">↓</div>
+
 <!-- HOOK: before_tool -->
 <div class="hook">
   <div><div class="hook-label">🛡 before_tool_callback</div>
@@ -360,7 +382,18 @@
 <!-- ══════════════════════════════════════════════════════════
      LAYER 2: MCP SERVERS
 ═══════════════════════════════════════════════════════════ -->
-<div class="section-label">🔌 Layer 2 — MCP Servers (5 servers)</div>
+<div class="section-label">🔌 Layer 2 — MCP Servers (5 servers · shared stdio transport)</div>
+<div class="card c-mcp-new" style="margin-bottom:8px">
+  <div class="t">🔗 Shared MCP Transport <span class="new-pill">17 → 5 subprocesses</span></div>
+  <div class="d">
+    Every agent used to create its own <code style="color:#86efac">McpToolset</code> per server — 17
+    instances across 6 agent modules for 5 servers, spawning up to ~17 stdio subprocesses per
+    orchestrator run (each importing torch/chromadb at once). Consolidated into
+    <b>5 shared singleton toolsets</b> (<code style="color:#86efac">agents/mcp_toolsets.py</code>) —
+    ADK's session manager caches one subprocess per toolset instance, so sharing instances = sharing
+    subprocesses. Max 5 subprocesses per run now, regardless of how many agents use a server.
+  </div>
+</div>
 <div class="g5">
   <div class="card c-mcp">
     <div class="t">MCP: grid-data <span class="upd-pill">UPD</span></div>
@@ -376,7 +409,7 @@
   </div>
   <div class="card c-mcp">
     <div class="t">MCP: memory <span class="upd-pill">UPD</span></div>
-    <div class="d">store_risk_score()<br>get_baseline()<br>query_incidents()<br>get_risk_history()<br><b>store_grid_state()</b><br><b>get_state_transitions()</b></div>
+    <div class="d">store_risk_score()<br>get_baseline()<br>query_incidents()<br>get_risk_history()<br>store_grid_state()<br>get_state_transitions()<br><b>store_lesson()</b> <span class="new-pill" style="font-size:7px">NEW</span><br><b>get_lessons()</b> <span class="new-pill" style="font-size:7px">NEW</span></div>
     <span class="badge">SQLITE</span>
     <span class="db-pill db-sqlite" style="margin-top:3px;display:inline-flex">🗄 gridguard.db</span>
   </div>
@@ -475,7 +508,7 @@
       <b>Tools</b>: query_incidents · get_risk_history · get_blackout_probability (ML) · find_similar_incident (RAG) · get_state_transitions (Markov) · write to reports/<br>
       <b>Why Sub-agent</b>: multiple chained steps, unpredictable count, internal state between steps
     </div>
-    <span class="badge">gemini-3.1-pro</span>
+    <span class="badge">gemini-3.1-pro-preview</span>
     <span class="badge">temp=0.4</span>
     <span class="badge">max_turns=10</span>
   </div>
@@ -515,11 +548,13 @@
     <div>
       <div class="t">🧠 OrchestratorAgent — Root Agent</div>
       <div class="d">
-        Manages the main loop · Receives snapshots every 10 min · Queries ML + Markov directly for fast escalation decisions<br>
-        <b>Escalation logic based on P(blackout_1h) and Markov trajectory</b>:<br>
-        P &lt; 0.10 → passive logging · P 0.10–0.30 → AnomalyDetectorSkill<br>
-        P 0.30–0.60 or S≥S2→S3 → Anomaly + RenewablesForecast + RegulatoryCompliance + WARNING alert (zonal scope)<br>
-        P &gt; 0.60 or S≥S3→S4 → all above + CrossBorderAgent + CRITICAL national alert + immediate ReportAgent
+        Manages the main loop · Receives snapshots every 10 min · Queries ML + Markov directly, then calls
+        <code style="color:#fde68a">escalation_planner(P, state)</code> and is instructed to execute its
+        result <b>VERBATIM</b> — the band thresholds and the skill/sub-agent list are no longer written
+        in this prompt, they live in Python (see the escalation_planner card above).<br>
+        Also consults/records the <b>lessons memory</b> (get_lessons at cycle start, store_lesson at
+        cycle end) — an SQLite-backed record of past decisions, since each monitoring cycle is otherwise
+        a stateless session.
       </div>
     </div>
     <div>
@@ -528,6 +563,39 @@
       <span class="badge" style="margin-top:4px;display:inline-block">max_turns=20</span><br>
       <span class="badge" style="margin-top:4px;display:inline-block">context=1M tokens</span>
     </div>
+  </div>
+</div>
+
+<div class="arrow">↓</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     RELIABILITY LAYER — escalation_enforcer + crash resilience
+═══════════════════════════════════════════════════════════ -->
+<div class="section-label">🛟 Reliability Layer — Deterministic Safety Net (runs after the LLM turn)</div>
+<div class="g2">
+  <div class="card c-fn" style="border:2px solid #f59e0b">
+    <div class="t">🛟 escalation_enforcer()</div>
+    <div class="d">
+      Live testing showed the LLM doesn't always follow <code style="color:#38bdf8">escalation_planner</code>'s
+      verdict end-to-end (stops early in ROJO, over-triggers in VERDE) — even with the "VERBATIM" instruction.
+      This function runs <b>after</b> the orchestrator's turn: recomputes the plan from the already-known
+      P/state, diffs it against the real trajectory, and invokes by code (isolated runner, no LLM
+      round-trip through the orchestrator) any mandatory skill/sub-agent that's missing.
+    </div>
+    <span class="badge" style="background:#78350f;color:#fde68a">5 UNIT TESTS</span>
+    <span class="badge" style="background:#78350f;color:#fde68a">NO PROMPT CHANGE</span>
+  </div>
+  <div class="card c-fn" style="border:2px solid #ef4444">
+    <div class="t">🛟 _consume_events_safely()</div>
+    <div class="d">
+      ADK 2.3.0 doesn't catch a <code style="color:#fca5a5">pydantic.ValidationError</code> when a Skill's
+      LLM answers with free text instead of its required JSON output_schema — it aborts the entire
+      orchestration run, producing zero result for that cycle. This wrapper consumes the Runner's event
+      stream defensively, keeping whatever was already captured instead of losing the whole cycle to one
+      malformed turn.
+    </div>
+    <span class="badge" style="background:#7f1d1d;color:#fecaca">4 UNIT TESTS</span>
+    <span class="badge" style="background:#7f1d1d;color:#fecaca">VERIFIED LIVE, NO REGRESSION</span>
   </div>
 </div>
 
@@ -604,7 +672,7 @@
     </div>
     <div style="background:#1e293b;border:1px solid #a78bfa;border-radius:8px;padding:10px;text-align:center">
       <div style="font-size:10px;color:#c4b5fd;text-transform:uppercase;letter-spacing:1px">smart_agent</div>
-      <div style="font-size:13px;font-weight:700;color:#f5f3ff;margin:4px 0">gemini-3.1-pro</div>
+      <div style="font-size:13px;font-weight:700;color:#f5f3ff;margin:4px 0">gemini-3.1-pro-preview</div>
       <div style="font-size:10px;color:#a78bfa">◐ Preview · Feb 2026</div>
       <div style="font-size:10px;color:#94a3b8;margin-top:3px">2M ctx · Complex reasoning</div>
       <div style="font-size:10px;color:#94a3b8">ReportAgent</div>
@@ -631,6 +699,13 @@
     validate against API →
     <span style="color:#fbbf24">update config/model_registry.yaml</span> →
     log detected changes
+  </div>
+  <div class="d" style="color:#fbbf24;margin-top:8px;font-size:8.5px">
+    ⚠️ 2026-07-04: caught this design's registry pointing at the prior-generation
+    <code style="color:#fca5a5">gemini-2.5-flash</code> during a deliberate cost-efficient-vs-frontier
+    live benchmark — confirmed <code style="color:#86efac">gemini-3.5-flash</code>/<code style="color:#86efac">gemini-3.1-flash-lite</code>
+    available &amp; stable via a live <code style="color:#86efac">client.models.list()</code> call and switched.
+    Manual update this time; verifying the weekly job actually fires is on the TODO list.
   </div>
 </div>
 
@@ -712,7 +787,7 @@
   <tr>
     <td>ReportAgent</td>
     <td><span class="tAg">Sub-agent</span></td>
-    <td><span class="mb">gemini-3.1-pro</span></td>
+    <td><span class="mb">gemini-3.1-pro-preview</span></td>
     <td><span class="tb">0.4</span></td>
     <td>ML blackout prob · RAG incidents · Markov state history · write reports/</td>
     <td>after_agent (schema) · max_turns=10</td>
@@ -747,7 +822,7 @@
     <div class="t" style="color:#86efac">1–3 · ADK Core</div>
     <div class="d">
       ✅ <b>Multi-agent system</b> — Root + 3 Skills + 2 Sub-agents<br>
-      ✅ <b>MCP servers</b> — 7 custom servers<br>
+      ✅ <b>MCP servers</b> — 5 custom servers<br>
       ✅ <b>AgentTool (Skills)</b> — AnomalyDetector + RenewablesForecast + RegulatoryCompliance
     </div>
   </div>
