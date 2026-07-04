@@ -28,6 +28,16 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 from mcp.server.fastmcp import FastMCP
 
+# Import EAGER de chromadb (arrastra numpy), como hace ml_models_server con
+# torch: importarlo lazy dentro del primer tool call, con el event loop de
+# anyio ya corriendo, se colgaba minutos en la carga de la extension C de
+# numpy (visto con py-spy en la corrida live 2026-07-04) y el cliente MCP
+# agotaba su timeout. En el arranque del proceso el mismo import tarda ~1.5s.
+try:
+    import chromadb
+except ImportError:  # diferido al primer uso para dar un error accionable
+    chromadb = None
+
 from config.model_loader import get_model
 from schemas.models import IncidentRecord, Procedure, RegulatoryChunk
 
@@ -51,17 +61,16 @@ def _chroma_path() -> str:
 
 
 def _get_chroma():
-    """Crea (o reutiliza) el cliente ChromaDB. Lazy init."""
+    """Crea (o reutiliza) el cliente ChromaDB. El import ya ocurrió en el
+    arranque del módulo (eager); aquí solo queda la init del cliente (~0.1s)."""
     global _chroma_client
     if _chroma_client is not None:
         return _chroma_client
-    try:
-        import chromadb
-        client = chromadb.PersistentClient(path=_chroma_path())
-        _chroma_client = client
-        return client
-    except ImportError as exc:
-        raise ImportError("chromadb no instalado. pip install chromadb") from exc
+    if chromadb is None:
+        raise ImportError("chromadb no instalado. pip install chromadb")
+    client = chromadb.PersistentClient(path=_chroma_path())
+    _chroma_client = client
+    return client
 
 
 def _embed_text(texts: list[str]) -> list[list[float]]:
