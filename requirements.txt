@@ -35,4 +35,5 @@ optuna>=3.6             # búsqueda de hiperparámetros (TPE + MedianPruner)
 
 # ─── Dev & CI ────────────────────────────────────────────────────────────────
 pytest>=8.0
+pytest-rerunfailures>=14.0
 python-dotenv>=1.0      # cargar .env en desarrollo local

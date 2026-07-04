@@ -47,6 +47,7 @@ class TestAnomalyDetectorLiveTriggers:
                       "balance_mw": -4200, "reserve_mw": 1240})
     )
 
+    @pytest.mark.flaky(reruns=1, reruns_delay=5)
     def test_consults_ml_and_baseline(self):
         from agents.anomaly_detector import AnomalyDetectorSkill
         from eval.agents._harness import run_agent_live

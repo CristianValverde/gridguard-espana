@@ -56,6 +56,7 @@ class TestCrossBorderLiveTriggers:
                       "capacity_margin_pct": 35})
     )
 
+    @pytest.mark.flaky(reruns=1, reruns_delay=5)
     def test_low_margin_scenario_triggers_mitigation(self):
         from agents.cross_border import cross_border_agent
         from eval.agents._harness import run_agent_live
@@ -65,6 +66,7 @@ class TestCrossBorderLiveTriggers:
         assert "get_capacity_margin" in tools, "trigger de margen de capacidad ausente"
         assert "get_mitigation_procedure" in tools, "trigger de procedimiento de mitigacion ausente"
 
+    @pytest.mark.flaky(reruns=1, reruns_delay=5)
     def test_ample_margin_scenario_skips_mitigation(self):
         from agents.cross_border import cross_border_agent
         from eval.agents._harness import run_agent_live

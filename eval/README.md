@@ -80,3 +80,10 @@ cross_border muestra flips LLM en sus 2 triggers. Próximo paso (decisión de
 producto): prompts más directivos para la escalación por capas y/o
 `pytest-rerunfailures` para el no-determinismo residual — cada iteración de
 validación cuesta ~10 min de cuota Gemini.
+
+**Mitigación de flakiness LLM residual (2026-07-04):** `test_low_margin_scenario_triggers_mitigation`,
+`test_ample_margin_scenario_skips_mitigation` (cross_border) y `test_consults_ml_and_baseline`
+(anomaly_detector) llevan `@pytest.mark.flaky(reruns=1, reruns_delay=5)` — no-determinismo
+LLM de subagentes individuales, NO infraestructura (ya eliminada, ver arriba). Los tests
+del orchestrator NO llevan este marcador: tras el `escalation_planner` determinista
+(spec `2026-07-04-escalation-planner-design.md`) su resultado debe ser estable.
