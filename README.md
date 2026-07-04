@@ -1,0 +1,186 @@
+# GridGuard España
+
+**A multi-agent AI system that watches the Spanish electrical grid and escalates warnings
+before a blackout happens.**
+
+> Capstone Project · 5-Day AI Agents Intensive (Google × Kaggle) · Track: **Agents for Good**
+
+Built with Google **ADK 2.3.0** + **Gemini**, deterministic **ML** (Isolation Forest, LSTM
+Autoencoder, calibrated Gradient Boosting), a **Markov chain** of grid states, and **RAG**
+over Spanish/EU grid regulations — following one rule throughout: *never use an LLM where
+Python or an ML model is enough.*
+
+---
+
+## The problem
+
+On 28 April 2025, a real blackout took down the Spanish peninsular grid for 6.5 hours,
+affecting up to 15,000 MW. The official REE post-mortem shows the warning signs were there
+hours in advance: extreme renewable penetration, falling synchronous inertia, a progressively
+worsening supply/demand balance. **Grid frequency itself — the most direct signal — is not
+published by any public API** (REE withholds it for operational security). This project asks:
+can a multi-agent system, working only from the data that *is* publicly available, catch that
+kind of situation early enough to matter?
+
+## The solution — three layers of intelligence, only when each is needed
+
+| If the task is… | GridGuard uses… |
+|---|---|
+| API call + parsing + validation | Function Tool (pure Python) |
+| Statistical pattern detection in time series | ML model (deterministic at inference) |
+| "Where is the grid heading?" | Markov chain over 5 grid states (S0–S4), pure NumPy |
+| Regulatory/technical context | RAG (ChromaDB) over REE/ENTSO-E procedures & past incidents |
+| Multi-signal reasoning | Skill (LLM `AgentTool`, single structured output) |
+| Multi-step autonomous task | Sub-agent (LLM with its own tool loop) |
+| Escalation policy across all of the above | **Deterministic Python** — see below |
+
+```
+Layer 0  Triggers (cron / event queue / eval runner)
+Layer 1  Function Tools — pure Python (ree_poller, data_normalizer,
+         stability_proxy_calculator, risk_scorer, alert_formatter,
+         escalation_planner, markov_state_tracker)
+Layer 2  5 MCP Servers — grid-data · weather · memory · ml-models · knowledge-base
+Layer 3  Skills (AgentTool) — AnomalyDetector · RenewablesForecast · RegulatoryCompliance
+Layer 4  Sub-agents — ReportAgent · CrossBorderAgent
+Layer 5  OrchestratorAgent — Root Agent, coordinates everything above
+```
+
+Full technical specification, MCP tool signatures, hooks and schemas: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+Project retrospective — engineering journey, findings, honest limitations: **[MEMORIA.md](MEMORIA.md)**.
+
+### The most interesting engineering decision: taking the LLM's decision away from it
+
+The orchestrator's escalation policy (*which skills to call, at which risk band*) originally
+lived as prose inside the Gemini system prompt. Live testing against the real LLM showed it
+didn't reliably follow that policy — it would stop escalating partway through a critical
+scenario, or over-trigger in a normal one. Reinforcing the prompt twice made no difference.
+The fix was architectural, not linguistic: **[`tools/escalation_planner.py`](tools/escalation_planner.py)**
+extracts the entire policy into a pure, unit-tested Python function (17 truth-table tests),
+and **[`agents/escalation_enforcer.py`](agents/escalation_enforcer.py)** is a deterministic
+safety net that runs *after* the LLM turn and forces, by code, any mandatory step the model
+skipped. This — and two other robustness layers found the same way (see §*Findings* in
+[MEMORIA.md](MEMORIA.md)) — is the project's real shift-left story: not just using ML instead
+of an LLM for scoring, but *removing the LLM from a decision entirely* once live evidence
+showed it couldn't be trusted with it.
+
+## Key course concepts demonstrated (of the 6 listed in the rubric, we cover 4)
+
+| Concept | Where |
+|---|---|
+| Multi-agent system (ADK) | `agents/orchestrator.py` (Root) + 3 Skills (`AgentTool`) + 2 Sub-agents |
+| MCP Servers | `mcp_servers/` — 5 custom servers, shared stdio transport (`agents/mcp_toolsets.py`) |
+| Security features | `guardrails/hooks.py` — tool whitelist per agent, rate-limiting, `.env`/secret-path blocking, prompt-injection sanitisation, output-schema & numeric-range validation |
+| Agent skills | `agents/anomaly_detector.py`, `renewables_forecast.py`, `regulatory_compliance.py` — `AgentTool`-wrapped, single structured output |
+
+*Not used in this project: "Antigravity" (not part of our stack) and a live deployed
+endpoint (see "Deployability" note below).*
+
+## What's genuinely working vs. what's an honest limitation
+
+- **296 offline tests pass**, deterministically, no network calls (`pytest -q`).
+- The deterministic layers (`escalation_planner`, ML ensemble, Markov chain, all MCP tools)
+  work reliably and are unit/integration tested.
+- **Live end-to-end runs against the real LLM are the weakest link**, and this repo documents
+  that honestly rather than hiding it: Gemini occasionally returns `MALFORMED_FUNCTION_CALL`
+  mid-cycle, and the orchestrator doesn't always follow its own escalation policy without the
+  `escalation_enforcer` safety net. See [`eval/README.md`](eval/README.md) for every finding,
+  the exact reproduction steps, and what was fixed vs. what remains a documented limitation.
+  We consider this transparency part of the technical quality of the submission, not a gap to
+  paper over.
+
+## Setup
+
+**Requirements:** Python 3.14, a Google AI Studio API key (free tier works), and free tokens
+for ESIOS/AEMET/ENTSO-E if you want live grid data (the offline test suite needs none of these).
+
+```bash
+git clone https://github.com/CristianValverde/gridguard-espana.git
+cd gridguard-espana
+pip install -r requirements.txt
+cp .env.example .env   # fill in GOOGLE_API_KEY at minimum; see .env.example for the rest
+```
+
+Environment variables (`.env`, never committed — see `.gitignore`):
+
+```bash
+GOOGLE_API_KEY=...      # aistudio.google.com → "Get API Key" — required for any live agent run
+ESIOS_TOKEN=...         # consultasios@ree.es — optional, only for live Spanish grid data
+AEMET_API_KEY=...       # opendata.aemet.es — optional, weather data
+ENTSOE_TOKEN=...        # transparency.entsoe.eu — optional, EU interconnection data
+```
+
+Note: some RAG code paths read `GEMINI_API_KEY` instead of `GOOGLE_API_KEY` for the embeddings
+call (`mcp_servers/knowledge_base_server.py`) — set both to the same value if you plan to
+exercise the knowledge-base server.
+
+### Run the offline test suite (no API keys needed)
+
+```bash
+python -m pytest -q
+# 296 passed, 16 deselected
+```
+
+### Run a live monitoring cycle against a golden scenario
+
+```bash
+python -c "
+import json
+from agents.orchestrator import run_scenario
+scenario = json.load(open('eval/golden_dataset/blackout_apr_2025.json', encoding='utf-8'))
+print(run_scenario(scenario))
+"
+```
+
+Requires `GOOGLE_API_KEY`. **Honesty note:** as documented above and in
+[`eval/README.md`](eval/README.md), this full end-to-end call currently hits Gemini's
+`MALFORMED_FUNCTION_CALL` non-determinism in some runs and may return an empty result —
+this is a live, open finding, not a setup mistake on your part. For a reliable demonstration
+of individual components, run the offline suite above, or a single Skill/Sub-agent directly
+(e.g. `eval/agents/*/test_trigger.py` with `-m integration`, which exercise one agent at a
+time and have passed repeatedly in our own validation runs).
+
+### Run the live agent evals (consumes real Gemini quota, ~10–25 min)
+
+```bash
+python -m pytest eval/agents -m integration -v
+```
+
+See [`eval/README.md`](eval/README.md) for the full breakdown per agent, offline vs. live
+commands, and the measured results of every validation run this project has done.
+
+## Deployability
+
+Participants are not required to deploy to a live endpoint for judging. This project runs
+locally (MCP servers as local subprocesses, SQLite for persistence, ChromaDB local vector
+store) — no cloud deployment was set up given the project timeline. All code needed to run it
+end-to-end is in this repository.
+
+## Project structure
+
+```
+agents/            Root agent, Skills, Sub-agents, shared MCP toolsets, escalation logic
+tools/              Pure-Python Function Tools (no LLM)
+mcp_servers/        5 MCP servers (grid-data, weather, memory, ml-models, knowledge-base)
+ml/                 Data pipeline, feature engineering, model training, Markov chain
+knowledge/          RAG documents + ChromaDB build script
+guardrails/         ADK callback hooks (security, validation)
+eval/               Per-agent evals (trigger/output/trajectory, offline + live) + golden dataset
+schemas/            Pydantic models — single source of truth for all data shapes
+config/             Model registry + loader (never hardcode a Gemini model name)
+docs/superpowers/   Design specs and implementation plans for every feature (full paper trail)
+```
+
+## Security
+
+- API tokens are read exclusively from environment variables (`config/model_loader.py`,
+  `.env`, never committed — see `.gitignore`).
+- `guardrails/hooks.py` blocks any tool from reading `.env`/`*.key`/`secrets.*`/`credentials.*`,
+  enforces a per-agent tool whitelist, rate-limits external API calls, sanitises prompt-injection
+  patterns, and validates numeric ranges and output schemas before anything reaches the LLM or
+  the user.
+- No API keys or secrets are present anywhere in this codebase — verified against the full git
+  history before submission.
+
+## License
+
+Code in this repository is licensed under **CC-BY 4.0**, per the competition rules.
