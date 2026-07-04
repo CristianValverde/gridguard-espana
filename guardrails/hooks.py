@@ -107,7 +107,7 @@ def on_forecast_risk_horizon(window_label: str, severity: str) -> dict:
 _ALLOWED_TOOLS: dict[str, set[str]] = {
     "gridguard_orchestrator": {
         "ree_poller", "data_normalizer", "stability_proxy_calculator",
-        "risk_scorer", "alert_formatter",
+        "risk_scorer", "escalation_planner", "alert_formatter",
         "get_blackout_probability", "store_risk_score",
         "get_serve_features", "get_ensemble_score", "get_blackout_probability_ensemble",
         "anomaly_detector_skill", "renewables_forecast_skill",

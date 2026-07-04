@@ -58,6 +58,7 @@ from guardrails.hooks import register_hooks
 from tools.alert_formatter import alert_formatter
 from tools.data_normalizer import data_normalizer
 from tools.ree_poller import ree_poller
+from tools.escalation_planner import escalation_planner
 from tools.risk_scorer import risk_scorer
 from tools.stability_proxy_calculator import stability_proxy_calculator
 
@@ -75,6 +76,7 @@ orchestrator = Agent(
         data_normalizer,
         stability_proxy_calculator,
         risk_scorer,
+        escalation_planner,
         alert_formatter,
         # Capa 2: MCP Tools (ML inference + Markov + memoria)
         ML_TOOLSET,

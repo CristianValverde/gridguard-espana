@@ -12,7 +12,7 @@ pytestmark = pytest.mark.agent_orchestrator
 
 _EXPECTED_TOOLS = {
     "ree_poller", "data_normalizer", "stability_proxy_calculator",
-    "risk_scorer", "alert_formatter",
+    "risk_scorer", "escalation_planner", "alert_formatter",
     "get_blackout_probability", "store_risk_score",
     "get_serve_features", "get_ensemble_score", "get_blackout_probability_ensemble",
     "anomaly_detector_skill", "renewables_forecast_skill",
