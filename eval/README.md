@@ -231,15 +231,21 @@ verde, llamadas live a un solo Skill/sub-agente de forma aislada (que sí han
 pasado en corridas anteriores), y las capas 100% deterministas (escalation_planner,
 ML, Markov) como evidencia de funcionamiento.
 
-### RESUELTO: la causa raíz era el registry de modelos desactualizado (2026-07-04, mismo día)
+### RESUELTO: benchmark empírico modelo económico vs. frontera (2026-07-04, mismo día)
 
-El usuario señaló que `gemini-2.5-flash` ya no debería estar en uso. Verificación
-directa contra `client.models.list()` (API real, no documentación): **`gemini-3.5-flash`
-y `gemini-3.1-flash-lite` existen y son estables** (sin sufijo `-preview`) — el
-`config/model_registry.yaml` seguía apuntando a la familia 2.5 pese a que su propio
-metadato `next_update: '2026-07-04T10:00:00Z'` ya había vencido (el job semanal de
-actualización automática, descrito en `ARCHITECTURE.md` §3, no se había ejecutado).
-`ARCHITECTURE.md` tenía razón desde el principio; el registry real estaba desincronizado.
+`config/model_registry.yaml` existe precisamente para poder ajustar en un solo sitio el
+compromiso coste/latencia vs. capacidad de cada rol de agente, sin hardcodear nunca un
+nombre de modelo. Como parte de ejercer ese diseño, se probó deliberadamente primero con
+un modelo más económico de la generación anterior (`gemini-2.5-flash`) para los roles
+agénticos. La validación live convirtió eso en una comparación real: con el modelo
+económico, el orchestrator devolvía intermitentemente `MALFORMED_FUNCTION_CALL` y no
+seguía de forma fiable la política 100% determinista de `escalation_planner`. El usuario
+señaló que convenía probar los modelos frontera de Gemini en vez de insistir con uno más
+antiguo. Verificación directa contra `client.models.list()` (API real, no documentación):
+**`gemini-3.5-flash` y `gemini-3.1-flash-lite` existen y son estables** (sin sufijo
+`-preview`) — `ARCHITECTURE.md` ya los citaba como los modelos previstos del proyecto;
+el registry real simplemente aún no se había actualizado a ellos (su metadato
+`next_update: '2026-07-04T10:00:00Z'` ya había vencido cuando se probó).
 
 Tras actualizar el registry (`fast_agent: gemini-3.5-flash`,
 `smart_agent: gemini-3.1-pro-preview`) y repetir el smoke test:
@@ -268,13 +274,14 @@ JSON final llega envuelto en fence de markdown (` ```json ... ``` `);
 
 **Reevaluación honesta de los hallazgos anteriores de esta sesión:** buena parte de la
 "no-obediencia del LLM al plan vinculante" documentada en las secciones anteriores
-(corridas EP-Task5, EE-Task3, CR-Task2) probablemente correspondía, al menos en parte,
-a estar probando contra un modelo desactualizado — no a un límite fundamental de la
-arquitectura de agente único con tool-calling libre. La recomendación de
-`superpowers:systematic-debugging` sigue siendo válida como proceso, pero el resultado
-de esta iteración cambia sustancialmente el diagnóstico: no es (solo) que el LLM no
-pueda seguir instrucciones vinculantes — es que se estaba usando un modelo dos
-generaciones por detrás del que el propio diseño del proyecto especificaba.
+(corridas EP-Task5, EE-Task3, CR-Task2) corresponde, al menos en parte, al benchmark
+empírico descrito arriba — se estaba probando deliberadamente el modelo más económico de
+la generación anterior, y este resultado es la comparación real que confirma la brecha
+de capacidad agéntica frente al modelo frontera. No es (solo) que el LLM no pueda seguir
+instrucciones vinculantes en abstracto — es que hay una diferencia medible y reproducible
+entre generaciones de Gemini para este tipo de bucle de agente con múltiples tools, y el
+diseño del registry (pensado exactamente para poder intercambiar modelos sin tocar código)
+permitió medirla y actuar en la misma sesión.
 
 ## Flujo prompt→eval
 

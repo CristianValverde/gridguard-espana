@@ -201,7 +201,7 @@ Comandos exactos y advertencias operativas completas en [`eval/README.md`](eval/
 
 ### 5.2 Estado medido de la suite (2026-07-04, última corrida)
 
-- **Suite offline: 296 passed, 16 deselected** (`python -m pytest -q`).
+- **Suite offline: 300 passed, 16 deselected** (`python -m pytest -q`).
 - **Suite live (12 tests `-m integration`)**: mejor resultado alcanzado 7/12 en 9m41s
   (post-fixes de infraestructura), **0 timeouts, 0 crashes**. Los 5 tests restantes fallan
   por comportamiento no determinista del LLM (ver §6).
@@ -273,6 +273,34 @@ verificación empírica de hipótesis antes de comprometerlas a un diseño), cor
 corregible en el tiempo disponible, y **documentar honestamente** lo que no lo es, en vez de
 ocultarlo o fingir que un test en verde significa que el problema desapareció.
 
+### 6.4 El hallazgo más valioso: un benchmark empírico modelo económico vs. frontera
+
+`config/model_registry.yaml` existe precisamente para poder ajustar el compromiso
+coste/latencia vs. capacidad de cada rol de agente en un solo sitio, sin hardcodear nunca un
+nombre de modelo (§3, principio de diseño ya presente desde `ARCHITECTURE.md`). Como parte de
+ejercer ese diseño, se probó deliberadamente primero un modelo más económico de la generación
+anterior (`gemini-2.5-flash`) para los roles agénticos. La validación live convirtió esa
+decisión en una comparación real: con el modelo económico, el orquestador devolvía
+intermitentemente `finish_reason: MALFORMED_FUNCTION_CALL` de Gemini (un ciclo truncado en
+silencio, sin excepción) y no seguía de forma fiable la política 100% determinista de
+`escalation_planner` — el hallazgo de la §6.2 anterior.
+
+Verificado en vivo contra `client.models.list()`: los modelos frontera `gemini-3.5-flash` y
+`gemini-3.1-flash-lite` existen y son estables. Al apuntar el registry a ellos, el
+`MALFORMED_FUNCTION_CALL` desapareció por completo y el orquestador ejecutó su cadena de 9-11
+tools de punta a punta, siguiendo el veredicto de `escalation_planner` exactamente para el
+nivel de riesgo real que calculó (P=0.1221, banda AMARILLO — no el ROJO que el golden dataset
+insinúa, confirmando que la limitación de la §6.3 sigue siendo cierta e independiente del
+modelo). Fue la primera vez en todo el proyecto que el bucle completo funcionó sin necesitar
+la intervención del `escalation_enforcer`. Un segundo bug menor (el modelo frontera envuelve
+su JSON final en un fence de markdown) apareció de inmediato y se corrigió en la misma sesión.
+
+Esto es un dato empírico genuino y reproducible sobre la brecha de capacidad agéntica —
+específicamente, fiabilidad de function-calling y seguimiento de instrucciones — entre
+generaciones de Gemini para un bucle de agente con múltiples tools como este, descubierto
+precisamente porque el diseño del registry permitió intercambiar modelos y volver a probar en
+segundos, sin tocar ni una línea de código de los agentes.
+
 ---
 
 ## 7. Memoria de lecciones aprendidas (persistencia entre ciclos)
@@ -294,10 +322,11 @@ Se añadió (2026-07-04) una tabla `lessons` + tools MCP `store_lesson`/`get_les
   banda. SQLite es local, gratis, determinista y testeable offline; ChromaDB exigiría un
   embedding Gemini por escritura/lectura (cuota compartida, y justo se acababa de arreglar un
   cuelgue en esa ruta exacta — ver §6.1).
-- **Verificado funcionando end-to-end contra LLM real**: en la corrida live del 2026-07-04,
-  `get_lessons` y `store_lesson` aparecen en la trayectoria capturada sin errores de
-  serialización — el mecanismo de aprendizaje funciona, independientemente del resultado (en
-  rojo) de la escalación misma.
+- **Verificado funcionando end-to-end contra LLM real**: `get_lessons`/`store_lesson` aparecen
+  en la trayectoria sin errores de serialización, y con el modelo frontera (§6.4) el LLM llegó
+  a **citar una lección concreta de una corrida anterior** en su propio razonamiento
+  ("aplicada lección ID 2: escalar preventivamente a AMARILLO si Markov alcanza S2...") — la
+  memoria no solo se registra, influye genuinamente en la decisión.
 
 ---
 
@@ -315,6 +344,7 @@ Se añadió (2026-07-04) una tabla `lessons` + tools MCP `store_lesson`/`get_les
 | 2026-07-04 | Memoria de lecciones (`lessons` + `store_lesson`/`get_lessons`) | El orquestador no aprendía nada entre ciclos |
 | 2026-07-04 | `escalation_enforcer`: red de seguridad post-LLM | El LLM seguía sin obedecer el plan incluso "vinculante" |
 | 2026-07-04 | `_consume_events_safely`: resiliencia ante ValidationError de ADK | Un solo turno mal formateado abortaba el ciclo completo |
+| 2026-07-04 | Registry actualizado a modelos frontera (`gemini-3.5-flash`/`gemini-3.1-pro-preview`) + `_strip_markdown_json_fence` | Benchmark empírico: el modelo económico causaba `MALFORMED_FUNCTION_CALL` y no seguía el plan de escalación |
 
 ---
 

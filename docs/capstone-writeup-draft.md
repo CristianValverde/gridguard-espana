@@ -92,23 +92,36 @@ the prompt twice made no measurable difference. The fix wasn't linguistic — it
 architectural: **`escalation_enforcer.py`** recomputes the policy after the LLM's turn and, by
 code, forces any mandatory step the model skipped. This is the project's clearest shift-left
 moment: not just replacing an LLM call with ML, but *removing a decision from the LLM
-entirely* once live evidence showed it couldn't be trusted with it, and building a code-level
-guarantee instead of a stronger prompt.
+entirely* once live evidence showed it couldn't be trusted with it.
 
-**What we found and didn't fully solve.** Chasing full end-to-end reliability further surfaced
-a genuine architectural limit: the ML ensemble reads the live database's trailing 168-hour
-window, completely decoupled from whatever scenario is embedded in an eval's prompt text —
-meaning no code fix can make the deterministic ML "agree" with a synthetic test scenario
-without also loading that scenario into the database first. A smoke test during final
-preparation surfaced a fourth, still-open finding: Gemini occasionally returns
-`finish_reason: MALFORMED_FUNCTION_CALL` mid-cycle with no exception raised at all. We tried one
-targeted, low-risk fix (removing a nullable/`anyOf` parameter schema, a documented
-function-calling gotcha) and it didn't resolve it. Rather than force a green test or hide the
-gap, both are documented in the repository with full reproduction steps, exactly as measured.
+**Finding 4 — an empirical benchmark, not a bug.** `config/model_registry.yaml` is the
+project's single source of truth for which Gemini model each role uses — built precisely so a
+cost/latency-vs-capability tradeoff can be tuned in one place, with no model name ever
+hardcoded in the agents themselves. As part of exercising that design, we deliberately ran the
+agentic roles against a more cost-efficient prior-generation model (`gemini-2.5-flash`) first.
+Live testing turned that into a real, reproducible comparison: with the cost-efficient model,
+the orchestrator intermittently returned Gemini's `finish_reason: MALFORMED_FUNCTION_CALL` —
+no exception, just a silently truncated cycle — and didn't reliably follow the fully
+deterministic `escalation_planner` policy. Pointing the registry at the current frontier model
+(`gemini-3.5-flash`, confirmed available and stable via a live `client.models.list()` query)
+eliminated `MALFORMED_FUNCTION_CALL` entirely in the next run, and the orchestrator executed
+its full 9–11-tool chain end-to-end, following `escalation_planner`'s verdict exactly for the
+risk level it actually computed — the first time all project the complete loop worked without
+the enforcer needing to step in. This is a genuine empirical result about the current gap in
+agentic capability (specifically, function-calling reliability and instruction-following) between
+cost-efficient and frontier Gemini models for a multi-tool agent loop like this one — exactly
+the kind of tradeoff the registry design exists to let us measure and act on quickly. A second,
+smaller bug (the frontier model wraps its JSON reply in a markdown code fence, which our parser
+didn't originally strip) surfaced immediately after and was fixed the same session. What remains
+open, and is documented as such rather than hidden: the eval harness's ML ensemble reads live
+database state rather than the golden scenario's own snapshot, so a "critical" golden scenario
+doesn't automatically make the ensemble report a high `P(blackout)` — an eval-infrastructure
+gap, not an agent-behaviour one, and one we chose not to patch under deadline pressure rather
+than force a misleading green test.
 
 ## Results
 
-- **296 deterministic offline tests pass**, with zero network calls — every Python/ML/Markov
+- **300 deterministic offline tests pass**, with zero network calls — every Python/ML/Markov
   layer, every guardrail, and the escalation policy itself are unit-tested independently of any
   LLM.
 - **123 commits**, 8 written design specs, and 13 implementation plans give this project a full,

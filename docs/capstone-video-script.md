@@ -76,7 +76,7 @@ python -m pytest -q
 
 **Qué decir mientras corre (tarda ~15-20s, tiempo real para narrar):**
 
-> "296 tests offline, deterministas, sin llamar a ningún API — corren en segundos y validan
+> "300 tests offline, deterministas, sin llamar a ningún API — corren en segundos y validan
 > cada capa: la fórmula de riesgo, la política de escalación, los guardrails de seguridad, la
 > memoria de lecciones aprendidas... todo lo que no necesita un LLM está probado sin depender
 > de uno."
@@ -136,7 +136,7 @@ para mostrar volumen — 8 specs, 13 planes), o `MEMORIA.md` abierto en la secci
 
 - [ ] Diagrama de arquitectura actualizado (pendiente, el usuario lo está haciendo)
 - [ ] Repo de GitHub ya en público (si no, el link del vídeo/writeup no servirá)
-- [ ] `python -m pytest -q` probado justo antes de grabar (confirma 296 passed)
+- [ ] `python -m pytest -q` probado justo antes de grabar (confirma 300 passed)
 - [ ] Si vas a usar la Opción B del demo, probarla ANTES de grabar y tener un plan B si falla
 - [ ] Grabación de pantalla lista (Win+G, o tu grabador habitual) + audio de tu voz o TTS
 - [ ] Vídeo final ≤ 5:00 exactos, subido a YouTube como **público** (no "no listado")
