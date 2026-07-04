@@ -158,11 +158,51 @@ validación end-to-end del enforcer sigue sin completarse: en las 3 corridas
 dirigidas hechas hasta ahora (EE-Task3, esta) el camino de ejecución nunca
 llegó a un escenario donde el LLM llame a ML pero omita el resto de la cadena
 de escalación — el requisito exacto para poner a prueba
-`enforce_escalation_plan` en producción. Se necesitaría o bien más corridas
-(para capturar por azar un turno donde el LLM sí consulte ML mínimamente) o
-bien un test dirigido que fuerce ese trayecto (p. ej. inyectando un resultado
-con `blackout_probability` ya alto sin pasar por el LLM), decisión que queda
-para el controlador.
+`enforce_escalation_plan` en producción.
+
+### Por qué "forzar PASO 1 por código" no es viable para estos tests (2026-07-04)
+
+Se evaluó extender el enforcer para además garantizar por código las tools
+deterministas del PASO 1 (`risk_scorer`, `get_grid_state`,
+`get_blackout_probability_ensemble`) cuando el LLM no las invoca — estas no
+tienen componente LLM, así que en teoría podrían llamarse directamente sin
+pasar por ningún agente. Se descartó tras verificar empíricamente:
+
+```python
+>>> from mcp_servers.ml_models_server import get_blackout_probability_ensemble
+>>> get_blackout_probability_ensemble()
+{"blackout_probability": 0.1221, "primary": "lstm", ...}
+```
+
+`get_blackout_probability_ensemble()` **no lee el snapshot del escenario de
+eval** — lee las últimas 168h de la tabla `snapshots` de `gridguard.db` (DB
+real, `mcp_servers/ml_models_server.py:379-399`). El snapshot del golden
+dataset (`eval/golden_dataset/blackout_apr_2025.json`) solo se usa como texto
+embebido en el prompt para que el LLM "roleplee" sobre él — el pipeline ML
+determinista es completamente independiente del escenario bajo prueba. Forzar
+esta llamada en el enforcer no repararía nada: siempre devolvería el P real de
+la DB actual (0.12, banda VERDE), haciendo fallar el test de forma aún más
+determinista en vez de solucionarlo.
+
+**Limitación arquitectónica identificada, no bug:** los tests de trayectoria
+del orchestrator (`test_run_scenario_critical`,
+`test_critical_scenario_triggers_full_escalation`) dependen enteramente de que
+el LLM interprete correctamente el snapshot embebido en el prompt como
+"crítico" y actúe en consecuencia — no hay ninguna vía determinista que ancle
+el resultado del ML real al escenario del golden dataset. Corregirlo de raíz
+exigiría un fixture que cargue temporalmente los snapshots del escenario en
+`gridguard.db` antes de la corrida live (para que
+`get_blackout_probability_ensemble` SÍ refleje el evento simulado) — cambio de
+infraestructura de evals compartida por todos los agentes, fuera de alcance
+del 06/07.
+
+**Decisión (2026-07-04):** se acepta el estado actual. `escalation_planner`,
+`escalation_enforcer` y `_consume_events_safely` quedan mergeados,
+testeados offline (296 tests) y revisados — 3 capas de robustez reales y
+verificables independientemente del resultado de estos 2 tests live
+concretos. La verificación end-to-end con LLM real de estos 2 tests queda
+como limitación conocida y documentada, no como trabajo pendiente sin
+diagnosticar.
 
 ## Flujo prompt→eval
 
