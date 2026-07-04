@@ -60,15 +60,38 @@ Lógica:
    abajo) con un mensaje que incluya el snapshot; parsear el output (`AnomalyReport`,
    `RenewablesForecast` o `ComplianceReport` según la skill) y fusionarlo en la clave
    correspondiente de `result` (`anomaly_report`, `renewables_forecast`,
-   `compliance_report`); añadir la entrada a `trajectory` y a `result["actions_taken"]` con
-   el sufijo `" (forzado por enforcer)"`.
+   `compliance_report`); añadir a `result["actions_taken"]` una entrada con el sufijo
+   `" (forzado por enforcer)"`.
+
+   **Importante — bubbling de trayectoria:** cuando el LLM invoca normalmente
+   `anomaly_detector_skill`/`renewables_forecast_skill`/`regulatory_compliance_skill` (son
+   `AgentTool`, ver `agents/anomaly_detector.py` etc.), sus tool-calls internas (p.ej.
+   `search_regulations`) quedan OCULTAS en la trayectoria del orquestador — solo aparece el
+   nombre de la skill como una entrada. Pero `cross_border_agent` y `report_agent` son
+   `sub_agents` (transferencia de control ADK, no `AgentTool`): cuando el LLM los invoca
+   normalmente, SUS tool-calls internas (`find_similar_incident`, `get_mitigation_procedure`,
+   etc.) SÍ aparecen en la trayectoria del orquestador, porque comparten el mismo Runner/
+   sesión vía transferencia. El test `test_run_scenario_critical` depende de esto: su assert
+   de RAG (`"search_regulations" in tool_names or "find_similar_incident" in tool_names`) solo
+   se satisface vía `find_similar_incident`, una tool de `report_agent`.
+
+   Por tanto, al forzar por código: para las 3 Skills (`AgentTool`), añadir a `trajectory`
+   ÚNICAMENTE una entrada sintética `{"tool": "<nombre_skill>", "args": {"forced": True}}`
+   (igual que aparecería si el LLM la hubiera llamado normalmente — sin bubbling, consistente
+   con su naturaleza `AgentTool`). Para `cross_border_agent` y `report_agent` (sub_agents),
+   añadir la entrada sintética `{"tool": "<nombre>", "args": {"forced": True}}` **Y ADEMÁS**
+   todas las entradas de la trayectoria propia del sub-run forzado (`forced["trajectory"]`,
+   el resultado de `_run_agent_once`) — esto reproduce el bubbling que el flujo normal ya
+   tiene, y es lo que permite que el assert de RAG pase cuando `report_agent` se fuerza.
 5. **cross_border:** si `plan["cross_border_mode"] != "none"` y `"cross_border_agent"` no
    está en `tool_names`, invocar `cross_border_agent` con un mensaje que indique el modo
-   (`assessment`/`emergency`) y el snapshot; fusionar en `result["cross_border"]`.
+   (`assessment`/`emergency`) y el snapshot; fusionar en `result["cross_border"]`; aplicar el
+   bubbling de trayectoria descrito arriba (es un sub_agent).
 6. **report_agent:** si `plan["invoke_report_agent"]` y `"report_agent"` no está en
    `tool_names`, invocar `report_agent` con `report_type="emergency"` y contexto (risk,
    snapshot); no se parsea salida estructurada (report_agent escribe ficheros, no devuelve
-   JSON validado) — solo se registra en trayectoria/actions_taken.
+   JSON validado) — solo se registra en trayectoria (con bubbling, ver arriba) y
+   `actions_taken`.
 7. **Alerta:** si `plan["emit_alert"] != "none"` y `result.get("alert")` es `None`, construir
    la alerta con `tools.alert_formatter.alert_formatter` (Python puro, sin LLM) usando
    `risk={"level": result.get("severity", "LOW"), "value": result.get("risk_score", 0),
