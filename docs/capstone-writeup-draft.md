@@ -185,6 +185,12 @@ rather than hidden: the eval harness's ML ensemble reads live database state rat
 golden scenario's own snapshot, so a "critical" golden scenario doesn't automatically make the
 ensemble report a high P(blackout) — an eval-infrastructure gap, not an agent-behaviour one.
 
+Finding this deeper cause did **not** retire `escalation_enforcer` from Finding 3. The two fixes
+address different failure modes: the model swap resolved the *observed* cause of non-compliance,
+while the enforcer stays as unconditional defense-in-depth — a deterministic function is a no-op
+when the LLM already followed the plan, and a monitoring system for grid stability shouldn't rely
+on one clean live run as proof an LLM will always behave.
+
 ## Results
 
 - **300 deterministic offline tests pass**, with zero network calls — every Python/ML/Markov

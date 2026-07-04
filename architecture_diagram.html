@@ -69,10 +69,6 @@
   .c-mcp .t { color:#4ade80; }
   .c-mcp .badge { background:#14532d; color:#86efac; }
 
-  .c-mcp-new { background:#0f2318; border:2px solid #22c55e; }
-  .c-mcp-new .t { color:#86efac; }
-  .c-mcp-new .badge { background:#166534; color:#bbf7d0; }
-
   .c-sk   { background:#1e1040; border:1.5px solid #7c3aed; }
   .c-sk .t { color:#c084fc; }
   .c-sk .badge { background:#4c1d95; color:#d8b4fe; }
@@ -108,18 +104,6 @@
 
   /* ── Divider ── */
   hr.div { border:none; border-top:1px solid #1e293b; margin:14px 0; }
-
-  /* ── NEW / UPD badges ── */
-  .new-pill {
-    display:inline-block; background:#166534; color:#bbf7d0;
-    border-radius:999px; padding:1px 7px; font-size:8px; font-weight:700;
-    vertical-align:middle; margin-left:4px;
-  }
-  .upd-pill {
-    display:inline-block; background:#0f3460; color:#93c5fd;
-    border-radius:999px; padding:1px 7px; font-size:8px; font-weight:700;
-    vertical-align:middle; margin-left:4px;
-  }
 
   /* ── Model table ── */
   table { width:100%; border-collapse:collapse; font-size:9px; margin-top:6px; }
@@ -331,7 +315,7 @@
   <div class="card c-fn"><div class="t">📊 stability_proxy_calculator()</div><div class="d">4 frequency proxies:<br>balance · reserve · interchanges · %renewables<br>→ composite_pressure</div><span class="badge">DETERMINISTIC</span></div>
   <div class="card c-fn"><div class="t">🎯 risk_scorer() + alert_formatter()</div><div class="d">ML score + proxies<br>→ RiskScore [0-100]<br>→ Alert (national/zonal scope)</div><span class="badge">DETERMINISTIC</span></div>
   <div class="card c-mk" style="border-style:solid">
-    <div class="t">📈 markov_state_tracker <span class="new-pill">NEW</span></div>
+    <div class="t">📈 markov_state_tracker</div>
     <div class="d">
       <b>compute_state(features)</b> → S0–S4<br>
       <b>get_trajectory(state, hours)</b> → list[int]<br>
@@ -348,21 +332,18 @@
 <!-- ══════════════════════════════════════════════════════════
      ESCALATION POLICY — the headline engineering decision
 ═══════════════════════════════════════════════════════════ -->
-<div class="card c-fn" style="border:2px solid #38bdf8; margin: 6px 0 2px">
-  <div class="t">🎯 escalation_planner() <span class="new-pill" style="background:#0c4a6e;color:#7dd3fc">DECISION MOVED FROM PROMPT → CODE</span></div>
+<div class="card c-fn" style="margin: 6px 0 2px">
+  <div class="t">🎯 escalation_planner()</div>
   <div class="d">
-    The Orchestrator's escalation policy (which skills/sub-agents to invoke per risk band) used
-    to live as <b>prose inside the Gemini system prompt</b>. Live testing showed the LLM didn't
-    reliably follow it — stopping early in critical scenarios, over-triggering in calm ones — even
-    after reinforcing the wording twice. Fix: a <b>pure, deterministic Python function</b>
-    (17 truth-table unit tests) computes <code style="color:#7dd3fc">band</code>,
-    <code style="color:#7dd3fc">mandatory_skills</code>, <code style="color:#7dd3fc">cross_border_mode</code>,
-    <code style="color:#7dd3fc">emit_alert</code> from <code style="color:#7dd3fc">(blackout_probability, markov_state)</code>.
-    The LLM no longer <em>decides</em> the policy — it only executes what this function returns.
+    Computes the Orchestrator's escalation policy as a <b>pure, deterministic Python function</b>
+    (17 truth-table unit tests): given <code style="color:#38bdf8">(blackout_probability, markov_state)</code>,
+    returns <code style="color:#38bdf8">band</code>, <code style="color:#38bdf8">mandatory_skills</code>,
+    <code style="color:#38bdf8">cross_border_mode</code>, <code style="color:#38bdf8">emit_alert</code>. The
+    Orchestrator does not decide the escalation policy — it executes this function's verdict verbatim.
   </div>
-  <span class="badge" style="background:#0c4a6e;color:#7dd3fc">DETERMINISTIC</span>
-  <span class="badge" style="background:#0c4a6e;color:#7dd3fc">17 UNIT TESTS</span>
-  <span class="badge" style="background:#0c4a6e;color:#7dd3fc">NO LLM</span>
+  <span class="badge">DETERMINISTIC</span>
+  <span class="badge">17 UNIT TESTS</span>
+  <span class="badge">NO LLM</span>
 </div>
 
 <div class="arrow">↓</div>
@@ -383,44 +364,42 @@
      LAYER 2: MCP SERVERS
 ═══════════════════════════════════════════════════════════ -->
 <div class="section-label">🔌 Layer 2 — MCP Servers (5 servers · shared stdio transport)</div>
-<div class="card c-mcp-new" style="margin-bottom:8px">
-  <div class="t">🔗 Shared MCP Transport <span class="new-pill">17 → 5 subprocesses</span></div>
+<div class="card c-mcp" style="margin-bottom:8px">
+  <div class="t">🔗 Shared MCP Transport</div>
   <div class="d">
-    Every agent used to create its own <code style="color:#86efac">McpToolset</code> per server — 17
-    instances across 6 agent modules for 5 servers, spawning up to ~17 stdio subprocesses per
-    orchestrator run (each importing torch/chromadb at once). Consolidated into
-    <b>5 shared singleton toolsets</b> (<code style="color:#86efac">agents/mcp_toolsets.py</code>) —
-    ADK's session manager caches one subprocess per toolset instance, so sharing instances = sharing
-    subprocesses. Max 5 subprocesses per run now, regardless of how many agents use a server.
+    All agents share <b>5 singleton toolsets</b> (<code style="color:#4ade80">agents/mcp_toolsets.py</code>),
+    one per server. ADK's session manager caches one subprocess per toolset instance, so a full
+    orchestrator run spawns at most 5 MCP subprocesses total, regardless of how many agents call a
+    given server.
   </div>
 </div>
 <div class="g5">
   <div class="card c-mcp">
-    <div class="t">MCP: grid-data <span class="upd-pill">UPD</span></div>
-    <div class="d">get_generation_mix()<br>get_cross_border_flows()<br>get_eu_generation()<br>get_capacity_margin()<br><b>get_eu_market_prices()</b><br>→ day-ahead €/MWh (A44)</div>
+    <div class="t">MCP: grid-data</div>
+    <div class="d">get_generation_mix()<br>get_cross_border_flows()<br>get_eu_generation()<br>get_capacity_margin()<br>get_eu_market_prices()<br>→ day-ahead €/MWh (A44)</div>
     <span class="badge">ESIOS TOKEN</span><br>
     <span class="badge">ENTSOE TOKEN</span>
   </div>
   <div class="card c-mcp">
-    <div class="t">MCP: weather <span class="upd-pill">UPD</span></div>
-    <div class="d">get_wind_forecast()<br>get_solar_radiation()<br><b>get_weather_forecast_24h()</b><br>→ hourly 24h per zone</div>
+    <div class="t">MCP: weather</div>
+    <div class="d">get_wind_forecast()<br>get_solar_radiation()<br>get_weather_forecast_24h()<br>→ hourly 24h per zone</div>
     <span class="badge">NO CREDENTIAL</span><br>
     <span class="badge">Open-Meteo API</span>
   </div>
   <div class="card c-mcp">
-    <div class="t">MCP: memory <span class="upd-pill">UPD</span></div>
-    <div class="d">store_risk_score()<br>get_baseline()<br>query_incidents()<br>get_risk_history()<br>store_grid_state()<br>get_state_transitions()<br><b>store_lesson()</b> <span class="new-pill" style="font-size:7px">NEW</span><br><b>get_lessons()</b> <span class="new-pill" style="font-size:7px">NEW</span></div>
+    <div class="t">MCP: memory</div>
+    <div class="d">store_risk_score()<br>get_baseline()<br>query_incidents()<br>get_risk_history()<br>store_grid_state()<br>get_state_transitions()<br>store_lesson()<br>get_lessons()</div>
     <span class="badge">SQLITE</span>
     <span class="db-pill db-sqlite" style="margin-top:3px;display:inline-flex">🗄 gridguard.db</span>
   </div>
-  <div class="card c-mcp-new">
-    <div class="t">MCP: ml-models <span class="new-pill">NEW</span></div>
-    <div class="d">get_anomaly_score()<br>→ Isolation Forest<br>get_ensemble_score()<br>→ LSTM+IF+CLF fusion<br>get_load_forecast()<br>→ XGBoost/Prophet<br>get_blackout_probability()<br>→ Calibrated GBM<br><b>get_grid_state()</b><br>→ S0–S4 + 6h trajectory<br><b>get_markov_trajectory()</b><br>→ trajectory + P(S3)/P(S4)</div>
+  <div class="card c-mcp">
+    <div class="t">MCP: ml-models</div>
+    <div class="d">get_anomaly_score()<br>→ Isolation Forest<br>get_ensemble_score()<br>→ LSTM+IF+CLF fusion<br>get_load_forecast()<br>→ XGBoost/Prophet<br>get_blackout_probability()<br>→ Calibrated GBM<br>get_grid_state()<br>→ S0–S4 + 6h trajectory<br>get_markov_trajectory()<br>→ trajectory + P(S3)/P(S4)</div>
     <span class="badge">PKL/NPZ IN MEMORY</span><br>
     <span class="badge">NO LLM</span>
   </div>
-  <div class="card c-mcp-new">
-    <div class="t">MCP: knowledge-base <span class="new-pill">NEW</span></div>
+  <div class="card c-mcp">
+    <div class="t">MCP: knowledge-base</div>
     <div class="d">search_regulations()<br>→ ENTSO-E / REE norms<br>find_similar_incident()<br>→ RAG post-mortems<br>get_mitigation_procedure()<br>→ REE procedures</div>
     <span class="badge">CHROMADB</span>
     <span class="db-pill db-chroma" style="margin-top:3px;display:inline-flex">🔮 chroma_db/</span>
@@ -433,7 +412,7 @@
 <div class="hook">
   <div><div class="hook-label">🛡 after_tool_callback</div>
     <span>✅ Validates JSON schema · physical ranges (demand &gt; 0, score [0-1], state [0-4])</span></div>
-  <div><div class="hook-label">🛡 on_state_transition <span class="new-pill" style="font-size:7px">NEW</span></div>
+  <div><div class="hook-label">🛡 on_state_transition</div>
     <span>🔺 S→S+1 escalation detected → forces AnomalyDetectorSkill · S4 → immediate CRITICAL alert regardless of P(blackout)</span></div>
   <div><div class="hook-label" style="opacity:0"> </div>
     <span>🔐 Scans output for credential patterns (regex token/key/secret) · truncates to 4k tokens</span></div>
@@ -468,8 +447,8 @@
     <span class="badge">gemini-3.5-flash</span>
     <span class="badge">temp=0.1</span>
   </div>
-  <div class="card c-sk" style="border-color:#22c55e">
-    <div class="t">⚖️ RegulatoryComplianceSkill <span class="new-pill">NEW</span></div>
+  <div class="card c-sk">
+    <div class="t">⚖️ RegulatoryComplianceSkill</div>
     <div class="d">
       <b>Flow</b>: LLM queries RAG for regulations applicable to current Markov state → returns structured compliance report<br>
       <b>Tools</b>: search_regulations (RAG) · get_grid_state (Markov)<br>
@@ -488,7 +467,7 @@
 <div class="hook">
   <div><div class="hook-label">🛡 before_model_callback — Anti-Injection</div>
     <span>🚨 Detects prompt injection patterns in data from external APIs ("ignore previous", "system:", "override", "disregard")</span></div>
-  <div><div class="hook-label">🛡 on_forecast_risk_horizon <span class="new-pill" style="font-size:7px">NEW</span></div>
+  <div><div class="hook-label">🛡 on_forecast_risk_horizon</div>
     <span>🔭 After RenewablesForecastSkill: prob_reach_s3 &gt; 0.3 in 24h window → WARNING · prob_reach_s4 &gt; 0.1 → CRITICAL. Bridges Markov trajectory to alert pipeline.</span></div>
   <div><div class="hook-label" style="opacity:0"> </div>
     <span>🔢 Validates that numeric values in context are physically plausible before sending to model</span></div>
@@ -573,29 +552,27 @@
 ═══════════════════════════════════════════════════════════ -->
 <div class="section-label">🛟 Reliability Layer — Deterministic Safety Net (runs after the LLM turn)</div>
 <div class="g2">
-  <div class="card c-fn" style="border:2px solid #f59e0b">
+  <div class="card c-fn">
     <div class="t">🛟 escalation_enforcer()</div>
     <div class="d">
-      Live testing showed the LLM doesn't always follow <code style="color:#38bdf8">escalation_planner</code>'s
-      verdict end-to-end (stops early in ROJO, over-triggers in VERDE) — even with the "VERBATIM" instruction.
-      This function runs <b>after</b> the orchestrator's turn: recomputes the plan from the already-known
-      P/state, diffs it against the real trajectory, and invokes by code (isolated runner, no LLM
-      round-trip through the orchestrator) any mandatory skill/sub-agent that's missing.
+      Recomputes <code style="color:#38bdf8">escalation_planner</code>'s verdict after the Orchestrator's
+      turn from the same known P/state, diffs it against the actual trajectory, and invokes by code
+      (isolated runner, no LLM round-trip through the Orchestrator) any mandatory skill or sub-agent
+      that's still missing. Kept as defense-in-depth independently of Orchestrator model choice — a
+      no-op when the plan was already followed.
     </div>
-    <span class="badge" style="background:#78350f;color:#fde68a">5 UNIT TESTS</span>
-    <span class="badge" style="background:#78350f;color:#fde68a">NO PROMPT CHANGE</span>
+    <span class="badge">5 UNIT TESTS</span>
+    <span class="badge">NO PROMPT CHANGE</span>
   </div>
-  <div class="card c-fn" style="border:2px solid #ef4444">
+  <div class="card c-fn">
     <div class="t">🛟 _consume_events_safely()</div>
     <div class="d">
-      ADK 2.3.0 doesn't catch a <code style="color:#fca5a5">pydantic.ValidationError</code> when a Skill's
-      LLM answers with free text instead of its required JSON output_schema — it aborts the entire
-      orchestration run, producing zero result for that cycle. This wrapper consumes the Runner's event
-      stream defensively, keeping whatever was already captured instead of losing the whole cycle to one
-      malformed turn.
+      Consumes the Runner's event stream defensively, keeping whatever was already captured instead of
+      losing the whole monitoring cycle when a single Skill turn raises an uncaught
+      <code style="color:#38bdf8">pydantic.ValidationError</code> (ADK 2.3.0 does not catch this itself).
     </div>
-    <span class="badge" style="background:#7f1d1d;color:#fecaca">4 UNIT TESTS</span>
-    <span class="badge" style="background:#7f1d1d;color:#fecaca">VERIFIED LIVE, NO REGRESSION</span>
+    <span class="badge">4 UNIT TESTS</span>
+    <span class="badge">VERIFIED LIVE, NO REGRESSION</span>
   </div>
 </div>
 
@@ -700,13 +677,6 @@
     <span style="color:#fbbf24">update config/model_registry.yaml</span> →
     log detected changes
   </div>
-  <div class="d" style="color:#fbbf24;margin-top:8px;font-size:8.5px">
-    ⚠️ 2026-07-04: caught this design's registry pointing at the prior-generation
-    <code style="color:#fca5a5">gemini-2.5-flash</code> during a deliberate cost-efficient-vs-frontier
-    live benchmark — confirmed <code style="color:#86efac">gemini-3.5-flash</code>/<code style="color:#86efac">gemini-3.1-flash-lite</code>
-    available &amp; stable via a live <code style="color:#86efac">client.models.list()</code> call and switched.
-    Manual update this time; verifying the weekly job actually fires is on the TODO list.
-  </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
@@ -776,7 +746,7 @@
     <td>MAE forecast 6h vs actual</td>
   </tr>
   <tr>
-    <td>RegulatoryComplianceSkill <span class="new-pill">NEW</span></td>
+    <td>RegulatoryComplianceSkill</td>
     <td><span class="tSk">Skill (AgentTool)</span></td>
     <td><span class="mb">gemini-3.5-flash</span></td>
     <td><span class="tb">0.1</span></td>
