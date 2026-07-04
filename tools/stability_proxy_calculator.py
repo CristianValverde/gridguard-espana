@@ -52,12 +52,18 @@ def compute_composite_pressure_score(
     return max(0.0, min(composite, 1.0))
 
 
-def stability_proxy_calculator(snapshot: dict, baseline: dict | None = None) -> dict:
+def stability_proxy_calculator(snapshot: dict, baseline: dict = {}) -> dict:
     """Calcula los 4 proxies de frecuencia y el índice compuesto.
 
     Args:
         snapshot: GridSnapshot como dict (salida de data_normalizer)
-        baseline: Baseline como dict (salida de get_baseline). Si None, sin normalización.
+        baseline: Baseline como dict (salida de get_baseline). Si vacío, sin normalización.
+
+    Nota: firma sin Optional/None deliberada — un tipo `dict | None` genera un
+    schema JSON `anyOf` en la function declaration que Gemini function-calling
+    a veces falla en formatear (finish_reason=MALFORMED_FUNCTION_CALL,
+    verificado en vivo 2026-07-04). `{}` es falsy igual que None para el
+    `if baseline:` de abajo, así que el comportamiento no cambia.
 
     Returns:
         StabilityProxies como dict

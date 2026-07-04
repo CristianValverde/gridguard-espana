@@ -16,17 +16,20 @@ from schemas.models import RiskScore
 def risk_scorer(
     snapshot: dict,
     ml_score: float,
-    baseline: dict | None = None,
+    baseline: dict = {},
 ) -> dict:
     """Calcula el RiskScore combinando el score ML con los proxies actuales.
 
     Args:
         snapshot:  GridSnapshot como dict
         ml_score:  Anomaly score del modelo ML [0.0–1.0]
-        baseline:  Baseline como dict (opcional, mejora la normalización)
+        baseline:  Baseline como dict (opcional, mejora la normalización; vacío = sin baseline)
 
     Returns:
         RiskScore como dict
+
+    Nota: firma sin Optional/None deliberada — ver stability_proxy_calculator
+    (mismo motivo: anyOf schema rompe function-calling de Gemini en algunos turnos).
     """
     from tools.stability_proxy_calculator import stability_proxy_calculator
 
