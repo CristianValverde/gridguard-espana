@@ -30,7 +30,7 @@ from typing import Generator
 from mcp.server.fastmcp import FastMCP
 
 from ml.incidents import STATE_LABELS
-from schemas.models import Baseline, Incident, RiskScore
+from schemas.models import Baseline, Incident, Lesson, RiskScore
 
 mcp = FastMCP("gridguard-memory")
 
@@ -102,6 +102,19 @@ def _init_db() -> None:
                 created_at TEXT    DEFAULT (datetime('now'))
             );
             CREATE INDEX IF NOT EXISTS idx_grid_states_ts ON grid_states(timestamp);
+
+            CREATE TABLE IF NOT EXISTS lessons (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp     TEXT    NOT NULL,
+                markov_state  INTEGER NOT NULL,
+                p_band        TEXT    NOT NULL,
+                incident_type TEXT,
+                incident_id   TEXT,
+                source_agent  TEXT    NOT NULL,
+                context       TEXT    NOT NULL,
+                lesson        TEXT    NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_lessons_ts ON lessons(timestamp);
         """)
 
 
@@ -276,7 +289,7 @@ def get_risk_history(hours: int = 24) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def _init_db_at(db_path) -> None:
-    """Versión de _init_db parametrizada por ruta (para tests). Crea SOLO la tabla grid_states (no el esquema completo)."""
+    """Versión de _init_db parametrizada por ruta (para tests). Crea SOLO las tablas grid_states y lessons (no el esquema completo)."""
     con = sqlite3.connect(str(db_path))
     con.executescript("""
         CREATE TABLE IF NOT EXISTS grid_states (
@@ -286,6 +299,19 @@ def _init_db_at(db_path) -> None:
             created_at TEXT    DEFAULT (datetime('now'))
         );
         CREATE INDEX IF NOT EXISTS idx_grid_states_ts ON grid_states(timestamp);
+
+        CREATE TABLE IF NOT EXISTS lessons (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp     TEXT    NOT NULL,
+            markov_state  INTEGER NOT NULL,
+            p_band        TEXT    NOT NULL,
+            incident_type TEXT,
+            incident_id   TEXT,
+            source_agent  TEXT    NOT NULL,
+            context       TEXT    NOT NULL,
+            lesson        TEXT    NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_lessons_ts ON lessons(timestamp);
     """)
     con.commit()
     con.close()
@@ -353,6 +379,83 @@ def get_state_transitions(hours: int = 24) -> list[dict]:
         hours: Horas hacia atrás (default 24)
     """
     return _get_state_transitions_impl(hours, db_path=_db_path())
+
+
+# ---------------------------------------------------------------------------
+# Lecciones aprendidas — helpers _impl + tools
+# ---------------------------------------------------------------------------
+
+def _store_lesson_impl(lesson_json: str, db_path=None) -> dict:
+    path = db_path if db_path is not None else _db_path()
+    try:
+        data = json.loads(lesson_json)
+        lesson = Lesson.model_validate(data)
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+    con = sqlite3.connect(str(path))
+    try:
+        cur = con.execute(
+            """INSERT INTO lessons
+               (timestamp, markov_state, p_band, incident_type, incident_id,
+                source_agent, context, lesson)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                lesson.timestamp, lesson.markov_state, lesson.p_band,
+                lesson.incident_type, lesson.incident_id, lesson.source_agent,
+                lesson.context, lesson.lesson,
+            ),
+        )
+        con.commit()
+        return {"ok": True, "id": cur.lastrowid}
+    finally:
+        con.close()
+
+
+def _get_lessons_impl(markov_state: int = -1, p_band: str = "", limit: int = 10, db_path=None) -> list[dict]:
+    path = db_path if db_path is not None else _db_path()
+    limit = min(max(int(limit), 1), 50)
+
+    query = "SELECT * FROM lessons WHERE 1=1"
+    params: list = []
+    if markov_state >= 0:
+        query += " AND markov_state = ?"
+        params.append(markov_state)
+    if p_band:
+        query += " AND p_band = ?"
+        params.append(p_band)
+    query += " ORDER BY timestamp DESC LIMIT ?"
+    params.append(limit)
+
+    con = sqlite3.connect(str(path))
+    con.row_factory = sqlite3.Row
+    try:
+        rows = con.execute(query, params).fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        con.close()
+
+
+@mcp.tool()
+def store_lesson(lesson_json: str) -> dict:
+    """Persiste una lección aprendida al cierre de un ciclo relevante.
+
+    Args:
+        lesson_json: Lesson serializada como JSON string
+    """
+    return _store_lesson_impl(lesson_json)
+
+
+@mcp.tool()
+def get_lessons(markov_state: int = -1, p_band: str = "", limit: int = 10) -> list[dict]:
+    """Recupera lecciones aprendidas, opcionalmente filtradas.
+
+    Args:
+        markov_state: Filtra por estado Markov exacto (-1 = sin filtro)
+        p_band: Filtra por banda de escalación (vacío = sin filtro)
+        limit: Máximo de lecciones a devolver (recortado a [1, 50])
+    """
+    return _get_lessons_impl(markov_state, p_band, limit)
 
 
 # Inicializar BD al importar el módulo
