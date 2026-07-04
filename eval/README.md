@@ -204,6 +204,33 @@ concretos. La verificación end-to-end con LLM real de estos 2 tests queda
 como limitación conocida y documentada, no como trabajo pendiente sin
 diagnosticar.
 
+### Nuevo hallazgo: `MALFORMED_FUNCTION_CALL` de Gemini corta el ciclo en el PASO 1 (2026-07-04)
+
+Smoke test de `run_scenario()` contra el escenario `blackout_apr_2025` (fuera de la
+suite de pytest, ejecución manual directa): **3/3 corridas idénticas** se detienen
+justo después de `data_normalizer`, sin excepción — la respuesta cruda de Gemini
+trae `"finish_reason": "MALFORMED_FUNCTION_CALL"` en el siguiente turno (el modelo
+en uso es `gemini-2.5-flash`, no `gemini-3.5-flash` como dice `ARCHITECTURE.md` —
+el registry real en `config/model_registry.yaml` ya apunta a 2.5). `_consume_events_safely`
+no lo detecta como error porque **no es una excepción**: el Runner termina
+"normalmente" con un evento sin texto ni function_call.
+
+Hipótesis probada y descartada: los parámetros `baseline: dict | None = None` de
+`stability_proxy_calculator`/`risk_scorer` generan un schema `anyOf` (nullable) en
+la function declaration — un problema documentado de function-calling en Gemini.
+Se cambió a `baseline: dict = {}` (equivalente en runtime, sin `anyOf` en el schema)
+y se repitió la corrida: **mismo fallo, idéntico punto de corte** (commit `4bc0bdd`).
+La causa raíz real queda sin diagnosticar — no se siguió persiguiendo por límite de
+tiempo (3 corridas live consumidas en el intento). Se mantiene el cambio de schema
+por ser buena práctica, no por haber resuelto el problema.
+
+**Implicación para la demo/vídeo del capstone:** no depender de la cadena completa
+del orquestador (`run_scenario`/`run`) en una demo grabada en directo — es
+reproduciblemente inestable ahora mismo. Preferir mostrar: la suite offline en
+verde, llamadas live a un solo Skill/sub-agente de forma aislada (que sí han
+pasado en corridas anteriores), y las capas 100% deterministas (escalation_planner,
+ML, Markov) como evidencia de funcionamiento.
+
 ## Flujo prompt→eval
 
 Los prompts del sistema viven en `prompts/<agente>.md`. Tras cambiar un prompt:
