@@ -106,3 +106,13 @@ def test_get_lessons_empty_db_returns_empty_list(tmp_path):
 
     rows = ms._get_lessons_impl(markov_state=-1, p_band="", limit=10, db_path=db)
     assert rows == []
+
+
+def test_get_lessons_db_error_returns_error_dict_not_exception(tmp_path):
+    """Regresión (review final de rama, 2026-07-04): _get_lessons_impl no
+    capturaba errores de sqlite, rompiendo la convención del resto del
+    fichero (get_risk_history, _store_lesson_impl devuelven {"error": ...})."""
+    missing_db = tmp_path / "no_existe" / "test.db"  # directorio padre inexistente
+
+    rows = ms._get_lessons_impl(markov_state=-1, p_band="", limit=10, db_path=missing_db)
+    assert rows and "error" in rows[0]

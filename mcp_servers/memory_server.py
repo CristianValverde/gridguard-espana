@@ -427,13 +427,16 @@ def _get_lessons_impl(markov_state: int = -1, p_band: str = "", limit: int = 10,
     query += " ORDER BY timestamp DESC LIMIT ?"
     params.append(limit)
 
-    con = sqlite3.connect(str(path))
-    con.row_factory = sqlite3.Row
     try:
-        rows = con.execute(query, params).fetchall()
-        return [dict(row) for row in rows]
-    finally:
-        con.close()
+        con = sqlite3.connect(str(path))
+        con.row_factory = sqlite3.Row
+        try:
+            rows = con.execute(query, params).fetchall()
+            return [dict(row) for row in rows]
+        finally:
+            con.close()
+    except Exception as exc:
+        return [{"error": str(exc)}]
 
 
 @mcp.tool()
