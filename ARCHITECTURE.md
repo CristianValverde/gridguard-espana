@@ -104,20 +104,20 @@ Gemini models evolve quickly: `gemini-2.0-flash` was marked **Shut Down** in Jun
 The system uses `config/model_registry.yaml` as the single source of truth for models. A weekly job updates it automatically by querying Google's official documentation.
 
 ```yaml
-# config/model_registry.yaml — auto-generated, do NOT edit manually
-# Last updated: 2026-06-27 | Source: ai.google.dev/gemini-api/docs/models
+# config/model_registry.yaml — single source of truth, updated 2026-07-04
+# Source: ai.google.dev/gemini-api/docs/models, verified live via client.models.list()
 
 models:
-  fast_agent:          "gemini-3.5-flash"        # Stable · agentic tasks optimised
-  smart_agent:         "gemini-3.1-pro"           # Preview · complex reasoning · 2M ctx
-  embedding:           "gemini-embedding-2"        # Stable · multimodal embeddings for RAG
-  fallback_fast:       "gemini-3.1-flash-lite"    # Stable · cost-efficient fallback
+  fast_agent:          "gemini-3.5-flash"                   # Stable · agentic tasks optimised
+  smart_agent:         "gemini-3.1-pro-preview-customtools"  # Preview · optimized for custom tool usage
+  embedding:           "gemini-embedding-2"                  # Stable · multimodal embeddings for RAG
+  fallback_fast:       "gemini-3.1-flash-lite"               # Stable · cost-efficient fallback
 
 registry_meta:
   source_url:   "https://ai.google.dev/gemini-api/docs/models"
-  updated_at:   "2026-06-27T10:00:00Z"
-  next_update:  "2026-07-04T10:00:00Z"
-  stable_only:  true   # never use Experimental models in production
+  updated_at:   "2026-07-04T21:00:00Z"
+  next_update:  "2026-07-11T21:00:00Z"
+  stable_only:  true   # never use Experimental models in production (smart_agent is a deliberate exception)
 ```
 
 ```python
@@ -136,7 +136,7 @@ def get_model(role: str) -> str:
 | Role in the System | Model | Status | Why |
 |---|---|---|---|
 | Fast agents (Orchestrator, Skills) | `gemini-3.5-flash` | **Stable** | Designed for agentic tasks, outperforms 3.1 Pro on agent benchmarks (MCP Atlas 83.6%) |
-| Complex reasoning agent (ReportAgent) | `gemini-3.1-pro` | Preview | 2M token context, advanced reasoning for report synthesis |
+| Complex reasoning agent (ReportAgent) | `gemini-3.1-pro-preview-customtools` | Preview | Variant explicitly optimized for custom tool usage — fits ReportAgent's 10-turn, 6-tool loop better than the generic 3.1 Pro |
 | RAG Embeddings | `gemini-embedding-2` | **Stable** | First multimodal embeddings model, best for heterogeneous RAG |
 | Fallback / testing | `gemini-3.1-flash-lite` | **Stable** | Cheaper for CI and trajectory tests |
 | ~~gemini-2.0-flash~~ | ~~gemini-2.0-flash~~ | **⛔ SHUT DOWN** | Removed from architecture |
@@ -405,7 +405,7 @@ get_mitigation_procedure(situation) → Procedure
 ## 9. Layer 4 — Sub-agents
 
 ### `ReportAgent`
-- **Model**: `get_model("smart_agent")` → `gemini-3.1-pro` · **Temperature**: 0.4 · **Max turns**: 10
+- **Model**: `get_model("smart_agent")` → `gemini-3.1-pro-preview-customtools` · **Temperature**: 0.4 · **Max turns**: 10
 - **Why Sub-agent**: multiple steps (collect → analyse → draft → format), variable number of steps
 - **Tools**: `query_incidents`, `get_risk_history`, `get_blackout_probability` (ML), `find_similar_incident` (RAG), `get_state_transitions` (Markov), write to `reports/`
 - **Output**: HTML + Markdown report with executive summary, risk score evolution, incidents, and comparison with similar historical events

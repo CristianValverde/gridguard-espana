@@ -80,25 +80,28 @@ endpoint (see "Deployability" note below).*
 - **300 offline tests pass**, deterministically, no network calls (`pytest -q`).
 - The deterministic layers (`escalation_planner`, ML ensemble, Markov chain, all MCP tools)
   work reliably and are unit/integration tested.
-- **The single most valuable finding of this project was an empirical benchmark, run almost
-  by accident.** `config/model_registry.yaml` exists precisely so the cost/latency-vs-capability
-  tradeoff for each agent role can be tuned in one place, with no model name ever hardcoded.
-  As part of exercising that design, we deliberately ran the agentic roles against a more
-  cost-efficient prior-generation model (`gemini-2.5-flash`) first. Live testing turned that
-  into a real comparison: with the cost-efficient model, the orchestrator intermittently
-  returned `MALFORMED_FUNCTION_CALL` (a silently truncated cycle, no exception) and didn't
-  reliably follow the fully deterministic `escalation_planner` policy. Pointing the registry
-  at the current frontier model (`gemini-3.5-flash`, confirmed live via `client.models.list()`)
-  eliminated `MALFORMED_FUNCTION_CALL` entirely and made the orchestrator follow the escalation
-  policy exactly, in the very next run — the first time the full loop worked end-to-end. This
-  is a genuine, reproducible data point about the current agentic-capability gap between
-  cost-efficient and frontier Gemini models for a multi-tool agent loop, discovered because the
-  registry design let us swap models and re-test in seconds. One smaller bug surfaced
-  immediately after (the frontier model wraps its JSON reply in a markdown code fence) and was
-  fixed the same session. See [`eval/README.md`](eval/README.md) for the full before/after
-  evidence, every other finding along the way, and what still remains a documented,
-  not-yet-fixed limitation (the eval harness's ML ensemble reads live database state rather
-  than the golden scenario's own snapshot, so a golden "critical" scenario doesn't automatically
+- **The single most valuable finding of this project was a deliberate empirical benchmark.**
+  `config/model_registry.yaml` exists precisely so the cost/latency-vs-capability tradeoff for
+  each agent role can be tuned in one place, with no model name ever hardcoded. As part of
+  exercising that design, we deliberately ran the agentic roles against a more cost-efficient
+  prior-generation model (`gemini-2.5-flash`) first, specifically because it was cheaper. Live
+  testing turned that choice into a real comparison: with the cost-efficient model, the
+  orchestrator intermittently returned `MALFORMED_FUNCTION_CALL` (a silently truncated cycle, no
+  exception) and didn't reliably follow the fully deterministic `escalation_planner` policy.
+  Pointing the registry at the current frontier model (`gemini-3.5-flash`, confirmed live via
+  `client.models.list()`) eliminated `MALFORMED_FUNCTION_CALL` entirely and made the orchestrator
+  follow the escalation policy exactly, in the very next run — the first time the full loop
+  worked end-to-end. We went one level deeper for the sub-agent role too: instead of the generic
+  flagship model, `smart_agent` uses `gemini-3.1-pro-preview-customtools`, a variant explicitly
+  described by the provider as optimized for custom tool usage — a better fit for `ReportAgent`'s
+  10-turn, 6-tool loop. This is a genuine, reproducible data point about the current
+  agentic-capability gap between cost-efficient and frontier Gemini models for a multi-tool agent
+  loop, discovered because the registry design let us swap models and re-test in seconds. One
+  smaller bug surfaced immediately after (the frontier model wraps its JSON reply in a markdown
+  code fence) and was fixed the same session. See [`eval/README.md`](eval/README.md) for the full
+  before/after evidence, every other finding along the way, and what still remains a documented,
+  not-yet-fixed limitation (the eval harness's ML ensemble reads live database state rather than
+  the golden scenario's own snapshot, so a golden "critical" scenario doesn't automatically
   produce a "critical" `P(blackout)` — an eval-infrastructure gap, not an agent-behaviour one).
   We treat this transparency as part of the technical quality of the submission, not a gap to
   paper over.
