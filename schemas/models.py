@@ -447,6 +447,25 @@ class CrossBorderAnalysis(BaseModel):
     timestamp: str = Field(default_factory=_utcnow_iso, description="ISO 8601 UTC")
 
 
+class Lesson(BaseModel):
+    """Lección aprendida por el orquestador al cierre de un ciclo relevante.
+
+    Memoria entre sesiones (cada ciclo del orchestrator es efímero): permite
+    consultar decisiones pasadas relevantes al arrancar el siguiente ciclo.
+    """
+
+    lesson: str = Field(..., description="La lección, imperativa y accionable")
+    context: str = Field(..., description="Resumen de la situación que la produjo")
+    markov_state: int = Field(..., ge=0, le=4)
+    p_band: Literal["VERDE", "AMARILLO", "NARANJA", "ROJO"]
+    incident_type: Optional[str] = Field(
+        None, description="Alineado con AnomalyReport.incident_type"
+    )
+    incident_id: Optional[str] = Field(None, description="FK lógica a incidents.incident_id")
+    source_agent: str = "gridguard_orchestrator"
+    timestamp: str = Field(default_factory=_utcnow_iso, description="ISO 8601 UTC")
+
+
 # ---------------------------------------------------------------------------
 # Cross-cutting — Guardrails / Hooks
 # ---------------------------------------------------------------------------

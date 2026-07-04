@@ -14,6 +14,7 @@ from schemas.models import (
     AnomalyReport,
     ComplianceReport,
     CrossBorderAnalysis,
+    Lesson,
     RenewablesForecast,
 )
 
@@ -33,6 +34,11 @@ def _instances():
         CrossBorderAnalysis(
             can_import=True, available_capacity_mw=1000.0,
             countries=["FR"], risk_mitigation="x",
+        ),
+        Lesson(
+            lesson="Escalar a AMARILLO aunque P<0.10 si Markov ya está en S2.",
+            context="Ciclo 2026-07-04T10:00Z: P=0.08 pero Markov=S2 tras rampa solar.",
+            markov_state=2, p_band="AMARILLO",
         ),
     ]
 
