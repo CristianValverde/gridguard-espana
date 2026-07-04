@@ -11,8 +11,8 @@ GridGuard España: A Multi-Agent System That Learns When Not to Trust the LLM
 
 # SUBTITLE
 
-Detecting blackout risk in the Spanish power grid with ADK + Gemini, deterministic ML, and a
-safety net for the moments the agent doesn't behave.
+Detecting blackout risk in the Spanish power grid with ADK + Gemini, deterministic ML, a
+human-gated knowledge pipeline, and a safety net for the moments the agent doesn't behave.
 
 # BODY
 
@@ -24,11 +24,13 @@ hours in advance: extreme renewable penetration, falling synchronous inertia, a 
 worsening supply/demand balance. But there's a catch — **grid frequency, the single most
 direct instability signal, is not published by any public API.** REE withholds it for
 operational security reasons. Anyone building a monitoring system for the Spanish grid has to
-work with proxies, not ground truth.
+work with proxies, not ground truth, and with real data that is messy, inconsistently
+documented, and sometimes just wrong.
 
 GridGuard asks: can a multi-agent system, using only publicly available data, catch that kind
 of situation early enough to matter — and can we be honest, in public, about exactly where an
-LLM-based agent can and can't be trusted to do that reliably?
+LLM-based agent can and can't be trusted to do that reliably, and where our own data pipeline
+has real gaps?
 
 ## The solution: three levels of intelligence, each reserved for what it's actually good at
 
@@ -43,7 +45,8 @@ GridGuard follows one rule throughout: never use an LLM where Python or an ML mo
   either path.
 - **RAG** over REE/ENTSO-E operating procedures and past-incident post-mortems (Iberian
   separation 2006, this same 2025 blackout) gives the system real regulatory grounding instead
-  of generic LLM knowledge.
+  of generic LLM knowledge — built and maintained through a repeatable, human-gated pipeline,
+  not a one-off seed script (see below).
 - **The LLM** only enters where genuine reasoning is needed: synthesizing multiple signals into
   a severity judgment, drafting an emergency report, evaluating cross-border import options.
 
@@ -58,25 +61,77 @@ Layer 4  Sub-agents — ReportAgent · CrossBorderAgent
 Layer 5  OrchestratorAgent (Root Agent) — coordinates everything above
 ```
 
-Built on **Google ADK 2.3.0 + Gemini**, with **5 custom MCP servers**, **3 Skills**
-(`AgentTool`-wrapped, single structured output each), **2 Sub-agents** with their own tool
-loops, and a **guardrails layer** (`guardrails/hooks.py`) enforcing a per-agent tool whitelist,
-rate-limiting, `.env`/secret-path blocking, prompt-injection sanitisation, and output-schema
-validation before anything reaches the user.
+Built on **Google ADK 2.3.0 + Gemini**, with **5 custom MCP servers** (consolidated from an
+original 7 as the design matured), **3 Skills** (`AgentTool`-wrapped, single structured output
+each), **2 Sub-agents** with their own tool loops, and a **guardrails layer**
+(`guardrails/hooks.py`) enforcing a per-agent tool whitelist, rate-limiting, `.env`/secret-path
+blocking, prompt-injection sanitisation, and output-schema validation before anything reaches
+the user.
+
+## Turning four public APIs into one dataset you can actually train on
+
+Before any agent could reason about the grid, the project had to build a real data pipeline:
+ESIOS/REData (10-minute granularity back to 2014), AEMET OpenData (hourly weather back to
+~2000), and ENTSO-E Transparency (hourly EU interconnection data back to 2011) — roughly
+525,000 ten-minute readings once assembled. This surfaced its own class of bugs, unglamorous
+but load-bearing: **11 of the 13 ESIOS indicator IDs we'd initially used were simply wrong**
+(mis-derived from the API's naming conventions), caught only by cross-checking against real
+production usage; the demand indicator's raw units turned out to be double the real MW value,
+silently skewing every downstream feature until corrected; and annual API queries were timing
+out until we chunked them into 28-day windows. None of this is exotic engineering, but a
+model is only as honest as the numbers it's trained on, and every one of these would have
+quietly degraded the whole system if left unfixed. To guarantee the model never sees a
+different feature computation at training time than at inference time, every history-dependent
+feature is computed by one single function used by training, serving, *and* validation —
+enforced by a test asserting the two paths agree to 9 decimal places.
+
+## Training ML honestly, including the part that didn't work
+
+The golden test case is the same 28 April 2025 blackout, reconstructed minute-by-minute from
+REE's real, published post-mortem — not a synthetic scenario. Against it: the Isolation Forest
+passed, the LSTM Autoencoder passed (its reconstruction error climbed from 0.043 to 1.53 as the
+event approached), and the fused ensemble passed with a monotonically rising P(blackout). The
+calibrated Gradient Boosting classifier, however, **failed** — a flat, uninformative 0.0009
+score, because the training data contains exactly one historical full-blackout (S4) event, and
+walk-forward validation on a single positive example is close to meaningless (AUC collapses to
+0 on that fold). Rather than quietly drop the classifier or overfit it into looking better than
+it is, we kept the failure visible, made the LSTM detector *load-bearing by design* in the
+ensemble (its weight fixed, not tuned against the one golden event, specifically so it
+couldn't be overfit to n=1), and documented the classifier's real limitation as a data-scarcity
+problem rather than a modelling one. The same honesty applies to the Markov chain over grid
+states: transitions into rare, high-severity states are blended with an expert Dirichlet prior
+precisely because there isn't enough historical data to estimate them empirically alone.
+
+## A knowledge base you can keep growing without losing human oversight
+
+The RAG layer needed REE operating procedures, ENTSO-E standards, and incident post-mortems —
+but a one-time embedding script doesn't scale, and an LLM freely researching and inserting
+"facts" into a safety-relevant knowledge base without a human ever reviewing them is exactly
+the kind of unchecked autonomy this project tries to avoid. So the ingestion pipeline is a
+repeatable loop: a list of pending topics is picked up by a research agent (which explicitly
+tags anything it can't verify as unverified rather than presenting it with false confidence), a
+validator cross-checks candidate facts against known ground truth, and nothing reaches the
+vector store without a **human approval gate** in between. Only after that does an idempotent
+embedding step run, with pruning and a manifest file as the single source of truth for what's
+actually indexed. The first real batch through this pipeline processed 10 documents and added
+42 chunks to the knowledge base — small, but proof that the loop works end-to-end, and that it
+can be repeated safely as new regulations or incidents need to be added.
 
 ## The real engineering story: what happens when the LLM doesn't cooperate
 
 The most valuable part of this project wasn't building the system — it was **validating it
 against a real LLM instead of settling for green offline tests**, and following every surprise
-to its root cause instead of patching symptoms.
+to its root cause instead of patching symptoms. Four distinct findings, each investigated with
+evidence before touching a fix:
 
 **Finding 1 — infrastructure.** Live evals kept timing out. Profiling with `py-spy` (a live
-Python stack sampler) showed a single agent lazily importing `chromadb` (which pulls in numpy)
-*inside* a tool call, with the event loop already running — the C-extension load hung for
-minutes. Moving the import to module load time fixed it: a deterministic repro went from
->90 seconds to 0.8 seconds. Alongside it: 17 separate MCP subprocess instances were consolidated
-into 5 shared singletons, and every external I/O call (embeddings, ENTSO-E, weather) got an
-explicit timeout after one was measured hanging for ~125 seconds.
+Python stack sampler) showed an agent lazily importing `chromadb` (which pulls in numpy) *inside*
+a tool call, with the event loop already running — the C-extension load hung for minutes. Moving
+the import to module load time fixed it: a deterministic repro went from >90 seconds to 0.8
+seconds. Alongside it: what had been 17 separate MCP subprocess instances (one per agent per
+server) were consolidated into 5 shared singletons, cutting the maximum subprocess count per
+monitoring cycle by more than two-thirds, and every external I/O call (embeddings, ENTSO-E,
+weather) got an explicit timeout after one was measured hanging for ~125 seconds.
 
 **Finding 2 — robustness.** A skill occasionally answers with free text instead of the JSON its
 `output_schema` requires. ADK 2.3.0 doesn't catch the resulting `pydantic.ValidationError` — it
@@ -85,67 +140,74 @@ aborts the *entire* orchestration run, producing no result at all for that cycle
 already captured instead of losing the whole cycle to one malformed turn.
 
 **Finding 3 — agent behaviour.** Even with a fully deterministic escalation policy
-(`tools/escalation_planner.py` — pure Python, 17 truth-table unit tests, computing exactly
-which skills a given risk level requires), the orchestrator's LLM sometimes didn't follow it:
-stopping early in a genuinely critical scenario, or over-triggering in a calm one. Reinforcing
-the prompt twice made no measurable difference. The fix wasn't linguistic — it was
-architectural: **`escalation_enforcer.py`** recomputes the policy after the LLM's turn and, by
-code, forces any mandatory step the model skipped. This is the project's clearest shift-left
-moment: not just replacing an LLM call with ML, but *removing a decision from the LLM
-entirely* once live evidence showed it couldn't be trusted with it.
+(`tools/escalation_planner.py` — pure Python, 17 truth-table unit tests, computing exactly which
+skills a given risk level requires), the orchestrator's LLM sometimes didn't follow it: stopping
+early in a genuinely critical scenario, or over-triggering in a calm one. Reinforcing the prompt
+twice made no measurable difference. The fix wasn't linguistic — it was architectural:
+**`escalation_enforcer.py`** recomputes the policy after the LLM's turn and, by code, forces any
+mandatory step the model skipped. This is the project's clearest shift-left moment: not just
+replacing an LLM call with ML, but *removing a decision from the LLM entirely* once live
+evidence showed it couldn't be trusted with it.
 
-**Finding 4 — an empirical benchmark, not a bug.** `config/model_registry.yaml` is the
-project's single source of truth for which Gemini model each role uses — built precisely so a
-cost/latency-vs-capability tradeoff can be tuned in one place, with no model name ever
-hardcoded in the agents themselves. As part of exercising that design, we deliberately ran the
-agentic roles against a more cost-efficient prior-generation model (`gemini-2.5-flash`) first.
-Live testing turned that into a real, reproducible comparison: with the cost-efficient model,
-the orchestrator intermittently returned Gemini's `finish_reason: MALFORMED_FUNCTION_CALL` —
-no exception, just a silently truncated cycle — and didn't reliably follow the fully
-deterministic `escalation_planner` policy. Pointing the registry at the current frontier model
-(`gemini-3.5-flash`, confirmed available and stable via a live `client.models.list()` query)
-eliminated `MALFORMED_FUNCTION_CALL` entirely in the next run, and the orchestrator executed
+**Finding 4 — an empirical benchmark, not a bug.** `config/model_registry.yaml` is the project's
+single source of truth for which Gemini model each role uses, built precisely so a
+cost/latency-vs-capability tradeoff can be tuned in one place with no model name ever hardcoded.
+As part of exercising that design, we deliberately ran the agentic roles against a more
+cost-efficient prior-generation model first. Live testing turned that into a real, reproducible
+comparison: with the cost-efficient model, the orchestrator intermittently returned Gemini's
+`finish_reason: MALFORMED_FUNCTION_CALL` — a silently truncated cycle, no exception — and didn't
+reliably follow the fully deterministic escalation policy. Pointing the registry at a current
+frontier model (confirmed available and stable via a live `client.models.list()` query)
+eliminated `MALFORMED_FUNCTION_CALL` entirely in the very next run, and the orchestrator executed
 its full 9–11-tool chain end-to-end, following `escalation_planner`'s verdict exactly for the
-risk level it actually computed — the first time all project the complete loop worked without
-the enforcer needing to step in. This is a genuine empirical result about the current gap in
-agentic capability (specifically, function-calling reliability and instruction-following) between
-cost-efficient and frontier Gemini models for a multi-tool agent loop like this one — exactly
-the kind of tradeoff the registry design exists to let us measure and act on quickly. A second,
-smaller bug (the frontier model wraps its JSON reply in a markdown code fence, which our parser
-didn't originally strip) surfaced immediately after and was fixed the same session. What remains
-open, and is documented as such rather than hidden: the eval harness's ML ensemble reads live
-database state rather than the golden scenario's own snapshot, so a "critical" golden scenario
-doesn't automatically make the ensemble report a high `P(blackout)` — an eval-infrastructure
-gap, not an agent-behaviour one, and one we chose not to patch under deadline pressure rather
-than force a misleading green test.
+risk level it actually computed. We went further and checked model *variants*, not just
+generations: for the sub-agent that runs a 10-turn tool loop, we found and switched to a variant
+explicitly described by the provider as "optimized for custom tool usage" rather than the
+generic flagship model — a small but concrete example of the same principle applied one level
+deeper. This is a genuine empirical result about the current gap in agentic capability, discovered
+because the registry design let us swap models and re-test in seconds, with zero code changes to
+any agent. A second, smaller bug (the frontier model wraps its JSON reply in a markdown code
+fence) surfaced immediately after and was fixed the same session. What remains open, documented
+rather than hidden: the eval harness's ML ensemble reads live database state rather than the
+golden scenario's own snapshot, so a "critical" golden scenario doesn't automatically make the
+ensemble report a high P(blackout) — an eval-infrastructure gap, not an agent-behaviour one.
 
 ## Results
 
 - **300 deterministic offline tests pass**, with zero network calls — every Python/ML/Markov
   layer, every guardrail, and the escalation policy itself are unit-tested independently of any
   LLM.
-- **123 commits**, 8 written design specs, and 13 implementation plans give this project a full,
-  inspectable paper trail: every non-trivial feature went through design → spec → plan →
-  implementation → independent review before merging.
-- Live agent evals against real Gemini calls have reached **7/12 passing** in the best run, with
-  the infrastructure causes (timeouts, crashes) fully eliminated — the remaining gap is LLM
-  behavioural non-determinism, tracked and documented rather than hidden.
+- **Over 120 commits**, 8 written design specs, and 13 implementation plans give this project a
+  full, inspectable paper trail: every non-trivial feature went through design → written spec →
+  implementation plan → independent review before merging, across data engineering, ML training,
+  RAG pipeline design, MCP infrastructure, and agent reliability.
+- 11 of 13 mis-derived ESIOS indicator IDs found and corrected; train/serve feature parity
+  enforced by test, not assumed.
+- Ensemble ML validated against a real, published historical blackout, with an honest,
+  documented failure (the classifier, on n=1 positive data) rather than a hidden one.
+- A repeatable, human-gated RAG ingestion pipeline, not a one-time script — first live batch
+  processed and indexed successfully.
+- Live agent evals against real Gemini calls, and a live-discovered empirical finding about
+  agentic capability across Gemini model generations that changed the project's own
+  configuration mid-session.
 - A memory of learned lessons (`store_lesson`/`get_lessons`, backed by SQLite — chosen over a
   vector store because the volume doesn't justify embedding cost, a deliberate shift-left call)
   lets the orchestrator consult and record operational lessons across otherwise-stateless
-  monitoring cycles, verified working end-to-end against the live LLM.
+  monitoring cycles; with the frontier model, we watched it cite a specific stored lesson while
+  reasoning about a new cycle.
 
 ## Why this matters beyond one grid
 
 Every claim in this project is checked against evidence, not assumed: the golden test scenario
 is a real, published incident, not a synthetic one; every "it works" claim is backed by a
-specific test count or a specific log line; and every limitation encountered — infrastructure,
-robustness, or LLM behaviour — is documented with its exact reproduction, not smoothed over.
-For a technology as new and unpredictable as LLM-driven agents, we think that discipline —
-building real safety nets around what an LLM gets wrong, and saying so clearly when something
-still doesn't work — is at least as valuable a demonstration of "agent design" as a demo that
-always works on the first try.
+specific test count or a specific log line; and every limitation encountered — data quality,
+model honesty, infrastructure, robustness, or LLM behaviour — is documented with its exact
+reproduction, not smoothed over. For a technology as new and unpredictable as LLM-driven agents,
+we think that discipline — building real safety nets around what an LLM gets wrong, keeping ML
+failures visible instead of overfitting them away, gating a growing knowledge base with a human
+in the loop, and saying so clearly when something still doesn't work — is at least as valuable a
+demonstration of "agent design" as a demo that always works on the first try.
 
-Full architecture: `ARCHITECTURE.md`. Full engineering retrospective and every finding above,
-in detail: `MEMORIA.md`. Every eval command and measured result: `eval/README.md`. All in the
-linked repository.
+Full architecture: `ARCHITECTURE.md`. Full engineering retrospective and every finding above, in
+detail: `MEMORIA.md`. Every eval command and measured result: `eval/README.md`. All in the linked
+repository.
