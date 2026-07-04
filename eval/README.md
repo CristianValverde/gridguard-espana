@@ -87,3 +87,93 @@ validación cuesta ~10 min de cuota Gemini.
 LLM de subagentes individuales, NO infraestructura (ya eliminada, ver arriba). Los tests
 del orchestrator NO llevan este marcador: tras el `escalation_planner` determinista
 (spec `2026-07-04-escalation-planner-design.md`) su resultado debe ser estable.
+
+## Validación live compartida: escalation_planner + lessons-memory (2026-07-04)
+
+Corrida única post-implementación completa de ambos planes (`escalation_planner`
+Tasks 1-4, commits 701e422/5f617f6/085f8ff/3f71a60; `lessons-memory` Tasks 1-4,
+commits 4fba029/c0afe22/65e5091/627cd2a). Baseline offline confirmado antes de la
+corrida: **286 passed, 16 deselected** (`python -m pytest -q`).
+
+Comando: `python -m pytest eval/agents -m integration -v`. **Resultado: 7/12
+passed, 5 failed, 1 rerun, 555.70s (9m15s). 0 timeouts MCP, 0 cotas disparadas**
+— la causa raíz de infraestructura (import lazy de chromadb, IO sin acotar)
+sigue eliminada; todos los fallos de esta corrida son de comportamiento del
+agente, no de infraestructura.
+
+| Test | Resultado |
+|---|---|
+| anomaly_detector / test_consults_ml_and_baseline | PASSED |
+| anomaly_detector / test_no_regulations_search_on_normal_scenario | PASSED |
+| cross_border / test_low_margin_scenario_triggers_mitigation | PASSED |
+| cross_border / test_ample_margin_scenario_skips_mitigation | RERUN → FAILED |
+| orchestrator / test_run_scenario_critical (trajectory) | FAILED |
+| orchestrator / test_markov_trajectory_escalates_on_blackout_scenario | PASSED |
+| orchestrator / test_run_scenario_normal_no_escalation (trajectory) | PASSED |
+| orchestrator / test_critical_scenario_triggers_full_escalation | FAILED |
+| orchestrator / test_normal_scenario_triggers_nothing | FAILED |
+| regulatory_compliance / test_consults_regulations | PASSED |
+| renewables_forecast / test_consults_weather_and_load_forecast | FAILED |
+| report_agent / test_consults_history_before_writing | PASSED |
+
+**Hallazgo principal — el `escalation_planner` SÍ se invoca pero el LLM del
+orchestrator no obedece su output vinculante:** en `test_run_scenario_critical`
+(escenario ROJO/blackout), la trayectoria capturada fue:
+
+```
+['data_normalizer', 'stability_proxy_calculator', 'get_serve_features',
+ 'get_grid_state', 'get_blackout_probability_ensemble', 'risk_scorer',
+ 'store_risk_score', 'escalation_planner', 'get_lessons',
+ 'anomaly_detector_skill', 'store_lesson']
+```
+
+El planner determinista (Python puro, 17 tests unitarios offline, sin cambios
+necesarios) se ejecuta correctamente y en el orden esperado tras `risk_scorer`.
+Pero el orchestrator invoca solo `anomaly_detector_skill` de las skills que el
+planner debería mandar (`mandatory_skills`) y se detiene — no llega a
+`cross_border_agent`, `renewables_forecast_skill`, `regulatory_compliance_skill`,
+`report_agent` ni a RAG (`search_regulations`/`find_similar_incident`). Esto
+produce en cascada los 3 fallos del orchestrator:
+- `test_run_scenario_critical`: falla el assert de RAG (RAG solo se satisface
+  si la escalación llega a regulatory_compliance).
+- `test_critical_scenario_triggers_full_escalation`: `missing =
+  {'cross_border_agent', 'regulatory_compliance_skill', 'anomaly_detector_skill',
+  'report_agent', 'renewables_forecast_skill'}` — el set completo de
+  `_SKILL_TOOLS` menos lo disparado.
+- `test_normal_scenario_triggers_nothing`: en el escenario VERDE dispara
+  `anomaly_detector_skill` cuando el planner debería devolver
+  `mandatory_skills=[]` — incoherente con el hallazgo anterior (el LLM parece
+  invocar `anomaly_detector_skill` con cierta independencia del veredicto del
+  planner en ambos sentidos: de menos en ROJO, de más en VERDE).
+
+**Evidencia de wiring de lecciones en runtime:** en la misma trayectoria de
+`test_run_scenario_critical` aparecen `get_lessons` (PASO 1, tras
+`escalation_planner`) y `store_lesson` (PASO 3, cierre de ciclo) — el wiring de
+memoria de lecciones (`lessons-memory` Tasks 1-4) SÍ se ejecuta end-to-end
+contra el LLM real en al menos un ciclo completo. Esto es evidencia positiva
+independiente del resultado del planner: no se observaron errores de
+`store_lesson`/`get_lessons` en el log (sin trazas de `TypeError` de
+serialización de `timestamp`, confirmando el fix de `_utcnow_iso` en vivo).
+
+**Otros 2 fallos, sin relación con el planner (ya caracterizados en corridas
+previas, ver secciones anteriores):**
+- `cross_border/test_ample_margin_scenario_skips_mitigation`: flakiness LLM ya
+  conocida, con `@pytest.mark.flaky(reruns=1)` — RERUN y volvió a fallar
+  (`get_mitigation_procedure` llamado con margen holgado). El retry único no
+  cubre la tasa de flip real.
+- `renewables_forecast/test_consults_weather_and_load_forecast`: trayectoria
+  vacía (`[]`) — timeout/flakiness LLM aislado de este agente, sin marcador
+  `flaky`; había pasado 3 corridas seguidas antes de esta.
+
+**STATUS: no se parcheó el prompt ni el planner a ciegas.** El planner
+determinista queda validado en su propio alcance (unit tests + se ejecuta y
+produce `mandatory_skills` en runtime), pero el criterio de aceptación de la
+spec (orchestrator seguía el veredicto de punta a punta) **no se cumple
+todavía**: el LLM del orchestrator no está honrando de forma consistente la
+instrucción "VINCULANTE" del PASO 2 del prompt para encadenar todas las
+`mandatory_skills`. Se requiere `superpowers:systematic-debugging` dedicado
+sobre el comportamiento del LLM (candidatos a investigar: framing del PASO 2,
+límite de turnos/tokens del orchestrator cortando la cadena tras la primera
+skill, o necesidad de function-calling forzado en vez de instrucción en
+prompt) antes de reintentar una nueva corrida live — cada iteración cuesta
+~10 min de cuota Gemini real.
