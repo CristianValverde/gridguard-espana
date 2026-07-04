@@ -2,7 +2,8 @@
 Borrador para pegar en el Kaggle Writeup (Track: Agents for Good).
 Cuenta de palabras del CUERPO (sin título/subtítulo): ver nota al final del fichero.
 Adjuntar en la Media Gallery: imagen de portada + vídeo de YouTube (≤5 min).
-Adjuntar como Project Link: https://github.com/CristianValverde/gridguard-espana (ya PÚBLICO)
+Adjuntar como Project Link: https://github.com/CristianValverde/gridguard-espana
+(verificado 2026-07-04: repo TODAVÍA PRIVADO — hacerlo público antes de enviar el Writeup)
 -->
 
 # TITLE
@@ -85,8 +86,10 @@ the user.
 
 Before any agent could reason about the grid, the project had to build a real data pipeline:
 ESIOS/REData (10-minute granularity back to 2014), AEMET OpenData (hourly weather back to
-~2000), and ENTSO-E Transparency (hourly EU interconnection data back to 2011) — roughly
-525,000 ten-minute readings once assembled. This surfaced its own class of bugs, unglamorous
+~2000), and ENTSO-E Transparency (hourly EU interconnection data back to 2011) for
+training — roughly 525,000 ten-minute readings once assembled. A fourth API, Open-Meteo
+(token-free), feeds live wind and solar radiation forecasts to `RenewablesForecastSkill` in
+production, separate from AEMET's role as the historical training source. This surfaced its own class of bugs, unglamorous
 but load-bearing: **11 of the 13 ESIOS indicator IDs we'd initially used were simply wrong**
 (mis-derived from the API's naming conventions), caught only by cross-checking against real
 production usage; the demand indicator's raw units turned out to be double the real MW value,
