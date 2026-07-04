@@ -231,6 +231,51 @@ verde, llamadas live a un solo Skill/sub-agente de forma aislada (que sí han
 pasado en corridas anteriores), y las capas 100% deterministas (escalation_planner,
 ML, Markov) como evidencia de funcionamiento.
 
+### RESUELTO: la causa raíz era el registry de modelos desactualizado (2026-07-04, mismo día)
+
+El usuario señaló que `gemini-2.5-flash` ya no debería estar en uso. Verificación
+directa contra `client.models.list()` (API real, no documentación): **`gemini-3.5-flash`
+y `gemini-3.1-flash-lite` existen y son estables** (sin sufijo `-preview`) — el
+`config/model_registry.yaml` seguía apuntando a la familia 2.5 pese a que su propio
+metadato `next_update: '2026-07-04T10:00:00Z'` ya había vencido (el job semanal de
+actualización automática, descrito en `ARCHITECTURE.md` §3, no se había ejecutado).
+`ARCHITECTURE.md` tenía razón desde el principio; el registry real estaba desincronizado.
+
+Tras actualizar el registry (`fast_agent: gemini-3.5-flash`,
+`smart_agent: gemini-3.1-pro-preview`) y repetir el smoke test:
+
+- **`MALFORMED_FUNCTION_CALL` desaparece por completo** — 0 ocurrencias en la corrida.
+- El orchestrator ejecuta las 9-11 tools de PASO 1 sin cortes: `data_normalizer` →
+  `get_baseline` → `stability_proxy_calculator` → `get_grid_state` →
+  `get_blackout_probability_ensemble` → `risk_scorer` → `store_risk_score` →
+  `escalation_planner` → `get_lessons` → `anomaly_detector_skill`.
+- **`escalation_planner` se sigue correctamente**: con `P=0.1221` real (banda AMARILLO,
+  no ROJO — confirma que la limitación de la DB desacoplada del golden dataset, arriba,
+  sigue siendo cierta y no depende del modelo), el orchestrator invocó exactamente
+  `anomaly_detector_skill` y nada más — que es *justo* lo que `mandatory_skills` manda
+  para AMARILLO. Primera vez en toda la sesión que se observa el patrón completo
+  funcionando de punta a punta sin intervención del `escalation_enforcer`.
+- `get_lessons`/`store_lesson` no solo se ejecutan: el LLM **citó una lección concreta**
+  de una corrida anterior en su razonamiento ("aplicada lección ID 2: Escalar
+  preventivamente a AMARILLO si Markov alcanza S2...") — evidencia de que la memoria
+  de lecciones influye genuinamente en el comportamiento, no solo se registra sin usarse.
+
+**Segundo bug encontrado y corregido en la misma corrida:** con el modelo nuevo, el
+JSON final llega envuelto en fence de markdown (` ```json ... ``` `);
+`_extract_result` esperaba texto empezando literalmente por `"{"` y caía al fallback
+`{"raw": ...}`. Fix: `_strip_markdown_json_fence()` antes del parseo (commit `d35b092`,
+4 tests unitarios).
+
+**Reevaluación honesta de los hallazgos anteriores de esta sesión:** buena parte de la
+"no-obediencia del LLM al plan vinculante" documentada en las secciones anteriores
+(corridas EP-Task5, EE-Task3, CR-Task2) probablemente correspondía, al menos en parte,
+a estar probando contra un modelo desactualizado — no a un límite fundamental de la
+arquitectura de agente único con tool-calling libre. La recomendación de
+`superpowers:systematic-debugging` sigue siendo válida como proceso, pero el resultado
+de esta iteración cambia sustancialmente el diagnóstico: no es (solo) que el LLM no
+pueda seguir instrucciones vinculantes — es que se estaba usando un modelo dos
+generaciones por detrás del que el propio diseño del proyecto especificaba.
+
 ## Flujo prompt→eval
 
 Los prompts del sistema viven en `prompts/<agente>.md`. Tras cambiar un prompt:
