@@ -101,6 +101,69 @@ tampoco hay evidencia nueva sobre `test_normal_scenario_triggers_nothing`
 por la razón ya documentada arriba (deshacer una llamada real del LLM sería
 deshonesto).
 
+### Resiliencia ante ValidationError (2026-07-04)
+
+Tras el plan `orchestrator-crash-resilience` (`_consume_events_safely` envolviendo
+`runner.run()`/`run_scenario()` en `agents/orchestrator.py`, commit `a9f17ea`), se
+repitió la **misma** corrida dirigida a los 2 tests de arriba (una sola vez, ver
+`.superpowers/sdd/eval_live_resilience_targeted.log`, gitignored):
+
+```
+python -m pytest eval/agents/orchestrator/test_trajectory.py::TestBlackoutTrajectory::test_run_scenario_critical \
+  eval/agents/orchestrator/test_trigger.py::TestOrchestratorLiveTriggers::test_critical_scenario_triggers_full_escalation \
+  -m integration -v
+```
+
+**Resultado: 0/2 PASSED (2 failed, 41.34s).** Esta vez **0 ocurrencias** de
+`ValidationError` y **0 ocurrencias** de "Runner.run() interrumpido" en el log
+completo — el `ValidationError` de pydantic que abortó `runner.run()` en la
+corrida anterior (Task EE-3) **no volvió a aparecer** en esta corrida. No es
+posible confirmar con esta única muestra si `_consume_events_safely` llegó a
+interceptar un crash real (no se repitió el mismo escenario de fallo), pero
+tampoco hay evidencia de que el fix haya introducido ninguna regresión.
+
+Ambos tests volvieron a fallar, pero por una causa **distinta y ya conocida**
+— el mismo patrón de no-determinismo LLM documentado arriba, no un crash:
+
+- `test_run_scenario_critical` — **FAILED.** `tool_names` capturado:
+  `['data_normalizer', 'stability_proxy_calculator', 'get_serve_features']`.
+  El LLM del orchestrator, de nuevo, no llamó a ninguna tool de ML
+  (`get_anomaly_score` / `get_blackout_probability[_ensemble]`) en esta corrida.
+- `test_critical_scenario_triggers_full_escalation` — **FAILED.** Faltan
+  `anomaly_detector_skill`, `cross_border_agent`, `regulatory_compliance_skill`,
+  `renewables_forecast_skill`, `report_agent`. Sin trazas de `ValidationError`
+  ni de ningún traceback de excepción — el orchestrator simplemente no ejecutó
+  las skills obligatorias en este turno.
+
+**El enforcer NO llegó a ejecutarse de forma efectiva en ninguno de los dos
+casos**, pero por una razón distinta a la de la corrida anterior:
+`enforce_escalation_plan` (`agents/escalation_enforcer.py:71`) recalcula
+`escalation_planner(p, state)` a partir de `result["blackout_probability"]` y
+`result["markov_state"]` — campos que provienen del *output final* del LLM
+orchestrator, no de la trayectoria de tools. Como el LLM no invocó ninguna
+tool de ML en ninguno de los dos tests, esos campos quedan en sus valores por
+defecto (riesgo bajo), `escalation_planner` no marca ninguna skill como
+`mandatory_skills`, y el enforcer no tiene nada que forzar. En otras palabras:
+el enforcer depende de que el orchestrator haya escrito al menos una
+probabilidad/estado coherente en su output final; si el LLM no consulta ML en
+absoluto, el enforcer queda ciego por diseño (no es un bug de
+`escalation_enforcer.py` — es una limitación conocida de su alcance actual,
+ya anticipada en el diseño: "repara infra-escalación", no "sustituye la
+falta total de señal de ML").
+
+**Conclusión honesta:** el bug de crash (`ValidationError` sin capturar) que
+bloqueaba las corridas anteriores no se reprodujo esta vez — 0 ocurrencias en
+el log — y `_consume_events_safely` no muestra ninguna regresión. Pero la
+validación end-to-end del enforcer sigue sin completarse: en las 3 corridas
+dirigidas hechas hasta ahora (EE-Task3, esta) el camino de ejecución nunca
+llegó a un escenario donde el LLM llame a ML pero omita el resto de la cadena
+de escalación — el requisito exacto para poner a prueba
+`enforce_escalation_plan` en producción. Se necesitaría o bien más corridas
+(para capturar por azar un turno donde el LLM sí consulte ML mínimamente) o
+bien un test dirigido que fuerce ese trayecto (p. ej. inyectando un resultado
+con `blackout_probability` ya alto sin pasar por el LLM), decisión que queda
+para el controlador.
+
 ## Flujo prompt→eval
 
 Los prompts del sistema viven en `prompts/<agente>.md`. Tras cambiar un prompt:
