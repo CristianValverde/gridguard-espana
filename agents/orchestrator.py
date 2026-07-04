@@ -218,6 +218,22 @@ def run_scenario(scenario: dict) -> dict[str, Any]:
     return output
 
 
+def _strip_markdown_json_fence(text: str) -> str:
+    """Quita el fence de markdown (```json ... ``` o ``` ... ```) si el texto
+    lo tiene. Gemini 3.5-flash envuelve a veces el JSON final en un fence
+    aunque el prompt pida solo el objeto -- sin esto, _extract_result caia al
+    fallback {"raw": ...} en vez de parsear el dict real (visto en el smoke
+    test del capstone, 2026-07-04)."""
+    if text.startswith("```"):
+        text = text[3:]
+        if text.startswith("json"):
+            text = text[4:]
+        text = text.strip()
+        if text.endswith("```"):
+            text = text[:-3].strip()
+    return text
+
+
 def _extract_result(events: list) -> dict:
     """Extrae el dict de resultado de la lista de Events de ADK 2.3.0.
 
@@ -235,7 +251,7 @@ def _extract_result(events: list) -> dict:
             parts = getattr(content, "parts", None) or []
             for part in parts:
                 text = getattr(part, "text", None) or ""
-                stripped = text.strip()
+                stripped = _strip_markdown_json_fence(text.strip())
                 if stripped.startswith("{"):
                     return json.loads(stripped)
                 elif stripped:

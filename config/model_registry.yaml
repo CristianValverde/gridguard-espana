@@ -1,10 +1,17 @@
 models:
-  fast_agent: gemini-2.5-flash
-  smart_agent: gemini-2.5-pro
-  embedding: gemini-embedding-2-preview
-  fallback_fast: gemini-2.0-flash-lite-001
+  fast_agent: gemini-3.5-flash
+  smart_agent: gemini-3.1-pro-preview
+  embedding: gemini-embedding-2
+  fallback_fast: gemini-3.1-flash-lite
 registry_meta:
   source_url: https://ai.google.dev/gemini-api/docs/models
-  updated_at: '2026-06-27T10:00:00Z'
-  next_update: '2026-07-04T10:00:00Z'
+  updated_at: '2026-07-04T20:00:00Z'
+  next_update: '2026-07-11T20:00:00Z'
   stable_only: true
+  note: >
+    Manual update 2026-07-04: el job semanal automatico no habia corrido pese a
+    next_update=2026-07-04 vencido. Verificado contra client.models.list() real:
+    gemini-3.5-flash y gemini-3.1-flash-lite existen sin sufijo -preview (estables);
+    gemini-3.1-pro-preview es la unica opcion "pro" de la familia 3.x, se mantiene
+    como excepcion deliberada a stable_only para smart_agent (mismo criterio que
+    ya documentaba ARCHITECTURE.md antes de esta actualizacion).
