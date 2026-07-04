@@ -142,6 +142,11 @@ def test_alerta_se_rellena_con_alert_formatter_puro_sin_llm():
 
 
 def test_markov_state_mal_formado_no_lanza_excepcion():
-    result = _base_result(markov_state="?", blackout_probability=0.5)
+    # P baja (VERDE) para que el fallback de markov_state=0 no dispare ninguna
+    # invocacion real (mandatory_skills=[]) — esta prueba valida el parseo de
+    # markov_state, no el comportamiento de forzado (ya cubierto y mockeado
+    # en test_rojo_fuerza_las_skills_y_subagentes_faltantes).
+    result = _base_result(markov_state="?", blackout_probability=0.03)
     out = enforce_escalation_plan(result, trajectory=[], snapshot={})
     assert isinstance(out, dict)  # no lanza
+    assert out["trajectory"] == []  # VERDE con fallback state=0: nada que forzar
