@@ -101,9 +101,9 @@ python -m pytest eval/agents/regulatory_compliance -m integration -v
 Esto consume cuota Gemini real y tarda ~30-60s — pruébalo TÚ ANTES de grabar para confirmar que
 pasa en ese momento (la flakiness de LLM es real, ver `eval/README.md`). Si falla al probarlo,
 usa solo la Opción A y complementa hablando de los resultados ya documentados: "en nuestra
-validación, los agentes individuales (cumplimiento normativo, previsión renovable) pasan de
-forma consistente contra Gemini real; la cadena completa del orquestador es el reto de
-fiabilidad que documentamos honestamente en el repo."
+validación, los agentes individuales — cumplimiento normativo, previsión renovable — pasan de
+forma consistente contra Gemini real, y seguimos endureciendo la fiabilidad de la cadena
+completa del orquestador, con cada hallazgo documentado en el repo."
 
 **Qué mostrar en pantalla:** terminal con el resultado (verde), y opcionalmente el archivo
 `eval/README.md` abierto en la sección de hallazgos, para mostrar que la validación fue real
@@ -124,8 +124,9 @@ y rigurosa, no solo "tests que siempre pasan".
 > decisiones documentadas y trazables. Cuando la validación en vivo reveló comportamiento
 > inesperado del LLM, no lo ignoramos: usamos herramientas de diagnóstico como py-spy para
 > encontrar causas raíz reales — un import bloqueante, una excepción de terceros sin capturar,
-> un modelo que no obedecía su propia política — y corregimos lo que pudimos, documentando
-> honestamente lo que no nos dio tiempo a resolver del todo."
+> un modelo que no obedecía su propia política — y corregimos cada una con evidencia, no con
+> parches a ciegas. Lo que seguimos puliendo también queda documentado, con la misma
+> honestidad."
 
 **Qué mostrar en pantalla:** `docs/superpowers/specs/` y `docs/superpowers/plans/` (la carpeta,
 para mostrar volumen — 8 specs, 13 planes), o `MEMORIA.md` abierto en la sección de hallazgos.
@@ -142,9 +143,9 @@ el README/MEMORIA, no aporta nada nuevo en voz) — quitarla sola ya recupera ~8
 
 **Qué decir:**
 
-> "GridGuard España — un sistema multi-agente honesto sobre lo que un LLM puede y no puede
-> hacer todavía, y sobre cómo construir robustez alrededor de eso. Código y documentación
-> completos en el repositorio."
+> "GridGuard España: seis capas de Python, ML y agentes Gemini vigilando la red eléctrica
+> española en tiempo real, con red de seguridad propia para los momentos en que el LLM no se
+> comporta. Código y documentación completos en el repositorio."
 
 **Qué mostrar en pantalla:** el README.md del repo, o la pantalla de título de cierre.
 
@@ -152,7 +153,7 @@ el README/MEMORIA, no aporta nada nuevo en voz) — quitarla sola ya recupera ~8
 
 ## Checklist antes de grabar
 
-- [ ] Diagrama de arquitectura actualizado (pendiente, el usuario lo está haciendo)
+- [x] Diagrama de arquitectura actualizado y verificado visualmente (2026-07-05)
 - [ ] Repo de GitHub ya en público (si no, el link del vídeo/writeup no servirá)
 - [ ] `python -m pytest -q` probado justo antes de grabar (confirma 300 passed)
 - [ ] Si vas a usar la Opción B del demo, probarla ANTES de grabar y tener un plan B si falla
