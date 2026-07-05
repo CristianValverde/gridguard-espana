@@ -175,8 +175,9 @@ commands, and the measured results of every validation run this project has done
 
 Participants are not required to deploy to a live endpoint for judging. This project runs
 locally by design for the demo (MCP servers as local stdio subprocesses, SQLite for
-persistence, ChromaDB as a local vector store) — no cloud deployment was set up given the
-project timeline. All code needed to run it end-to-end is in this repository.
+persistence, ChromaDB as a local vector store) — no cloud deployment was set up, for
+reasons of both cost and time given the project's deadline. All code needed to run it
+end-to-end is in this repository.
 
 Running this 24/7 would require an infrastructure substitution, not a redesign of the agent
 logic itself:
