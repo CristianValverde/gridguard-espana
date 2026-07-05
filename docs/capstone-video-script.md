@@ -56,10 +56,19 @@ que generes), sin necesidad de terminal todavía.
 > envueltos como herramientas síncronas, cada uno con un único resultado estructurado. La capa 4
 > son sub-agentes con su propio bucle — uno redacta informes de emergencia, otro evalúa
 > importación de energía transfronteriza. Y arriba de todo, el Orchestrator, el agente raíz que
-> coordina todo esto y decide cómo escalar."
+> coordina todo esto y decide cómo escalar.
+>
+> Todo esto corre en local, a propósito, para la demo. En producción 24/7 cambiaría la
+> infraestructura, no la lógica de agentes: SQLite pasaría a Cloud SQL, ChromaDB local a un
+> vector store gestionado, y los MCP servers de subprocesos a servicios persistentes en Cloud
+> Run."
 
 **Qué mostrar en pantalla:** el diagrama de arquitectura (`architecture_diagram.html`,
 actualizado) o el diagrama ASCII de capas de `README.md`/`ARCHITECTURE.md`.
+
+**Nota de tiempo:** esta coda de deployability añade ~10s a los 75s de esta sección. Si al
+grabar te queda apretado, es la frase más fácil de recortar (o acortarla a "en producción
+cambiaría la infraestructura, no la lógica de agentes — el README tiene el detalle").
 
 ---
 
@@ -106,8 +115,11 @@ y rigurosa, no solo "tests que siempre pasan".
 
 **Qué decir:**
 
-> "Se construyó con Google ADK 2.3.0 y Gemini, con Claude Code como asistente de desarrollo:
-> cada feature siguió un proceso de diseño → especificación escrita → plan de implementación →
+> "Se construyó con Google ADK 2.3.0 y Gemini. El desarrollo se apoyó en otro asistente de
+> código con IDE propio, ya contratado de antes — la cuota gratuita de la API de Gemini se
+> había agotado, así que reservamos cada token de pago para lo que de verdad lo necesitaba:
+> probar los agentes contra el modelo real, no planificar o escribir código. Cada feature
+> siguió un proceso de diseño → especificación escrita → plan de implementación →
 > ejecución con revisión independiente en cada paso — no solo 'código que funciona', sino
 > decisiones documentadas y trazables. Cuando la validación en vivo reveló comportamiento
 > inesperado del LLM, no lo ignoramos: usamos herramientas de diagnóstico como py-spy para
@@ -117,6 +129,12 @@ y rigurosa, no solo "tests que siempre pasan".
 
 **Qué mostrar en pantalla:** `docs/superpowers/specs/` y `docs/superpowers/plans/` (la carpeta,
 para mostrar volumen — 8 specs, 13 planes), o `MEMORIA.md` abierto en la sección de hallazgos.
+
+**Nota de tiempo:** con la frase añadida sobre la herramienta de desarrollo, este bloque ronda
+ahora los 55-60s hablados, no 45s — sumado a los ~10s añadidos en Arquitectura, el guion se
+pasaría de 5:00 si lo lees todo tal cual. Recorta al grabar: la frase más prescindible es
+"usamos herramientas de diagnóstico como py-spy para encontrar causas raíz reales" (ya está en
+el README/MEMORIA, no aporta nada nuevo en voz) — quitarla sola ya recupera ~8s.
 
 ---
 

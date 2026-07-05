@@ -72,8 +72,13 @@ showed it couldn't be trusted with it.
 | Security features | `guardrails/hooks.py` — tool whitelist per agent, rate-limiting, `.env`/secret-path blocking, prompt-injection sanitisation, output-schema & numeric-range validation |
 | Agent skills | `agents/anomaly_detector.py`, `renewables_forecast.py`, `regulatory_compliance.py` — `AgentTool`-wrapped, single structured output |
 
-*Not used in this project: "Antigravity" (not part of our stack) and a live deployed
-endpoint (see "Deployability" note below).*
+*Not used in this project: "Antigravity". Development ran on a different code assistant
+with its own IDE, via an existing active subscription — a sunk cost — rather than a
+Gemini-based agentic IDE: the free tier of the Gemini API was already exhausted by the
+time heavy iteration started, and every paid token of API quota went deliberately toward
+what actually needed it — live-testing the agents themselves against real Gemini calls
+(see `eval/README.md`), not toward planning or writing the code. Also not used: a live
+deployed endpoint (see "Deployability" note below).*
 
 ## What's genuinely working vs. what's an honest limitation
 
@@ -169,9 +174,25 @@ commands, and the measured results of every validation run this project has done
 ## Deployability
 
 Participants are not required to deploy to a live endpoint for judging. This project runs
-locally (MCP servers as local subprocesses, SQLite for persistence, ChromaDB local vector
-store) — no cloud deployment was set up given the project timeline. All code needed to run it
-end-to-end is in this repository.
+locally by design for the demo (MCP servers as local stdio subprocesses, SQLite for
+persistence, ChromaDB as a local vector store) — no cloud deployment was set up given the
+project timeline. All code needed to run it end-to-end is in this repository.
+
+Running this 24/7 would require an infrastructure substitution, not a redesign of the agent
+logic itself:
+
+- **SQLite → Cloud SQL / managed Postgres** — local SQLite has no concurrent-write story and
+  no managed backups; a 24/7 monitoring loop needs both.
+- **Local ChromaDB → a managed vector store** (Vertex AI Vector Search, or a hosted Chroma
+  server) — the local persistent client isn't built for concurrent access from multiple
+  long-running processes.
+- **MCP servers as stdio subprocesses → persistent services** — each server as its own Cloud
+  Run service (HTTP/SSE transport instead of stdio), so agents don't pay subprocess-startup
+  cost per cycle and can scale independently.
+- **APScheduler cron (Layer 0) → Cloud Scheduler + Cloud Run Jobs** — replaces in-process
+  scheduling with infrastructure that survives restarts.
+- **`.env` → Secret Manager** — same secrets, a store built for production rather than a
+  local file.
 
 ## Project structure
 
