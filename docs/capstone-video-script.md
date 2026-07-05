@@ -123,6 +123,39 @@ real tarda hacia el extremo alto de 20-40s; si te sale una toma más rápida (~2
 ritmo al narrar o recorta la frase de transición inicial ("todo lo determinista ya está
 probado...") ya que el flash de `pytest -q` no necesita narración detallada.
 
+### BONUS opcional — solo si sobra tiempo tras las tomas de práctica
+
+Dos remates cortos, en orden de prioridad (el primero es gratis, el segundo cuesta ~1-3s de
+cuota). Ninguno tiene hueco propio en el minutado — solo entran si una toma de práctica del
+Orchestrator sale más corta de lo esperado.
+
+**a) El gate de aprobación humana (coste cero, 3-4s, sin narración larga):**
+
+```bash
+cat data/kb_seed/manifest.json
+```
+
+> "Y el único punto donde interviene un humano en todo el sistema: cada hecho que entra en la
+> base de conocimiento queda aquí, con quién lo revisó y aprobó — en este caso, yo mismo."
+
+Muestra en pantalla la entrada con `"reviewed_by": "Cristian Valverde"` y `"status": "indexed"`.
+
+**b) Query semántica directa a ChromaDB, sin pasar por ningún agente (10-15s, ~1-3s de cuota):**
+
+```bash
+python -c "
+from mcp_servers.knowledge_base_server import search_regulations
+import json
+print(json.dumps(search_regulations('baja inercia sincrona en la red', top_k=2), indent=2, ensure_ascii=False))
+"
+```
+
+> "Y así es como `search_regulations` — el mismo tool que acaba de llamar el agente — encuentra
+> el fragmento correcto: pura búsqueda vectorial, ningún LLM razonando en este paso."
+
+Si solo cabe uno de los dos, prioriza (a): coste cero, cero riesgo de timing, y prueba visual
+concreta del gate humano que el resto del guion solo menciona de pasada.
+
 ---
 
 ## 4:00–4:45 — Cómo se construyó (45s)
