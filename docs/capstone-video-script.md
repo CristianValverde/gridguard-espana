@@ -9,6 +9,30 @@ contra el escenario real del apagón de abril 2025: llamada única, ~20-40s, cos
 mínimo. Haz 2-3 tomas de práctica sin grabar antes de la toma real, para conocer el tiempo y el
 tipo de resultado que vas a narrar — luego graba la que salga limpia.
 
+## Cómo grabar: por bloques, no en una toma continua
+
+Graba cada sección de este guion (Problema / Por qué agentes / Arquitectura / Demo / Cómo se
+construyó / Cierre) como un clip independiente y únelos después con un editor gratuito
+(**DaVinci Resolve** — el más completo; **Shotcut** — más simple; o **Clipchamp**, ya integrado
+en Windows 11, el más rápido de aprender si solo necesitas cortar y unir). Ventajas concretas:
+
+- Memorizar 45-85s de texto por bloque es mucho más manejable que 5 minutos seguidos.
+- Si un bloque sale mal, repites solo ese bloque — no arriesgas las tomas buenas del resto.
+- Cuadrar el límite de 5:00 exacto es un recorte en el editor, no un ejercicio de ritmo en vivo.
+
+**Trata el bloque de aprobación humana (si grabas el BONUS (a) con el pipeline real, no solo el
+`cat manifest.json`) como un caso especial:** solo quedan **4 temas pendientes** en
+`data/kb_seed/topics.yaml` (`entsoe_emergency_restoration`, `procedimientos_deslastre_reposicion`,
+`post_mortem_apagon_2025`, `separacion_iberica_2006`), y aprobar uno de verdad lo embebe de forma
+permanente — no es como `run_scenario()`, que puedes repetir gratis casi sin límite. Grábalo con
+margen: deja que el research agent termine, léete el borrador con calma, y solo entonces aprueba
+y corre el embedding. Si el primer intento sale flojo, te quedan otros para reintentar, pero no
+son infinitos — no lo dejes para el último bloque del día si te queda poco tiempo antes del
+deadline.
+
+Mantén el mismo encuadre de ventana/terminal y el mismo micrófono en todos los bloques para que
+los cortes no se noten al montar.
+
 ---
 
 ## 0:00–0:45 — Problema (45s)
