@@ -58,10 +58,10 @@ que generes), sin necesidad de terminal todavía.
 > importación de energía transfronteriza. Y arriba de todo, el Orchestrator, el agente raíz que
 > coordina todo esto y decide cómo escalar.
 >
-> Todo esto corre en local, a propósito, para la demo. En producción 24/7 cambiaría la
-> infraestructura, no la lógica de agentes: SQLite pasaría a Cloud SQL, ChromaDB local a un
-> vector store gestionado, y los MCP servers de subprocesos a servicios persistentes en Cloud
-> Run."
+> Todo esto corre en local — no lo desplegamos en la nube por coste y por tiempo, dado el plazo
+> del proyecto. En producción 24/7 cambiaría la infraestructura, no la lógica de agentes: SQLite
+> pasaría a Cloud SQL, ChromaDB local a un vector store gestionado, y los MCP servers de
+> subprocesos a servicios persistentes en Cloud Run."
 
 **Qué mostrar en pantalla:** el diagrama de arquitectura (`architecture_diagram.html`,
 actualizado) o el diagrama ASCII de capas de `README.md`/`ARCHITECTURE.md`.
