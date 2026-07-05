@@ -3,10 +3,11 @@
 Documento de trabajo interno para grabar el vídeo del capstone. No se sube al repo como
 entregable en sí — es tu apoyo para grabar. Cronometrado a **4:45** para dejar margen de 15s.
 
-**Regla de oro para grabar:** no intentes correr `run_scenario()` completo EN DIRECTO durante
-la grabación — es reproduciblemente inestable ahora mismo (ver `eval/README.md`). Todo lo que
-se muestra en pantalla en este guion o (a) es determinista y siempre funciona, o (b) es una
-captura/output ya verificado de una corrida anterior.
+**Regla de oro para grabar:** esto es una grabación, no una emisión en directo — si una toma no
+sale bien, se repite. La demo central es el ciclo completo del Orchestrator vía `run_scenario()`
+contra el escenario real del apagón de abril 2025: llamada única, ~20-40s, coste de cuota
+mínimo. Haz 2-3 tomas de práctica sin grabar antes de la toma real, para conocer el tiempo y el
+tipo de resultado que vas a narrar — luego graba la que salga limpia.
 
 ---
 
@@ -74,40 +75,53 @@ cambiaría la infraestructura, no la lógica de agentes — el README tiene el d
 
 ## 2:45–4:00 — Demo (75s)
 
-**Opción A (recomendada, sin riesgo — grábala primero, es la garantía del vídeo):**
+**El plato fuerte: el Orchestrator completo, en vivo, contra el apagón real de abril 2025.**
 
-Muestra la suite de tests offline corriendo en vivo, en tu terminal:
+Antes de arrancar, un flash rápido (5s, sin narrar en detalle) de la suite offline en verde —
+"todo lo determinista ya está probado; ahora vamos a ver decidir al sistema con Gemini real":
 
 ```bash
-cd "ruta al proyecto"
 python -m pytest -q
 ```
 
-**Qué decir mientras corre (tarda ~15-20s, tiempo real para narrar):**
-
-> "300 tests offline, deterministas, sin llamar a ningún API — corren en segundos y validan
-> cada capa: la fórmula de riesgo, la política de escalación, los guardrails de seguridad, la
-> memoria de lecciones aprendidas... todo lo que no necesita un LLM está probado sin depender
-> de uno."
-
-**Opción B (opcional, solo si quieres arriesgarte a algo en vivo — NO como única prueba):**
-
-Correr un test live de UN agente aislado (no el orchestrator completo), por ejemplo:
+Y el plato fuerte, el ciclo completo del Orchestrator sobre el snapshot real del apagón:
 
 ```bash
-python -m pytest eval/agents/regulatory_compliance -m integration -v
+python -c "
+import json
+from agents.orchestrator import run_scenario
+scenario = json.load(open('eval/golden_dataset/blackout_apr_2025.json', encoding='utf-8'))
+print(run_scenario(scenario))
+"
 ```
 
-Esto consume cuota Gemini real y tarda ~30-60s — pruébalo TÚ ANTES de grabar para confirmar que
-pasa en ese momento (la flakiness de LLM es real, ver `eval/README.md`). Si falla al probarlo,
-usa solo la Opción A y complementa hablando de los resultados ya documentados: "en nuestra
-validación, los agentes individuales — cumplimiento normativo, previsión renovable — pasan de
-forma consistente contra Gemini real, y seguimos endureciendo la fiabilidad de la cadena
-completa del orquestador, con cada hallazgo documentado en el repo."
+**Qué decir mientras corre (~20-40s, tiempo real para narrar):**
 
-**Qué mostrar en pantalla:** terminal con el resultado (verde), y opcionalmente el archivo
-`eval/README.md` abierto en la sección de hallazgos, para mostrar que la validación fue real
-y rigurosa, no solo "tests que siempre pasan".
+> "Esto es exactamente lo que dispararía un cron cada 10 minutos en producción — solo que lo
+> lanzo yo, ahora, para la cámara. Le paso el snapshot real de la red española en las horas
+> previas al apagón de abril de 2025, y el Orchestrator decide solo, con Gemini real: normaliza
+> los datos, consulta el ensemble ML y la cadena de Markov, calcula la banda de riesgo, y decide
+> qué agentes escalar — sin que yo intervenga en nada de eso."
+
+**Qué decir con el resultado ya en pantalla:**
+
+> "Ahí está: [lee la banda de riesgo y qué skills escaló]. Esto es exactamente lo que
+> `escalation_planner` — nuestra política determinista, no el LLM — dicta para esa banda. Lo
+> mostramos en vivo, sin capturas pre-grabadas, porque confiamos en el sistema que construimos."
+
+**Qué mostrar en pantalla:** el terminal con el resultado completo (el dict que devuelve
+`run_scenario`), dejando visible unos segundos el campo `tool_names` o el número de
+tools/agentes llamados antes de cortar.
+
+**Nota práctica:** el resultado exacto (banda, skills escaladas) puede variar ligeramente entre
+tomas por el no-determinismo propio del LLM — es esperado, no un fallo; simplemente léelo tal
+cual salga. Si una toma no ilustra bien la idea, repítela: 20-40s y coste de cuota mínimo por
+intento.
+
+**Nota de tiempo:** el guion hablado de esta sección (~155 palabras) encaja bien si la llamada
+real tarda hacia el extremo alto de 20-40s; si te sale una toma más rápida (~20s), ajusta el
+ritmo al narrar o recorta la frase de transición inicial ("todo lo determinista ya está
+probado...") ya que el flash de `pytest -q` no necesita narración detallada.
 
 ---
 
@@ -156,6 +170,7 @@ el README/MEMORIA, no aporta nada nuevo en voz) — quitarla sola ya recupera ~8
 - [x] Diagrama de arquitectura actualizado y verificado visualmente (2026-07-05)
 - [ ] Repo de GitHub ya en público (si no, el link del vídeo/writeup no servirá)
 - [ ] `python -m pytest -q` probado justo antes de grabar (confirma 300 passed)
-- [ ] Si vas a usar la Opción B del demo, probarla ANTES de grabar y tener un plan B si falla
+- [ ] `GOOGLE_API_KEY` configurada; 2-3 tomas de práctica de `run_scenario()` sin grabar, para
+      conocer tiempo y tipo de resultado antes de la toma real
 - [ ] Grabación de pantalla lista (Win+G, o tu grabador habitual) + audio de tu voz o TTS
 - [ ] Vídeo final ≤ 5:00 exactos, subido a YouTube como **público** (no "no listado")
