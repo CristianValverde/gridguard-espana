@@ -14,8 +14,9 @@ Python or an ML model is enough.*
 
 ## The problem
 
-On 28 April 2025, a real blackout took down the Spanish peninsular grid for 6.5 hours,
-affecting up to 15,000 MW. The official REE post-mortem shows the warning signs were there
+On 28 April 2025, a real blackout took down the Spanish peninsular grid for around 16 hours,
+affecting up to 25 GW of demand (31 GW across the whole Iberian Peninsula, including
+Portugal). The official REE post-mortem shows the warning signs were there
 hours in advance: extreme renewable penetration, falling synchronous inertia, a progressively
 worsening supply/demand balance. **Grid frequency itself — the most direct signal — is not
 published by any public API** (REE withholds it for operational security). This project asks:

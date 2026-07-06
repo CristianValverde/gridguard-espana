@@ -217,7 +217,8 @@ para protección de red en tiempo real.
 `eval/golden_dataset/blackout_apr_2025.json`: 6 snapshots reconstruidos minuto a minuto desde
 6h antes del evento hasta T-3min, con metadata del post-mortem oficial de REE (causa raíz:
 pérdida súbita de generación convencional + penetración renovable muy alta sin inercia
-síncrona suficiente, 15.000 MW afectados, 6.5h de duración). Contrapartida:
+síncrona suficiente, ~25.200 MW afectados en España, ~15.5h de duración hasta reposición
+completa). Contrapartida:
 `eval/golden_dataset/normal_baseline.json`, con valores ESIOS reales del 14 de mayo de 2025
 (sustituyó una versión sintética inicial que producía saltos de datos irreales — hallazgo de
 sesiones previas, ver `efficacy-ensemble-work.md`).

@@ -1,13 +1,13 @@
 {
   "scenario_name": "blackout_apr_2025",
-  "description": "Apagón eléctrico España 28 de abril de 2025. Alta penetración renovable (solar + viento fuerte del SW), demanda de lunes de primavera, desbalance progresivo que derivó en colapso de frecuencia a las 12:33 CET.",
+  "description": "Apagón eléctrico España 28 de abril de 2025. Alta penetración renovable (solar + viento fuerte del SW), demanda de lunes de primavera, desbalance progresivo que derivó en colapso de frecuencia a las 12:33 CEST.",
   "metadata": {
     "date": "2025-04-28",
     "event_time_utc": "2025-04-28T10:33:00Z",
     "region": "peninsular",
     "root_cause": "Pérdida súbita de generación convencional + muy alta penetración renovable sin suficiente inercia sincrónica",
-    "max_affected_mw": 15000,
-    "duration_hours": 6.5
+    "max_affected_mw": 25200,
+    "duration_hours": 15.5
   },
   "snapshots": [
     {

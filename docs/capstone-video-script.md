@@ -81,8 +81,8 @@ environment, not as a claim about what built GridGuard.
 
 **What to say (script, adapt it to your voice):**
 
-> "On 28 April 2025, Spain suffered a real blackout that lasted six and a half hours and
-> affected up to 15,000 megawatts. REE's official post-mortem shows the warning signs were
+> "On 28 April 2025, Spain suffered a real blackout that lasted around sixteen hours and
+> affected up to 25 gigawatts of demand. REE's official post-mortem shows the warning signs were
 > there hours in advance: extreme renewable penetration, falling synchronous inertia, a
 > progressively worsening supply/demand balance. But there's a catch: **grid frequency — the
 > most direct signal — isn't published by any public API.** REE withholds it for operational
