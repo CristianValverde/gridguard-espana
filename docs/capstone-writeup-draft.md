@@ -20,8 +20,8 @@ where an LLM still can't be trusted.
 
 ## The problem
 
-On 28 April 2025, a real blackout took down the Spanish peninsular grid for 6.5 hours,
-affecting up to 15,000 MW. REE's (Red Eléctrica de España, the Spanish grid operator)
+On 28 April 2025, a real blackout took down the Spanish peninsular grid for around 16 hours,
+affecting up to 25 GW of demand. REE's (Red Eléctrica de España, the Spanish grid operator)
 official post-mortem shows the warning signs were visible
 hours in advance: extreme renewable penetration, falling synchronous inertia, a progressively
 worsening supply/demand balance. But there's a catch — **grid frequency, the single most
