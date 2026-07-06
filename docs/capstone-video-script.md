@@ -1,114 +1,150 @@
-# GridGuard España — Guion del vídeo de entrega (≤5 min, YouTube público)
+# GridGuard España — Submission Video Script (≤5 min, public YouTube)
 
-Documento de trabajo interno para grabar el vídeo del capstone. No se sube al repo como
-entregable en sí — es tu apoyo para grabar. Cronometrado a **4:45** para dejar margen de 15s.
+Internal working document for recording the capstone video. Not part of the repo deliverable
+itself — this is your recording aid. Timed to **4:45** to leave a 15s margin. Spoken lines are
+in English (the video, like the Writeup, is submitted in English); production notes are in
+English too so the whole document reads consistently while you're recording.
 
-**Regla de oro para grabar:** esto es una grabación, no una emisión en directo — si una toma no
-sale bien, se repite. La demo central es el ciclo completo del Orchestrator vía `run_scenario()`
-contra el escenario real del apagón de abril 2025: llamada única, ~20-40s, coste de cuota
-mínimo. Haz 2-3 tomas de práctica sin grabar antes de la toma real, para conocer el tiempo y el
-tipo de resultado que vas a narrar — luego graba la que salga limpia.
+**Golden rule for recording:** this is a recording, not a live broadcast — if a take doesn't
+come out well, redo it. The centerpiece demo is the Orchestrator's full cycle via
+`run_scenario()` against the real April 2025 blackout scenario: a single call, ~20-40s, minimal
+quota cost. Do 2-3 unrecorded practice takes before the real one, to know the timing and the
+kind of result you'll be narrating.
 
-## Cómo grabar: por bloques, no en una toma continua
+## How to record: in blocks, not one continuous take
 
-Graba cada sección de este guion (Problema / Por qué agentes / Arquitectura / Demo / Cómo se
-construyó / Cierre) como un clip independiente y únelos después con un editor gratuito
-(**DaVinci Resolve** — el más completo; **Shotcut** — más simple; o **Clipchamp**, ya integrado
-en Windows 11, el más rápido de aprender si solo necesitas cortar y unir). Ventajas concretas:
+Record each section of this script (Problem / Why Agents / Architecture / Demo / How It Was
+Built / Close) as an independent clip and stitch them together afterward with a free editor
+(**DaVinci Resolve** — most complete; **Shotcut** — simpler; or **Clipchamp**, already built
+into Windows 11, the fastest to learn if you only need to cut and join). Concrete advantages:
 
-- Memorizar 45-85s de texto por bloque es mucho más manejable que 5 minutos seguidos.
-- Si un bloque sale mal, repites solo ese bloque — no arriesgas las tomas buenas del resto.
-- Cuadrar el límite de 5:00 exacto es un recorte en el editor, no un ejercicio de ritmo en vivo.
+- Memorizing 45-85s of text per block is far more manageable than 5 minutes straight through.
+- If one block comes out badly, you only redo that block — the good takes elsewhere are safe.
+- Hitting the exact 5:00 limit becomes an editing trim, not a live-pacing exercise.
 
-**Trata el bloque de aprobación humana (si grabas el BONUS (a) con el pipeline real, no solo el
-`cat manifest.json`) como un caso especial:** solo quedan **4 temas pendientes** en
+**Treat the human-approval block as a special case** (if you record BONUS (a) with the real
+pipeline, not just `cat manifest.json`): only **4 topics remain pending** in
 `data/kb_seed/topics.yaml` (`entsoe_emergency_restoration`, `procedimientos_deslastre_reposicion`,
-`post_mortem_apagon_2025`, `separacion_iberica_2006`), y aprobar uno de verdad lo embebe de forma
-permanente — no es como `run_scenario()`, que puedes repetir gratis casi sin límite. Grábalo con
-margen: deja que el research agent termine, léete el borrador con calma, y solo entonces aprueba
-y corre el embedding. Si el primer intento sale flojo, te quedan otros para reintentar, pero no
-son infinitos — no lo dejes para el último bloque del día si te queda poco tiempo antes del
-deadline.
+`post_mortem_apagon_2025`, `separacion_iberica_2006`), and actually approving one embeds it
+permanently — unlike `run_scenario()`, which you can rerun almost for free. Record it with
+margin: let the research agent finish, read the draft calmly, and only then approve and run the
+embedding step. If the first attempt is weak, you have others to retry with, but not
+unlimited ones — don't leave this block for the end of the day if you're short on time before
+the deadline.
 
-Mantén el mismo encuadre de ventana/terminal y el mismo micrófono en todos los bloques para que
-los cortes no se noten al montar.
+Keep the same window/terminal framing and the same microphone across all blocks so the cuts
+don't stand out when you edit.
 
----
+## Visual support, at a glance
 
-## 0:00–0:45 — Problema (45s)
+| Block | On-screen asset |
+|---|---|
+| Problem | Cover image/title, then one English-language source on the blackout (see below) |
+| Why Agents | The "3 levels of intelligence" table from `README.md` / `MEMORIA.md` §3 |
+| Architecture | `architecture_diagram.html`, open in a browser |
+| Demo | Terminal inside Antigravity (or your IDE of choice), running the commands live |
+| Demo — BONUS | Same terminal: `manifest.json` and/or the `search_regulations` one-liner |
+| How It Was Built | `docs/superpowers/specs/` + `docs/superpowers/plans/` folders, or `MEMORIA.md` |
+| Close | `README.md` landing view, or a title card |
 
-**Qué decir (guion, adáptalo a tu voz):**
+**On the English-language source for the Problem block:** don't just describe the blackout —
+show a real page about it, since the whole point is that this is a real, published event, not
+a synthetic scenario. Good options, all in English:
+- **ENTSO-E's own official blackout page** — `https://www.entsoe.eu/publications/blackout/28-april-2025-iberian-blackout/`.
+  This is a strong choice because it's the *same organization* whose procedures your RAG
+  layer indexes — a nice visual callback.
+- **NPR's coverage from the day of the event** — `https://www.npr.org/2025/04/28/g-s1-63175/power-outage-spain-portugal-blackout-france`.
+  More of a "breaking news" feel if you want that framing for the opening.
+- **Wikipedia's "2025 Iberian Peninsula blackout"** article — clean, easy to screenshot, good
+  if you just need a stable, scrollable overview page.
 
-> "El 28 de abril de 2025, España sufrió un apagón real de 6 horas y media que afectó a 15.000
-> megavatios. El informe oficial de REE muestra que las señales de aviso estaban ahí, horas
-> antes: penetración renovable extrema, inercia síncrona cayendo, balance oferta-demanda
-> empeorando progresivamente. Pero hay un problema: **la frecuencia de la red — la señal más
-> directa — no se publica en ninguna API pública.** REE no la expone por seguridad operacional.
-> Este proyecto pregunta: ¿puede un sistema multi-agente, trabajando solo con lo que sí está
-> disponible públicamente, detectar esa situación a tiempo?"
+Pick whichever fits the framing of your opening line best; ENTSO-E is the most thematically
+tied to the rest of the project.
 
-**Qué mostrar en pantalla:** el título del proyecto + una imagen/mapa de España (o la portada
-que generes), sin necesidad de terminal todavía.
-
----
-
-## 0:45–1:30 — Por qué agentes (45s)
-
-**Qué decir:**
-
-> "GridGuard combina tres tipos de inteligencia, cada una solo donde de verdad hace falta:
-> Python puro para lo que es determinista, Machine Learning para detectar patrones
-> estadísticos — un ensemble de Isolation Forest, un autoencoder LSTM y un clasificador
-> calibrado — y una cadena de Markov que proyecta hacia dónde va la red. El LLM solo entra
-> cuando hace falta razonamiento real: sintetizar señales, consultar normativa, decidir cómo
-> escalar. Este principio se llama shift-left, y lo aplicamos incluso retroactivamente: cuando
-> descubrimos que el LLM no seguía fielmente la política de escalación, la solución no fue
-> 'mejorar el prompt' — fue quitarle esa decisión al LLM por completo y dársela a una función
-> Python determinista con 17 tests."
-
-**Qué mostrar en pantalla:** la tabla de "3 niveles de inteligencia" (puedes leerla de
-`README.md` o `MEMORIA.md` §3, o mostrarla como slide).
+**On using Antigravity for the demo:** it's a fine, clean-looking terminal/IDE to record the
+live commands in — file explorer on one side, terminal on the other. One honest caveat, carried
+over from an earlier discussion: recording *in* Antigravity doesn't by itself demonstrate the
+"Antigravity" concept from the rubric (that would require it to have been part of actually
+*building* the agent). Use it here simply as your recording environment, not as a claim about
+what built GridGuard.
 
 ---
 
-## 1:30–2:45 — Arquitectura (75s)
+## 0:00–0:45 — Problem (45s)
 
-**Qué decir:**
+**What to say (script, adapt it to your voice):**
 
-> "Seis capas. Los triggers arrancan el ciclo. La capa 1 son Function Tools puros — sin LLM.
-> La capa 2 son 5 MCP servers custom: datos de red, meteorología, memoria persistente, modelos
-> ML, y una base de conocimiento RAG con normativa REE y ENTSO-E. La capa 3 son Skills — agentes
-> envueltos como herramientas síncronas, cada uno con un único resultado estructurado. La capa 4
-> son sub-agentes con su propio bucle — uno redacta informes de emergencia, otro evalúa
-> importación de energía transfronteriza. Y arriba de todo, el Orchestrator, el agente raíz que
-> coordina todo esto y decide cómo escalar.
+> "On 28 April 2025, Spain suffered a real blackout that lasted six and a half hours and
+> affected up to 15,000 megawatts. REE's official post-mortem shows the warning signs were
+> there hours in advance: extreme renewable penetration, falling synchronous inertia, a
+> progressively worsening supply/demand balance. But there's a catch: **grid frequency — the
+> most direct signal — isn't published by any public API.** REE withholds it for operational
+> security reasons. This project asks: can a multi-agent system, working only with what's
+> actually publicly available, catch that kind of situation in time?"
+
+**On-screen visual:** the project title + the cover image, then cut to the English-language
+blackout source you picked above (ENTSO-E / NPR / Wikipedia) for a few seconds while you say
+"REE's official post-mortem" — no terminal needed yet.
+
+---
+
+## 0:45–1:30 — Why Agents (45s)
+
+**What to say:**
+
+> "GridGuard combines three kinds of intelligence, each only where it's actually needed: pure
+> Python for what's deterministic, Machine Learning to detect statistical patterns — an
+> ensemble of an Isolation Forest, an LSTM autoencoder, and a calibrated classifier — and a
+> Markov chain projecting where the grid is heading. The LLM only steps in when real reasoning
+> is needed: synthesizing signals, checking regulations, deciding how to escalate. This
+> principle is called shift-left, and we applied it retroactively too: when we found the LLM
+> wasn't reliably following the escalation policy, the fix wasn't 'improve the prompt' — it was
+> taking that decision away from the LLM entirely and handing it to a deterministic Python
+> function with 17 tests."
+
+**On-screen visual:** the "3 levels of intelligence" table (read it from `README.md` or
+`MEMORIA.md` §3, or turn it into a slide).
+
+---
+
+## 1:30–2:45 — Architecture (75s)
+
+**What to say:**
+
+> "Six layers. Triggers kick off the cycle. Layer 1 is pure Function Tools — no LLM. Layer 2 is
+> 5 custom MCP servers: grid data, weather, persistent memory, ML models, and a RAG knowledge
+> base over REE and ENTSO-E regulations. Layer 3 is Skills — agents wrapped as synchronous
+> tools, each with a single structured result. Layer 4 is sub-agents with their own loop — one
+> drafts emergency reports, another evaluates cross-border energy imports. And on top,
+> the Orchestrator, the root agent that coordinates all of this and decides how to escalate.
 >
-> Todo esto corre en local — no lo desplegamos en la nube por coste y por tiempo, dado el plazo
-> del proyecto. En producción 24/7 cambiaría la infraestructura, no la lógica de agentes: SQLite
-> pasaría a Cloud SQL, ChromaDB local a un vector store gestionado, y los MCP servers de
-> subprocesos a servicios persistentes en Cloud Run."
+> All of this runs locally — we didn't deploy it to the cloud, for reasons of both cost and
+> time given the project's deadline. Running this 24/7 would change the infrastructure, not the
+> agent logic: SQLite would become Cloud SQL, local ChromaDB a managed vector store, and the
+> MCP subprocess servers persistent services on Cloud Run."
 
-**Qué mostrar en pantalla:** el diagrama de arquitectura (`architecture_diagram.html`,
-actualizado) o el diagrama ASCII de capas de `README.md`/`ARCHITECTURE.md`.
+**On-screen visual:** the architecture diagram (`architecture_diagram.html`, up to date) or the
+ASCII layer diagram from `README.md`/`ARCHITECTURE.md`.
 
-**Nota de tiempo:** esta coda de deployability añade ~10s a los 75s de esta sección. Si al
-grabar te queda apretado, es la frase más fácil de recortar (o acortarla a "en producción
-cambiaría la infraestructura, no la lógica de agentes — el README tiene el detalle").
+**Timing note:** this deployability coda adds ~10s to the section's 75s. If you're running
+tight when recording, it's the easiest line to cut (or shorten to "in production the
+infrastructure would change, not the agent logic — the README has the detail").
 
 ---
 
 ## 2:45–4:00 — Demo (75s)
 
-**El plato fuerte: el Orchestrator completo, en vivo, contra el apagón real de abril 2025.**
+**The centerpiece: the full Orchestrator, live, against the real April 2025 blackout.**
 
-Antes de arrancar, un flash rápido (5s, sin narrar en detalle) de la suite offline en verde —
-"todo lo determinista ya está probado; ahora vamos a ver decidir al sistema con Gemini real":
+Before starting, a quick flash (5s, no detailed narration) of the offline suite passing — "the
+deterministic side is already fully tested; now let's watch the system decide with real
+Gemini":
 
 ```bash
 python -m pytest -q
 ```
 
-Y el plato fuerte, el ciclo completo del Orchestrator sobre el snapshot real del apagón:
+And the centerpiece — the Orchestrator's full cycle over the real blackout snapshot:
 
 ```bash
 python -c "
@@ -119,115 +155,111 @@ print(run_scenario(scenario))
 "
 ```
 
-**Qué decir mientras corre (~20-40s, tiempo real para narrar):**
+**What to say while it runs (~20-40s, real time to narrate):**
 
-> "Esto es exactamente lo que dispararía un cron cada 10 minutos en producción — solo que lo
-> lanzo yo, ahora, para la cámara. Le paso el snapshot real de la red española en las horas
-> previas al apagón de abril de 2025, y el Orchestrator decide solo, con Gemini real: normaliza
-> los datos, consulta el ensemble ML y la cadena de Markov, calcula la banda de riesgo, y decide
-> qué agentes escalar — sin que yo intervenga en nada de eso."
+> "This is exactly what a cron job would trigger every 10 minutes in production — I'm just
+> firing it manually, now, for the camera. I'm feeding it the real Spanish grid snapshot from
+> the hours before the April 2025 blackout, and the Orchestrator decides on its own, with real
+> Gemini: it normalizes the data, consults the ML ensemble and the Markov chain, computes the
+> risk band, and decides which agents to escalate — with no intervention from me at any point."
 
-**Qué decir con el resultado ya en pantalla:**
+**What to say once the result is on screen:**
 
-> "Ahí está: [lee la banda de riesgo y qué skills escaló]. Esto es exactamente lo que
-> `escalation_planner` — nuestra política determinista, no el LLM — dicta para esa banda. Lo
-> mostramos en vivo, sin capturas pre-grabadas, porque confiamos en el sistema que construimos."
+> "There it is: [read the risk band and which skills it escalated]. This is exactly what
+> `escalation_planner` — our deterministic policy, not the LLM — dictates for that band. We're
+> showing this live, no pre-recorded captures, because we trust the system we built."
 
-**Qué mostrar en pantalla:** el terminal con el resultado completo (el dict que devuelve
-`run_scenario`), dejando visible unos segundos el campo `tool_names` o el número de
-tools/agentes llamados antes de cortar.
+**On-screen visual:** the terminal (inside Antigravity or your IDE of choice) with the full
+result (the dict `run_scenario` returns), keeping the `tool_names` field or the tool/agent count
+visible for a couple of seconds before cutting.
 
-**Nota práctica:** el resultado exacto (banda, skills escaladas) puede variar ligeramente entre
-tomas por el no-determinismo propio del LLM — es esperado, no un fallo; simplemente léelo tal
-cual salga. Si una toma no ilustra bien la idea, repítela: 20-40s y coste de cuota mínimo por
-intento.
+**Practical note:** the exact result (band, escalated skills) can vary slightly between takes
+due to the LLM's own non-determinism — that's expected, not a failure; just read it as it comes
+out. If a take doesn't illustrate the point well, redo it: 20-40s and minimal quota cost per
+attempt.
 
-**Nota de tiempo:** el guion hablado de esta sección (~155 palabras) encaja bien si la llamada
-real tarda hacia el extremo alto de 20-40s; si te sale una toma más rápida (~20s), ajusta el
-ritmo al narrar o recorta la frase de transición inicial ("todo lo determinista ya está
-probado...") ya que el flash de `pytest -q` no necesita narración detallada.
+**Timing note:** this section's spoken script (~155 words) fits well if the real call runs
+toward the high end of 20-40s; if you get a faster take (~20s), adjust your pace or trim the
+opening transition line ("the deterministic side is already fully tested...") since the
+`pytest -q` flash doesn't need detailed narration.
 
-### BONUS opcional — solo si sobra tiempo tras las tomas de práctica
+### OPTIONAL BONUS — only if time is left after practice takes
 
-Dos remates cortos, en orden de prioridad (el primero es gratis, el segundo cuesta ~1-3s de
-cuota). Ninguno tiene hueco propio en el minutado — solo entran si una toma de práctica del
-Orchestrator sale más corta de lo esperado.
+Two short closers, in priority order (the first is free, the second costs ~1-3s of quota).
+Neither has a fixed slot in the timing — they only go in if a practice take of the Orchestrator
+comes in shorter than expected.
 
-**a) El gate de aprobación humana (coste cero, 3-4s, sin narración larga):**
+**a) The human-approval gate (zero cost, 3-4s, no long narration):**
 
 ```bash
 cat data/kb_seed/manifest.json
 ```
 
-> "Y el único punto donde interviene un humano en todo el sistema: cada hecho que entra en la
-> base de conocimiento queda aquí, con quién lo revisó y aprobó — en este caso, yo mismo."
+> "And the one place a human intervenes in the entire system: every fact that enters the
+> knowledge base gets recorded here, with who reviewed and approved it — in this case, me."
 
-Muestra en pantalla la entrada con `"reviewed_by": "Cristian Valverde"` y `"status": "indexed"`.
+Show on screen the entry with `"reviewed_by": "Cristian Valverde"` and `"status": "indexed"`.
 
-**b) Query semántica directa a ChromaDB, sin pasar por ningún agente (10-15s, ~1-3s de cuota):**
+**b) A direct semantic query to ChromaDB, bypassing any agent (10-15s, ~1-3s of quota):**
 
 ```bash
 python -c "
 from mcp_servers.knowledge_base_server import search_regulations
 import json
-print(json.dumps(search_regulations('baja inercia sincrona en la red', top_k=2), indent=2, ensure_ascii=False))
+print(json.dumps(search_regulations('low synchronous inertia in the grid', top_k=2), indent=2, ensure_ascii=False))
 "
 ```
 
-> "Y así es como `search_regulations` — el mismo tool que acaba de llamar el agente — encuentra
-> el fragmento correcto: pura búsqueda vectorial, ningún LLM razonando en este paso."
+> "And this is how `search_regulations` — the same tool the agent just called — finds the
+> right fragment: pure vector search, no LLM reasoning in this step."
 
-Si solo cabe uno de los dos, prioriza (a): coste cero, cero riesgo de timing, y prueba visual
-concreta del gate humano que el resto del guion solo menciona de pasada.
-
----
-
-## 4:00–4:45 — Cómo se construyó (45s)
-
-**Qué decir:**
-
-> "Se construyó con Google ADK 2.3.0 y Gemini. El desarrollo se apoyó en otro asistente de
-> código con IDE propio, ya contratado de antes — la cuota gratuita de la API de Gemini se
-> había agotado, así que reservamos cada token de pago para lo que de verdad lo necesitaba:
-> probar los agentes contra el modelo real, no planificar o escribir código. Cada feature
-> siguió un proceso de diseño → especificación escrita → plan de implementación →
-> ejecución con revisión independiente en cada paso — no solo 'código que funciona', sino
-> decisiones documentadas y trazables. Cuando la validación en vivo reveló comportamiento
-> inesperado del LLM, no lo ignoramos: usamos herramientas de diagnóstico como py-spy para
-> encontrar causas raíz reales — un import bloqueante, una excepción de terceros sin capturar,
-> un modelo que no obedecía su propia política — y corregimos cada una con evidencia, no con
-> parches a ciegas. Lo que seguimos puliendo también queda documentado, con la misma
-> honestidad."
-
-**Qué mostrar en pantalla:** `docs/superpowers/specs/` y `docs/superpowers/plans/` (la carpeta,
-para mostrar volumen — 8 specs, 13 planes), o `MEMORIA.md` abierto en la sección de hallazgos.
-
-**Nota de tiempo:** con la frase añadida sobre la herramienta de desarrollo, este bloque ronda
-ahora los 55-60s hablados, no 45s — sumado a los ~10s añadidos en Arquitectura, el guion se
-pasaría de 5:00 si lo lees todo tal cual. Recorta al grabar: la frase más prescindible es
-"usamos herramientas de diagnóstico como py-spy para encontrar causas raíz reales" (ya está en
-el README/MEMORIA, no aporta nada nuevo en voz) — quitarla sola ya recupera ~8s.
+If only one fits, prioritize (a): zero cost, zero timing risk, and concrete visual proof of the
+human gate that the rest of the script only mentions in passing.
 
 ---
 
-## 4:45–5:00 — Cierre (15s)
+## 4:00–4:45 — How It Was Built (45s)
 
-**Qué decir:**
+**What to say:**
 
-> "GridGuard España: seis capas de Python, ML y agentes Gemini vigilando la red eléctrica
-> española en tiempo real, con red de seguridad propia para los momentos en que el LLM no se
-> comporta. Código y documentación completos en el repositorio."
+> "It was built with Google ADK 2.3.0 and Gemini. Development leaned on a different code
+> assistant with its own IDE, already under an active subscription — the free tier of the
+> Gemini API was already used up, so every paid token was reserved for what actually needed it:
+> testing the agents against the real model, not planning or writing code. Every feature went
+> through a process of design → written spec → implementation plan → execution with independent
+> review at every step — not just 'code that works', but documented, traceable decisions. When
+> live validation revealed unexpected LLM behavior, we didn't ignore it: we corrected each
+> issue with evidence, not blind patches. What we're still polishing is documented too, with the
+> same honesty."
 
-**Qué mostrar en pantalla:** el README.md del repo, o la pantalla de título de cierre.
+**On-screen visual:** the `docs/superpowers/specs/` and `docs/superpowers/plans/` folders (to
+show volume — 8 specs, 13 plans), or `MEMORIA.md` open at the findings section.
+
+**Timing note:** this block runs close to 45s as written; if you're tight on time overall (the
+Architecture section can run ~10s over), this is the second-easiest section to trim slightly —
+the "with the same honesty" closing clause can be dropped without losing the point.
 
 ---
 
-## Checklist antes de grabar
+## 4:45–5:00 — Close (15s)
 
-- [x] Diagrama de arquitectura actualizado y verificado visualmente (2026-07-05)
-- [ ] Repo de GitHub ya en público (si no, el link del vídeo/writeup no servirá)
-- [ ] `python -m pytest -q` probado justo antes de grabar (confirma 300 passed)
-- [ ] `GOOGLE_API_KEY` configurada; 2-3 tomas de práctica de `run_scenario()` sin grabar, para
-      conocer tiempo y tipo de resultado antes de la toma real
-- [ ] Grabación de pantalla lista (Win+G, o tu grabador habitual) + audio de tu voz o TTS
-- [ ] Vídeo final ≤ 5:00 exactos, subido a YouTube como **público** (no "no listado")
+**What to say:**
+
+> "GridGuard España: six layers of Python, ML, and Gemini-powered agents watching the Spanish
+> grid in real time, with its own safety net for the moments the LLM doesn't behave. Full code
+> and documentation in the repository."
+
+**On-screen visual:** the repo's `README.md` landing view, or a closing title card.
+
+---
+
+## Checklist before recording
+
+- [x] Architecture diagram updated and visually verified (2026-07-05)
+- [ ] GitHub repo already public (otherwise the video/Writeup link won't work)
+- [ ] `python -m pytest -q` run right before recording (confirms 300 passed)
+- [ ] `GOOGLE_API_KEY` configured; 2-3 unrecorded practice takes of `run_scenario()` to know
+      timing and result type before the real take
+- [ ] English-language blackout source picked and open/bookmarked for the Problem block
+- [ ] Screen recording ready (Win+G, or your usual recorder) + your voice or TTS audio
+- [ ] Final video ≤ 5:00 exactly, uploaded to YouTube as **public** (not "unlisted")
