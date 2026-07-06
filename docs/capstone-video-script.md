@@ -126,16 +126,11 @@ blackout source you picked above (ENTSO-E / NPR / Wikipedia) for a few seconds w
 > the Orchestrator, the root agent that coordinates all of this and decides how to escalate.
 >
 > All of this runs locally — we didn't deploy it to the cloud, for reasons of both cost and
-> time given the project's deadline. Running this 24/7 would change the infrastructure, not the
-> agent logic: SQLite would become Cloud SQL, local ChromaDB a managed vector store, and the
-> MCP subprocess servers persistent services on Cloud Run."
+> time given the project's deadline. In production the infrastructure would change, not the
+> agent logic — the README has the full detail."
 
 **On-screen visual:** the architecture diagram (`architecture_diagram.html`, up to date) or the
 ASCII layer diagram from `README.md`/`ARCHITECTURE.md`.
-
-**Timing note:** this deployability coda adds ~10s to the section's 75s. If you're running
-tight when recording, it's the easiest line to cut (or shorten to "in production the
-infrastructure would change, not the agent logic — the README has the detail").
 
 ---
 
@@ -143,9 +138,8 @@ infrastructure would change, not the agent logic — the README has the detail")
 
 **The centerpiece: the full Orchestrator, live, against the real April 2025 blackout.**
 
-Before starting, a quick flash (5s, no detailed narration) of the offline suite passing — "the
-deterministic side is already fully tested; now let's watch the system decide with real
-Gemini":
+Before starting, a quick flash (5s, no narration) of the offline suite passing — no need to say
+anything over it, just let it be visible for a second:
 
 ```bash
 python -m pytest -q
@@ -185,10 +179,8 @@ due to the LLM's own non-determinism — that's expected, not a failure; just re
 out. If a take doesn't illustrate the point well, redo it: 20-40s and minimal quota cost per
 attempt.
 
-**Timing note:** this section's spoken script (~155 words) fits well if the real call runs
-toward the high end of 20-40s; if you get a faster take (~20s), adjust your pace or trim the
-opening transition line ("the deterministic side is already fully tested...") since the
-`pytest -q` flash doesn't need detailed narration.
+**Timing note:** with the silent `pytest -q` flash, this section's spoken script (~140 words)
+fits comfortably even at the low end of the 20-40s window.
 
 ### OPTIONAL BONUS — only if time is left after practice takes
 
@@ -236,15 +228,10 @@ human gate that the rest of the script only mentions in passing.
 > through a process of design → written spec → implementation plan → execution with independent
 > review at every step — not just 'code that works', but documented, traceable decisions. When
 > live validation revealed unexpected LLM behavior, we didn't ignore it: we corrected each
-> issue with evidence, not blind patches. What we're still polishing is documented too, with the
-> same honesty."
+> issue with evidence, not blind patches. What we're still polishing is documented too."
 
 **On-screen visual:** the `docs/superpowers/specs/` and `docs/superpowers/plans/` folders (to
 show volume — 8 specs, 13 plans), or `MEMORIA.md` open at the findings section.
-
-**Timing note:** this block runs close to 45s as written; if you're tight on time overall (the
-Architecture section can run ~10s over), this is the second-easiest section to trim slightly —
-the "with the same honesty" closing clause can be dropped without losing the point.
 
 ---
 
