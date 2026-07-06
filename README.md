@@ -22,7 +22,15 @@ published by any public API** (REE withholds it for operational security). This 
 can a multi-agent system, working only from the data that *is* publicly available, catch that
 kind of situation early enough to matter?
 
-## The solution — three layers of intelligence, only when each is needed
+## The solution — three levels of intelligence, only when each is needed
+
+| Level | What it does | GridGuard components |
+|---|---|---|
+| **1 — Pure Python** | Deterministic logic: API calls, parsing, validation, the escalation policy itself | Function Tools, `escalation_planner` |
+| **2 — Deterministic ML** | Statistical pattern detection, zero reasoning, zero LLM calls | ML ensemble (Isolation Forest, LSTM Autoencoder, calibrated Gradient Boosting), Markov chain over grid states |
+| **3 — LLM, grounded by RAG** | Genuine reasoning: synthesizing signals, checking regulations, deciding how to escalate | Skills (`AgentTool`), Sub-agents, RAG (ChromaDB) |
+
+A more granular breakdown of the same idea, by task:
 
 | If the task is… | GridGuard uses… |
 |---|---|

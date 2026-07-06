@@ -40,7 +40,7 @@ don't stand out when you edit.
 | Block | On-screen asset |
 |---|---|
 | Problem | Cover image/title, then one English-language source on the blackout (see below) |
-| Why Agents | The "3 levels of intelligence" table from `README.md` / `MEMORIA.md` §3 |
+| Why Agents | The "3 levels of intelligence" table in `README.md` |
 | Architecture | `architecture_diagram.html`, open in a browser |
 | Demo | Terminal inside Antigravity (or your IDE of choice), running the commands live |
 | Demo — BONUS | Same terminal: `manifest.json` and/or the `search_regulations` one-liner |
@@ -109,8 +109,8 @@ blackout source you picked above (ENTSO-E / NPR / Wikipedia) for a few seconds w
 > taking that decision away from the LLM entirely and handing it to a deterministic Python
 > function with 17 tests."
 
-**On-screen visual:** the "3 levels of intelligence" table (read it from `README.md` or
-`MEMORIA.md` §3, or turn it into a slide).
+**On-screen visual:** the "3 levels of intelligence" table in `README.md`, right under
+"The solution" — new 3-row summary table added there specifically for this shot.
 
 ---
 
