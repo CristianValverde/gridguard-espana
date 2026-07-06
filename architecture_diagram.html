@@ -296,11 +296,12 @@
      LAYER 0: TRIGGERS
 ═══════════════════════════════════════════════════════════ -->
 <div class="section-label">⏱ Layer 0 — Triggers</div>
-<div class="g4">
+<div class="g5">
   <div class="card c-src"><div class="t">⏰ Cron every 10 min</div><div class="d">Invokes incremental_load.catch_up()<br>→ stores snapshots (training scale) + ML inference + Markov state update</div><span class="badge">APScheduler</span></div>
   <div class="card c-src"><div class="t">⏰ Cron every 1h</div><div class="d">Invokes RenewablesForecastSkill<br>→ next 6h forecast + 24h weather window</div><span class="badge">APScheduler</span></div>
   <div class="card c-src"><div class="t">⏰ Cron every 24h</div><div class="d">Invokes ReportAgent<br>→ daily report</div><span class="badge">APScheduler</span></div>
   <div class="card c-src"><div class="t">🔔 Event: P(blackout) &gt; threshold</div><div class="d">Fires OrchestratorAgent<br>for immediate deep analysis</div><span class="badge">Python Queue</span></div>
+  <div class="card c-src"><div class="t">📅 Cron every month</div><div class="d">Invokes ResearcherAgent<br>→ drafts next pending KB topic → kb_validate → human approval → kb_embed</div><span class="badge">APScheduler</span></div>
 </div>
 
 <div class="arrow">↓</div>
@@ -632,187 +633,16 @@
 <!-- ══════════════════════════════════════════════════════════
      MODEL REGISTRY
 ═══════════════════════════════════════════════════════════ -->
-<div class="section-label">🔄 Model Registry — Always Up-to-Date</div>
 <div class="card" style="background:#0f172a;border:1px solid #334155;margin-bottom:16px">
-  <div class="d" style="color:#94a3b8;margin-bottom:10px">
-    Gemini models evolve fast (<code style="color:#f87171">gemini-2.0-flash</code> was marked <b style="color:#f87171">⛔ SHUT DOWN</b> in June 2026).
-    No model is hard-coded — all read from <code style="color:#86efac">config/model_registry.yaml</code>,
-    auto-updated every Monday at 06:00 UTC from <a href="https://ai.google.dev/gemini-api/docs/models" style="color:#60a5fa">ai.google.dev/gemini-api/docs/models</a>.
+  <div class="t">🔄 Model Registry</div>
+  <div class="d">
+    No model is ever hard-coded — every agent reads its Gemini model from
+    <code style="color:#86efac">config/model_registry.yaml</code>, a single source of truth
+    kept up to date automatically. Full model list, roles, and update policy:
+    <b>README.md</b> and <b>ARCHITECTURE.md §3</b>.
   </div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
-    <div style="background:#1e293b;border:1px solid #22c55e;border-radius:8px;padding:10px;text-align:center">
-      <div style="font-size:10px;color:#86efac;text-transform:uppercase;letter-spacing:1px">fast_agent</div>
-      <div style="font-size:13px;font-weight:700;color:#f0fdf4;margin:4px 0">gemini-3.5-flash</div>
-      <div style="font-size:10px;color:#4ade80">● Stable · May 2026</div>
-      <div style="font-size:10px;color:#94a3b8;margin-top:3px">1M ctx · Agentic optimised</div>
-      <div style="font-size:10px;color:#94a3b8">Orchestrator · Skills · CrossBorder</div>
-    </div>
-    <div style="background:#1e293b;border:1px solid #a78bfa;border-radius:8px;padding:10px;text-align:center">
-      <div style="font-size:10px;color:#c4b5fd;text-transform:uppercase;letter-spacing:1px">smart_agent</div>
-      <div style="font-size:13px;font-weight:700;color:#f5f3ff;margin:4px 0">gemini-3.1-pro-preview-customtools</div>
-      <div style="font-size:10px;color:#a78bfa">◐ Preview · Feb 2026</div>
-      <div style="font-size:10px;color:#94a3b8;margin-top:3px">2M ctx · Complex reasoning</div>
-      <div style="font-size:10px;color:#94a3b8">ReportAgent</div>
-    </div>
-    <div style="background:#1e293b;border:1px solid #38bdf8;border-radius:8px;padding:10px;text-align:center">
-      <div style="font-size:10px;color:#7dd3fc;text-transform:uppercase;letter-spacing:1px">embedding</div>
-      <div style="font-size:13px;font-weight:700;color:#f0f9ff;margin:4px 0">gemini-embedding-2</div>
-      <div style="font-size:10px;color:#38bdf8">● Stable</div>
-      <div style="font-size:10px;color:#94a3b8;margin-top:3px">Multimodal embeddings</div>
-      <div style="font-size:10px;color:#94a3b8">ChromaDB RAG</div>
-    </div>
-    <div style="background:#1e293b;border:1px solid #f59e0b;border-radius:8px;padding:10px;text-align:center">
-      <div style="font-size:10px;color:#fcd34d;text-transform:uppercase;letter-spacing:1px">fallback_fast</div>
-      <div style="font-size:13px;font-weight:700;color:#fffbeb;margin:4px 0">gemini-3.1-flash-lite</div>
-      <div style="font-size:10px;color:#f59e0b">● Stable</div>
-      <div style="font-size:10px;color:#94a3b8;margin-top:3px">Cost-efficient</div>
-      <div style="font-size:10px;color:#94a3b8">CI / Evals / Testing</div>
-    </div>
-  </div>
-  <div style="background:#1e293b;border-radius:6px;padding:8px 12px;font-family:monospace;font-size:11px;color:#94a3b8">
-    <span style="color:#38bdf8">🔄 Cron: every Monday 06:00 UTC</span> →
-    <span style="color:#86efac">fetch ai.google.dev/gemini-api/docs/models</span> →
-    parse stable/preview/shut_down →
-    validate against API →
-    <span style="color:#fbbf24">update config/model_registry.yaml</span> →
-    log detected changes
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════
-     MODEL CARDS
-═══════════════════════════════════════════════════════════ -->
-<div class="section-label">📋 Model Cards</div>
-<table>
-  <tr>
-    <th>Component</th><th>Type</th><th>Model / Algorithm</th><th>Temp</th><th>Tools / Data</th><th>Hooks</th><th>Eval Metric</th>
-  </tr>
-  <tr>
-    <td>ree_poller · normalizer · proxy_calculator · risk_scorer · alert_formatter</td>
-    <td><span class="tFn">Function Tool</span></td>
-    <td>— <em>no LLM</em></td><td>—</td>
-    <td>ESIOS REST · SQLite</td>
-    <td>before_tool (rate-limit, .env block)</td>
-    <td>p95 latency · API error rate</td>
-  </tr>
-  <tr>
-    <td>markov_state_tracker</td>
-    <td><span class="tMk">Markov (Function Tool)</span></td>
-    <td>— <em>NumPy pure</em></td><td>—</td>
-    <td>markov_state.npz (A[5×5] + thresholds)</td>
-    <td>before_tool (bounds) · on_state_transition</td>
-    <td>State accuracy vs historical S0–S4 labels</td>
-  </tr>
-  <tr>
-    <td>Anomaly Detector ML</td>
-    <td><span class="tML">ML (MCP: ml-models)</span></td>
-    <td><span class="mb">Isolation Forest</span></td><td>—</td>
-    <td>ESIOS historical 2014–2024</td>
-    <td>after_tool (schema, bounds)</td>
-    <td>Precision · Recall · F1</td>
-  </tr>
-  <tr>
-    <td>Load Forecaster ML</td>
-    <td><span class="tML">ML (MCP: ml-models)</span></td>
-    <td><span class="mb">XGBoost / Prophet</span></td><td>—</td>
-    <td>ESIOS + AEMET historical</td>
-    <td>after_tool (schema, bounds)</td>
-    <td>MAE · MAPE at 6h</td>
-  </tr>
-  <tr>
-    <td>Blackout Risk Classifier ML</td>
-    <td><span class="tML">ML (MCP: ml-models)</span></td>
-    <td><span class="mb">Calibrated Gradient Boosting</span></td><td>—</td>
-    <td>Proxies + forecast + anomaly score</td>
-    <td>after_tool (P ∈ [0,1])</td>
-    <td>AUC-ROC · calibration</td>
-  </tr>
-  <tr>
-    <td>AnomalyDetectorSkill</td>
-    <td><span class="tSk">Skill (AgentTool)</span></td>
-    <td><span class="mb">gemini-3.5-flash</span></td>
-    <td><span class="tb">0.1</span></td>
-    <td>ML anomaly · proxy calc · Markov state · RAG regulations</td>
-    <td>before_model (injection) · after_model (schema)</td>
-    <td>Precision / Recall alerts</td>
-  </tr>
-  <tr>
-    <td>RenewablesForecastSkill</td>
-    <td><span class="tSk">Skill (AgentTool)</span></td>
-    <td><span class="mb">gemini-3.5-flash</span></td>
-    <td><span class="tb">0.1</span></td>
-    <td>Open-Meteo wind/solar/24h · ML load forecast · generation mix</td>
-    <td>before_model (injection) · on_forecast_risk_horizon</td>
-    <td>MAE forecast 6h vs actual</td>
-  </tr>
-  <tr>
-    <td>RegulatoryComplianceSkill</td>
-    <td><span class="tSk">Skill (AgentTool)</span></td>
-    <td><span class="mb">gemini-3.5-flash</span></td>
-    <td><span class="tb">0.1</span></td>
-    <td>RAG regulations · Markov grid state</td>
-    <td>before_model (injection) · after_model (schema)</td>
-    <td>LLM-as-judge (citation accuracy)</td>
-  </tr>
-  <tr>
-    <td>ReportAgent</td>
-    <td><span class="tAg">Sub-agent</span></td>
-    <td><span class="mb">gemini-3.1-pro-preview-customtools</span></td>
-    <td><span class="tb">0.4</span></td>
-    <td>ML blackout prob · RAG incidents · Markov state history · write reports/</td>
-    <td>after_agent (schema) · max_turns=10</td>
-    <td>LLM-as-judge (coherence, regulatory accuracy)</td>
-  </tr>
-  <tr>
-    <td>CrossBorderAgent</td>
-    <td><span class="tAg">Sub-agent</span></td>
-    <td><span class="mb">gemini-3.5-flash</span></td>
-    <td><span class="tb">0.2</span></td>
-    <td>ENTSO-E flows · capacity margin · market prices · RAG procedures</td>
-    <td>before_model (injection) · after_agent (schema) · max_turns=8</td>
-    <td>Trajectory eval vs golden</td>
-  </tr>
-  <tr>
-    <td>OrchestratorAgent</td>
-    <td><span class="tOr">Root Agent</span></td>
-    <td><span class="mb">gemini-3.5-flash</span></td>
-    <td><span class="tb">0.1</span></td>
-    <td>All Skills + Sub-agents + ML blackout prob + Markov trajectory + alert_formatter</td>
-    <td>All hooks · max_turns=20 · context=1M tokens</td>
-    <td>False positive rate · end-to-end latency · correct escalation</td>
-  </tr>
-</table>
-
-<hr class="div">
-
-<!-- ADK CONCEPTS -->
-<div class="section-label">✅ ADK Concepts Demonstrated (minimum required: 3 · implemented: 10)</div>
-<div class="g3">
-  <div class="card c-mcp" style="border-color:#22c55e">
-    <div class="t" style="color:#86efac">1–3 · ADK Core</div>
-    <div class="d">
-      ✅ <b>Multi-agent system</b> — Root + 3 Skills + 2 Sub-agents<br>
-      ✅ <b>MCP servers</b> — 5 custom servers<br>
-      ✅ <b>AgentTool (Skills)</b> — AnomalyDetector + RenewablesForecast + RegulatoryCompliance
-    </div>
-  </div>
-  <div class="card c-sk" style="border-color:#a855f7">
-    <div class="t" style="color:#d8b4fe">4–7 · Security &amp; State</div>
-    <div class="d">
-      ✅ <b>Callbacks / Guardrails</b> — 7 hooks with real logic<br>
-      ✅ <b>Memory / State</b> — SQLite (snapshots, incidents, Markov history)<br>
-      ✅ <b>Eval framework</b> — Output eval + Trajectory eval<br>
-      ✅ <b>Tracing</b> — ADK tracing across all agents
-    </div>
-  </div>
-  <div class="card c-off" style="border-color:#3b82f6">
-    <div class="t" style="color:#93c5fd">8–10 · Differentiators</div>
-    <div class="d">
-      ✅ <b>ML integrated</b> — 3 models exposed as MCP tools<br>
-      ✅ <b>RAG</b> — ChromaDB with real standards and post-mortems<br>
-      ✅ <b>Markov chain</b> — Grid state trajectory (pure Python/NumPy) integrated across MCP layer and agent decision logic
-    </div>
-  </div>
+  <span class="badge">config/model_registry.yaml</span>
+  <span class="badge">🔄 weekly auto-update</span>
 </div>
 
 </body>
