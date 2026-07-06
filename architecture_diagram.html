@@ -144,6 +144,9 @@
   .fb-kb  { background:#1a0f35; }
   .fb-kb  .fq { color:#c4b5fd; font-weight:700; font-size:9px; }
   .fb-kb  .fa { color:#a78bfa; font-size:8px; margin-top:3px; }
+  .fb-ag  { background:#2a0f20; border:1px solid #be185d; }
+  .fb-ag  .fq { color:#f472b6; font-weight:700; font-size:9px; }
+  .fb-ag  .fa { color:#f9a8d4; font-size:8px; margin-top:3px; }
 
   /* ── DB pill ── */
   .db-pill {
@@ -248,22 +251,32 @@
   <!-- Knowledge base pipeline -->
   <div class="card c-kb">
     <div class="t">📚 RAG Pipeline — Knowledge Base</div>
+    <div class="d" style="margin-bottom:4px">
+      Topics: REE POs (1.1, 1.2, 7.4) · post-mortems (28-Apr-2025, Iberian separation 2006) ·
+      EU standards (ENTSO-E Network Code, EN 50160). Ongoing ingestion, not a one-off seed:
+    </div>
     <div class="flow">
       <div class="flow-box fb-src">
-        <div class="fq">REE POs</div>
-        <div class="fa">PO 1.1, 1.2, 7.4<br>system operation<br>PDFs</div>
-      </div>
-      <div class="flow-arrow-box">+</div>
-      <div class="flow-box fb-src">
-        <div class="fq">Post-mortems</div>
-        <div class="fa">Blackout 28-Apr-2025<br>Iberian separation 2006<br>CEER reports</div>
-      </div>
-      <div class="flow-arrow-box">+</div>
-      <div class="flow-box fb-src">
-        <div class="fq">EU Standards</div>
-        <div class="fa">ENTSO-E Network Code<br>EN 50160<br>ROCOF standards</div>
+        <div class="fq">Pending topic</div>
+        <div class="fa">data/kb_seed/<br>topics.yaml</div>
       </div>
       <div class="flow-arrow-box">→</div>
+      <div class="flow-box fb-ag">
+        <div class="fq">🤖 ResearcherAgent</div>
+        <div class="fa">Agent (build-time,<br>not runtime)<br>google_search tool</div>
+      </div>
+      <div class="flow-arrow-box">→</div>
+      <div class="flow-box fb-src">
+        <div class="fq">kb_validate</div>
+        <div class="fa">Automated<br>ground-truth check</div>
+      </div>
+      <div class="flow-arrow-box">→</div>
+      <div class="flow-box fb-src">
+        <div class="fq">👤 Human approval</div>
+        <div class="fa">Only human-in-the-loop<br>gate in the system</div>
+      </div>
+    </div>
+    <div class="flow" style="margin-top:4px">
       <div class="flow-box fb-kb">
         <div class="fq">gemini-embedding-2</div>
         <div class="fa">Google embeddings</div>
@@ -275,11 +288,14 @@
       </div>
     </div>
     <div class="d" style="margin-top:4px">
+      <b>ResearcherAgent</b>: <code style="color:#f9a8d4">smart_agent</code> model, own instruction
+      and <code style="color:#f9a8d4">google_search</code> tool — a real ADK Agent, just triggered
+      by a monthly cron (see Layer 0) instead of the runtime Orchestrator.<br>
       Golden eval dataset: <b>blackout 28 April 2025</b> (published REE post-mortem, minute-by-minute)
     </div>
     <span class="badge" style="background:#4c1d95;color:#ddd6fe">ChromaDB</span>
     <span class="badge" style="background:#4c1d95;color:#ddd6fe">gemini-embedding-2</span>
-    <span class="badge" style="background:#4c1d95;color:#ddd6fe">RAG</span>
+    <span class="badge" style="background:#831843;color:#fbcfe8">ResearcherAgent</span>
   </div>
 
 </div>
