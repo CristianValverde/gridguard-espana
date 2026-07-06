@@ -61,12 +61,19 @@ a synthetic scenario. Good options, all in English:
 Pick whichever fits the framing of your opening line best; ENTSO-E is the most thematically
 tied to the rest of the project.
 
-**On using Antigravity for the demo:** it's a fine, clean-looking terminal/IDE to record the
-live commands in — file explorer on one side, terminal on the other. One honest caveat, carried
-over from an earlier discussion: recording *in* Antigravity doesn't by itself demonstrate the
-"Antigravity" concept from the rubric (that would require it to have been part of actually
-*building* the agent). Use it here simply as your recording environment, not as a claim about
-what built GridGuard.
+**On using Antigravity for the demo — IDE, not 2.0:** these are two different products, not two
+versions of the same thing. **Antigravity IDE** (the original) is editor + terminal + file
+explorer in one VS Code-based window — exactly the combined view this demo needs, for both the
+live commands and the file walkthroughs. **Antigravity 2.0** (Google I/O 2026) is a separate,
+standalone desktop app for orchestrating multiple autonomous agents in parallel across
+projects — it has no built-in editor/file view, and its whole point (parallel agent
+orchestration) doesn't match what this demo shows (running one script, reading files). Use only
+the **IDE** for the whole recording; there's no reason to bring in 2.0 here.
+
+One honest caveat, carried over from an earlier discussion: recording *in* Antigravity IDE
+doesn't by itself demonstrate the "Antigravity" concept from the rubric (that would require it
+to have been part of actually *building* the agent). Use it here simply as your recording
+environment, not as a claim about what built GridGuard.
 
 ---
 
