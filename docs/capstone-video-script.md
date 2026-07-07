@@ -114,40 +114,49 @@ blackout source you picked above (ENTSO-E / NPR / Wikipedia) for a few seconds w
 
 ---
 
-## Architecture (~91s text estimate, ~110s realistic — REGRABAR, ver nota de tiempo)
+## Architecture (~102s text estimate, ~123s realistic — REGRABAR, sigue el orden real del diagrama)
 
-**What to say:**
+**What to say (rewritten to follow `architecture_diagram.html` top-to-bottom, since that's what
+you're projecting live — narrate as you scroll, in this exact order):**
 
 > "Six layers, plus an offline layer underneath: the ML models and Markov chain train
 > periodically, not live, and a monthly cron drives a real agent — the ResearcherAgent — that
 > drafts new knowledge, always with a human approving before anything gets embedded.
 >
-> Layer 0 triggers kick off the runtime cycle. Layer 1 is pure Function Tools — no LLM. Layer 2
+> Layer 0 triggers kick off the runtime cycle. Layer 1 is pure Function Tools — no LLM. Between
+> every layer from here on, small hook callbacks run — blocking secret files, rate-limiting,
+> sanitizing prompt injection, validating every output — you'll see them as we scroll. Layer 2
 > is 5 custom MCP servers: grid data, weather, memory, ML models, and RAG over REE and ENTSO-E
 > regulations. Layer 3 is Skills — synchronous agent tools with one structured result each.
 > Layer 4 is sub-agents with their own loop — one drafts reports, another evaluates
-> cross-border imports. On top, the Orchestrator decides how to escalate.
+> cross-border imports. Layer 5, the Orchestrator, decides how to escalate.
 >
-> Three things cut across every layer: a guardrails layer of hooks blocking secret files,
-> rate-limiting, sanitizing prompt injection, and validating every output before it reaches
-> anyone; a model registry, so no Gemini model name is ever hardcoded — we tune cost and
-> capability in one file; and an eval framework — every agent is checked on three axes, does it
-> trigger the right tools, is the output correct, is the trajectory right, offline and against
-> real Gemini.
+> Right after it: a reliability layer that runs after every LLM turn — a deterministic function
+> recomputes the escalation policy and forces any mandatory step the model skipped, so a single
+> LLM mistake can't silently break the response.
+>
+> And cutting across everything: an eval framework — every agent checked on three axes, trigger,
+> output, trajectory, offline and against real Gemini — and a model registry, so no Gemini model
+> name is ever hardcoded anywhere.
 >
 > All of this runs locally — we didn't deploy it to the cloud, for reasons of cost and time. In
 > production the infrastructure would change, not the agent logic — the README has the detail."
 
-**On-screen visual:** the architecture diagram (`architecture_diagram.html`, up to date) or the
-ASCII layer diagram from `README.md`/`ARCHITECTURE.md`. Scroll to show the offline pipeline
-section at the top when narrating that paragraph, then the guardrails/model-registry/eval-metrics
-boxes when narrating that part.
+**On-screen visual:** `architecture_diagram.html`, scrolling top-to-bottom to match the
+narration exactly — the diagram's real section order is: Offline Pipeline → Layer 0 Triggers →
+Layer 1 (with a hook box right after it) → Layer 2 (hook box after) → Layer 3 (hook box after)
+→ Layer 4 (hook box after) → Layer 5 Orchestrator → Reliability Layer → Outputs → Eval &
+Tracing → Model Registry (the very last, small box on the page). Don't jump around — scroll in
+that order as you speak each paragraph.
 
-**Nota de tiempo (REGRABAR este bloque):** ~228 palabras, ~91s a ritmo normal (150 wpm) — ya
-incluye ahora el framework de evals (antes vivía en Demo, se quitó de ahí para no duplicar).
-Tu toma anterior de esta sección salió en 97s para ~198 palabras (~21% más lento que el
-calculo de 150 wpm, probablemente por el scroll real del diagrama) — aplicando esa misma
-proporcion, esta version mas larga probablemente salga hacia ~110s reales, no 91s.
+**Nota de tiempo (REGRABAR este bloque):** ~255 palabras, ~102s a ritmo normal (150 wpm). Tu
+toma anterior de esta sección salió en 97s para ~198 palabras (~21% más lento que el calculo
+de 150 wpm, probablemente por el scroll real del diagrama) — aplicando esa misma proporcion,
+esta version mas larga (que ahora tambien cubre la Reliability Layer, que faltaba del todo)
+probablemente salga hacia **~123s reales**, no 102s. Es el bloque que mas ha crecido de todo
+el guion — si el presupuesto total se aprieta demasiado, la frase mas facil de acortar es la
+de los hooks ("you'll see them as we scroll" ya es bastante corta, pero podria bajar a solo
+"— hooks run between every layer —" sin el resto de la lista).
 
 ---
 
