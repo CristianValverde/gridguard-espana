@@ -192,7 +192,10 @@ def run_scenario(scenario: dict) -> dict[str, Any]:
     scenario_name = scenario.get("scenario_name", "unknown")
     message_text = (
         f"[EVAL] Escenario: {scenario_name}. "
-        f"Analiza este snapshot de red y ejecuta el protocolo completo: "
+        f"El snapshot de red ya esta completo y provisto a continuacion — NO llames a "
+        f"ree_poller (los datos en vivo de ESIOS no aplican a este escenario historico). "
+        f"Analiza este snapshot y ejecuta el protocolo completo a partir de PASO 1b "
+        f"(data_normalizer) usando directamente estos datos: "
         f"{json.dumps(snapshot)}"
     )
     message = genai_types.Content(
