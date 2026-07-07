@@ -114,7 +114,7 @@ blackout source you picked above (ENTSO-E / NPR / Wikipedia) for a few seconds w
 
 ---
 
-## 1:30–2:50 — Architecture (~80s, expanded — see timing note below)
+## Architecture (~91s text estimate, ~110s realistic — REGRABAR, ver nota de tiempo)
 
 **What to say:**
 
@@ -128,38 +128,39 @@ blackout source you picked above (ENTSO-E / NPR / Wikipedia) for a few seconds w
 > Layer 4 is sub-agents with their own loop — one drafts reports, another evaluates
 > cross-border imports. On top, the Orchestrator decides how to escalate.
 >
-> Two things cut across every layer: a guardrails layer of hooks blocking secret files,
+> Three things cut across every layer: a guardrails layer of hooks blocking secret files,
 > rate-limiting, sanitizing prompt injection, and validating every output before it reaches
-> anyone — and a model registry, so no Gemini model name is ever hardcoded; we tune cost and
-> capability in one file.
+> anyone; a model registry, so no Gemini model name is ever hardcoded — we tune cost and
+> capability in one file; and an eval framework — every agent is checked on three axes, does it
+> trigger the right tools, is the output correct, is the trajectory right, offline and against
+> real Gemini.
 >
 > All of this runs locally — we didn't deploy it to the cloud, for reasons of cost and time. In
 > production the infrastructure would change, not the agent logic — the README has the detail."
 
 **On-screen visual:** the architecture diagram (`architecture_diagram.html`, up to date) or the
 ASCII layer diagram from `README.md`/`ARCHITECTURE.md`. Scroll to show the offline pipeline
-section at the top when narrating that paragraph, then the guardrails/model-registry boxes when
-narrating that part.
+section at the top when narrating that paragraph, then the guardrails/model-registry/eval-metrics
+boxes when narrating that part.
 
-**Nota de tiempo:** ~198 palabras, ~79s a ritmo normal (150 wpm) — más que los 75s originales,
-por diseño, ya que ahora cubre 3 temas que faltaban (pipeline offline, hooks, model registry).
-Con esto y lo ya grabado (1:35), la sección terminaría hacia ~2:54.
+**Nota de tiempo (REGRABAR este bloque):** ~228 palabras, ~91s a ritmo normal (150 wpm) — ya
+incluye ahora el framework de evals (antes vivía en Demo, se quitó de ahí para no duplicar).
+Tu toma anterior de esta sección salió en 97s para ~198 palabras (~21% más lento que el
+calculo de 150 wpm, probablemente por el scroll real del diagrama) — aplicando esa misma
+proporcion, esta version mas larga probablemente salga hacia ~110s reales, no 91s.
 
 ---
 
-## ~2:54–4:20 — Demo (~86s)
+## Demo (~75s)
 
 **The centerpiece: the full Orchestrator, live, against the real April 2025 blackout.**
 
-Before starting, a quick flash of the offline suite passing, with one short line about the eval
-framework:
+Before starting, a quick flash (no narration — the eval framework is already covered in
+Architecture) of the offline suite passing:
 
 ```bash
 python -m pytest -q
 ```
-
-> "Every agent here is evaluated on three axes — does it trigger the right tools, is the output
-> correct, and is the trajectory right — both offline and against real Gemini."
 
 And the centerpiece — the Orchestrator's full cycle over the real blackout snapshot:
 
@@ -195,9 +196,9 @@ due to the LLM's own non-determinism — that's expected, not a failure; just re
 out. If a take doesn't illustrate the point well, redo it: 20-40s and minimal quota cost per
 attempt.
 
-**Timing note:** ~167 words total now (~67s), plus the eval-framework line runs *before* the
-live call starts (doesn't overlap with the 20-40s dead time), so this section now runs closer
-to ~86s rather than the original 75s — about 11s more.
+**Timing note:** back to ~140 words (~56s) now that the eval-framework line moved to
+Architecture — this recovers the ~11s it had added here, which helps given the overall time
+crunch.
 
 ### OPTIONAL BONUS — only if time is left after practice takes
 
@@ -234,7 +235,7 @@ human gate that the rest of the script only mentions in passing.
 
 ---
 
-## ~4:20–5:05 — How It Was Built (45s)
+## How It Was Built (~50s)
 
 **What to say:**
 
@@ -257,7 +258,7 @@ agreed not to credit by name.
 
 ---
 
-## ~5:05–5:20 — Close (15s)
+## Close (~15s)
 
 **What to say:**
 
