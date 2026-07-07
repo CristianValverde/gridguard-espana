@@ -114,27 +114,40 @@ blackout source you picked above (ENTSO-E / NPR / Wikipedia) for a few seconds w
 
 ---
 
-## 1:30–2:45 — Architecture (75s)
+## 1:30–2:50 — Architecture (~80s, expanded — see timing note below)
 
 **What to say:**
 
-> "Six layers. Triggers kick off the cycle. Layer 1 is pure Function Tools — no LLM. Layer 2 is
-> 5 custom MCP servers: grid data, weather, persistent memory, ML models, and a RAG knowledge
-> base over REE and ENTSO-E regulations. Layer 3 is Skills — agents wrapped as synchronous
-> tools, each with a single structured result. Layer 4 is sub-agents with their own loop — one
-> drafts emergency reports, another evaluates cross-border energy imports. And on top,
-> the Orchestrator, the root agent that coordinates all of this and decides how to escalate.
+> "Six layers, plus an offline layer underneath: the ML models and Markov chain train
+> periodically, not live, and a monthly cron drives a real agent — the ResearcherAgent — that
+> drafts new knowledge, always with a human approving before anything gets embedded.
 >
-> All of this runs locally — we didn't deploy it to the cloud, for reasons of both cost and
-> time given the project's deadline. In production the infrastructure would change, not the
-> agent logic — the README has the full detail."
+> Layer 0 triggers kick off the runtime cycle. Layer 1 is pure Function Tools — no LLM. Layer 2
+> is 5 custom MCP servers: grid data, weather, memory, ML models, and RAG over REE and ENTSO-E
+> regulations. Layer 3 is Skills — synchronous agent tools with one structured result each.
+> Layer 4 is sub-agents with their own loop — one drafts reports, another evaluates
+> cross-border imports. On top, the Orchestrator decides how to escalate.
+>
+> Two things cut across every layer: a guardrails layer of hooks blocking secret files,
+> rate-limiting, sanitizing prompt injection, and validating every output before it reaches
+> anyone — and a model registry, so no Gemini model name is ever hardcoded; we tune cost and
+> capability in one file.
+>
+> All of this runs locally — we didn't deploy it to the cloud, for reasons of cost and time. In
+> production the infrastructure would change, not the agent logic — the README has the detail."
 
 **On-screen visual:** the architecture diagram (`architecture_diagram.html`, up to date) or the
-ASCII layer diagram from `README.md`/`ARCHITECTURE.md`.
+ASCII layer diagram from `README.md`/`ARCHITECTURE.md`. Scroll to show the offline pipeline
+section at the top when narrating that paragraph, then the guardrails/model-registry boxes when
+narrating that part.
+
+**Nota de tiempo:** ~198 palabras, ~79s a ritmo normal (150 wpm) — más que los 75s originales,
+por diseño, ya que ahora cubre 3 temas que faltaban (pipeline offline, hooks, model registry).
+Con esto y lo ya grabado (1:35), la sección terminaría hacia ~2:54.
 
 ---
 
-## 2:45–4:00 — Demo (75s)
+## ~2:54–4:09 — Demo (75s)
 
 **The centerpiece: the full Orchestrator, live, against the real April 2025 blackout.**
 
@@ -217,7 +230,7 @@ human gate that the rest of the script only mentions in passing.
 
 ---
 
-## 4:00–4:45 — How It Was Built (45s)
+## ~4:09–4:54 — How It Was Built (45s)
 
 **What to say:**
 
@@ -235,7 +248,7 @@ show volume — 8 specs, 13 plans), or `MEMORIA.md` open at the findings section
 
 ---
 
-## 4:45–5:00 — Close (15s)
+## ~4:54–5:09 — Close (15s)
 
 **What to say:**
 
