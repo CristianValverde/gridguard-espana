@@ -193,7 +193,7 @@ print('Escalated to:  ', skills if skills else ['none -- VERDE band, nothing man
 print('Tools called:  ', len(result['trajectory']))
 ar = result.get('anomaly_report')
 if ar:
-    print('Reasoning:     ', ar['reasoning'][:140] + '...')
+    print('Reasoning:     ', ar['reasoning'])
 "
 ```
 
