@@ -121,7 +121,8 @@ you're projecting live — narrate as you scroll, in this exact order):**
 
 > "Six layers, plus an offline layer underneath: the ML models and Markov chain train
 > periodically, not live, and a monthly cron drives a real agent — the ResearcherAgent — that
-> drafts new knowledge, always with a human approving before anything gets embedded.
+> drafts new knowledge for our knowledge base. A human has to approve it first; only then does
+> it get embedded and stored in ChromaDB, our local vector store, for the RAG layer to retrieve.
 >
 > Layer 0 triggers kick off the runtime cycle. Layer 1 is pure Function Tools — no LLM. Between
 > every layer from here on, small hook callbacks run — blocking secret files, rate-limiting,
@@ -266,19 +267,16 @@ human gate that the rest of the script only mentions in passing.
 
 ---
 
-## How It Was Built (~50s)
+## How It Was Built (~31s -- shorter now, subscription/economics narrative dropped)
 
 **What to say:**
 
-> "It was built with Google ADK 2.3.0 and Gemini, following Spec-Driven Development as the
-> working framework: every feature got a written spec, an implementation plan, and execution
-> with independent review at every step — these folders are the paper trail, 8 specs and 13
-> plans, not just 'code that works'. Development leaned on a different code assistant with its
-> own IDE, already under an active subscription — the free tier of the Gemini API was already
-> used up, so every paid token was reserved for what actually needed it: testing the agents
-> against the real model, not planning or writing code. When live validation revealed unexpected
-> LLM behavior, we corrected each issue with evidence, not blind patches — what we're still
-> polishing is documented too."
+> "It was built with Google ADK 2.3.0, Python 3.14, and Gemini, following Spec-Driven
+> Development as the working framework: every feature got a written spec, an implementation
+> plan, and execution with independent review at every step — these folders are the paper
+> trail, 8 specs and 13 plans, not just 'code that works'. When live validation revealed
+> unexpected LLM behavior, we corrected each issue with evidence, not blind patches — what
+> we're still polishing is documented too."
 
 **On-screen visual:** the specs/plans folders (to show volume — 8 specs, 13 plans), or
 `MEMORIA.md` open at the findings section. **Framing tip:** navigate *into*
