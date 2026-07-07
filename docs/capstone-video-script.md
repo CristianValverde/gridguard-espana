@@ -171,16 +171,38 @@ Architecture) of the offline suite passing:
 python -m pytest -q
 ```
 
-And the centerpiece — the Orchestrator's full cycle over the real blackout snapshot:
+And the centerpiece — the Orchestrator's full cycle over the real blackout snapshot. **Don't
+just `print(run_scenario(scenario))`** — that dumps the whole raw dict (nested anomaly report,
+full tool trajectory with every arg, nothing curated) as one dense wall of text, which is not
+watchable on camera. Use this instead, which calls the exact same real function but only prints
+the fields a viewer can actually read in a few seconds:
 
 ```bash
 python -c "
-import json
+import json, logging, warnings
+warnings.filterwarnings('ignore')
+logging.disable(logging.WARNING)
 from agents.orchestrator import run_scenario
 scenario = json.load(open('eval/golden_dataset/blackout_apr_2025.json', encoding='utf-8'))
-print(run_scenario(scenario))
+result = run_scenario(scenario)
+print()
+print('Risk band:     ', result['severity'], ' (P=%.2f, Markov %s, scope=%s)' % (result['blackout_probability'], result['markov_state'], result['scope']))
+skills = [a for a in result['actions_taken'] if a.endswith('_skill') or a.endswith('_agent')]
+print('Escalated to:  ', skills if skills else ['none -- VERDE band, nothing mandatory'])
+print('Tools called:  ', len(result['trajectory']))
+ar = result.get('anomaly_report')
+if ar:
+    print('Reasoning:     ', ar['reasoning'][:140] + '...')
 "
 ```
+
+Tested end-to-end (with a mocked result dict, same shape as a real run) in both Git Bash and
+PowerShell — only single quotes are used inside the Python code, since the whole block already
+sits inside a shell-level double-quoted `-c "..."` argument, and any literal `"` inside would
+prematurely close that string in either shell. `warnings.filterwarnings`/`logging.disable` only
+silence the ADK experimental-feature warnings and `[GUARDRAIL]` log noise for this display —
+they don't touch what `run_scenario` actually does or returns, and you can drop them if you'd
+rather show the guardrail log lines as extra proof they're active.
 
 **What to say while it runs (~20-40s, real time to narrate):**
 
@@ -192,13 +214,13 @@ print(run_scenario(scenario))
 
 **What to say once the result is on screen:**
 
-> "There it is: [read the risk band and which skills it escalated]. This is exactly what
+> "There it is: [read the risk band, then which skills it escalated to]. This is exactly what
 > `escalation_planner` — our deterministic policy, not the LLM — dictates for that band. We're
 > showing this live, no pre-recorded captures, because we trust the system we built."
 
-**On-screen visual:** the terminal (inside Antigravity or your IDE of choice) with the full
-result (the dict `run_scenario` returns), keeping the `tool_names` field or the tool/agent count
-visible for a couple of seconds before cutting.
+**On-screen visual:** the terminal (inside Antigravity or your IDE of choice) with the clean
+4-line summary (risk band, escalated skills, tool count, reasoning excerpt) — readable in a
+couple of seconds, no need to pause the video to make sense of it.
 
 **Practical note:** the exact result (band, escalated skills) can vary slightly between takes
 due to the LLM's own non-determinism — that's expected, not a failure; just read it as it comes
