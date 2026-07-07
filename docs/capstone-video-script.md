@@ -147,16 +147,19 @@ Con esto y lo ya grabado (1:35), la sección terminaría hacia ~2:54.
 
 ---
 
-## ~2:54–4:09 — Demo (75s)
+## ~2:54–4:20 — Demo (~86s)
 
 **The centerpiece: the full Orchestrator, live, against the real April 2025 blackout.**
 
-Before starting, a quick flash (5s, no narration) of the offline suite passing — no need to say
-anything over it, just let it be visible for a second:
+Before starting, a quick flash of the offline suite passing, with one short line about the eval
+framework:
 
 ```bash
 python -m pytest -q
 ```
+
+> "Every agent here is evaluated on three axes — does it trigger the right tools, is the output
+> correct, and is the trajectory right — both offline and against real Gemini."
 
 And the centerpiece — the Orchestrator's full cycle over the real blackout snapshot:
 
@@ -192,8 +195,9 @@ due to the LLM's own non-determinism — that's expected, not a failure; just re
 out. If a take doesn't illustrate the point well, redo it: 20-40s and minimal quota cost per
 attempt.
 
-**Timing note:** with the silent `pytest -q` flash, this section's spoken script (~140 words)
-fits comfortably even at the low end of the 20-40s window.
+**Timing note:** ~167 words total now (~67s), plus the eval-framework line runs *before* the
+live call starts (doesn't overlap with the 20-40s dead time), so this section now runs closer
+to ~86s rather than the original 75s — about 11s more.
 
 ### OPTIONAL BONUS — only if time is left after practice takes
 
@@ -230,7 +234,7 @@ human gate that the rest of the script only mentions in passing.
 
 ---
 
-## ~4:09–4:54 — How It Was Built (45s)
+## ~4:20–5:05 — How It Was Built (45s)
 
 **What to say:**
 
@@ -248,7 +252,7 @@ show volume — 8 specs, 13 plans), or `MEMORIA.md` open at the findings section
 
 ---
 
-## ~4:54–5:09 — Close (15s)
+## ~5:05–5:20 — Close (15s)
 
 **What to say:**
 
