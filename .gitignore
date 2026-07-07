@@ -1,4 +1,4 @@
-# === Credenciales — NUNCA versionar (restricción no negociable, CLAUDE.md) ===
+# === Credenciales — NUNCA versionar (restricción no negociable del proyecto) ===
 .env
 *.key
 *.pem
@@ -46,3 +46,8 @@ reports/
 .claude/settings.local.json
 .DS_Store
 Thumbs.db
+
+# === Dev-process artifacts, not part of the submission itself ===
+.superpowers/
+CLAUDE.md
+ROADMAP.MD
