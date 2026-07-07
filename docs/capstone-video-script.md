@@ -213,15 +213,20 @@ rather show the guardrail log lines as extra proof they're active.
 > Gemini: it normalizes the data, consults the ML ensemble and the Markov chain, computes the
 > risk band, and decides which agents to escalate — with no intervention from me at any point."
 
-**What to say once the result is on screen:**
+**What to say once the result is on screen** (example below uses this run's actual numbers —
+substitute whatever severity/probability/state/reasoning your own take produces, the point is
+to explain the model's conclusion, not perform a script):
 
-> "There it is: [read the risk band, then which skills it escalated to]. This is exactly what
-> `escalation_planner` — our deterministic policy, not the LLM — dictates for that band. We're
-> showing this live, no pre-recorded captures, because we trust the system we built."
+> "There it is: HIGH severity, twelve percent blackout probability, Markov state S2. And the
+> model explains itself — reserves are completely exhausted, renewable penetration is at one
+> hundred percent, which pushes out synchronous generation and drops the grid's inertia, and a
+> wind ramp-down is forcing a negative balance. That combination is exactly why it escalated to
+> the anomaly detector, and exactly what `escalation_planner` — our deterministic policy, not
+> the LLM — dictates for that band."
 
 **On-screen visual:** the terminal (inside Antigravity or your IDE of choice) with the clean
-4-line summary (risk band, escalated skills, tool count, reasoning excerpt) — readable in a
-couple of seconds, no need to pause the video to make sense of it.
+4-line summary (risk band, escalated skills, tool count, full reasoning) — readable in a few
+seconds, no need to pause the video to make sense of it.
 
 **Practical note:** the exact result (band, escalated skills) can vary slightly between takes
 due to the LLM's own non-determinism — that's expected, not a failure; just read it as it comes
