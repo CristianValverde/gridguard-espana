@@ -96,7 +96,7 @@ del LLM, hacia una capa determinista y auditable":
 - **Aislamiento de credenciales**: `ESIOS_TOKEN`, `AEMET_API_KEY` y `ENTSOE_TOKEN` viven
   únicamente en el proceso del servidor MCP correspondiente. Ni el código del agente ni el
   prompt del LLM los ven nunca — el límite de confianza está en el proceso, no en la
-  disciplina del prompt (regla NO NEGOCIABLE del proyecto, ver `CLAUDE.md`).
+  disciplina del prompt (regla NO NEGOCIABLE del proyecto desde el primer día).
 - **Una sola implementación, muchos consumidores**: varios agentes necesitan la misma
   herramienta (p.ej. `get_blackout_probability_ensemble` la usan tanto el Orchestrator como
   `AnomalyDetectorSkill`). Sin MCP, cada agente importaría y mantendría su propia copia de la
