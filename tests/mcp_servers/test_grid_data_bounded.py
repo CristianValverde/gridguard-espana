@@ -25,10 +25,13 @@ def _clean_cache():
 def test_cached_acota_un_build_lento(monkeypatch):
     """Un build que excede la cota devuelve {"error": ...} en ~la cota,
     sin colgar el hilo llamante (que en producción es el event loop)."""
-    monkeypatch.setattr(g, "BUILD_TIMEOUT_S", 1)
+    monkeypatch.setattr(g, "BUILD_TIMEOUT_S", 0.2)
+    SLEEP_S = 0.6  # 3x la cota: suficiente para disparar el timeout, sin dejar
+    # el hilo huerfano (ThreadPoolExecutor no puede cancelar un hilo ya en
+    # marcha) corriendo mucho tiempo tras el timeout.
 
     def _build_colgado():
-        time.sleep(10)
+        time.sleep(SLEEP_S)
         return {"ok": True}
 
     t0 = time.monotonic()
@@ -37,6 +40,13 @@ def test_cached_acota_un_build_lento(monkeypatch):
 
     assert isinstance(result, dict) and "error" in result, result
     assert elapsed < 5, f"la cota no actuó: {elapsed:.1f}s"
+
+    # El future huerfano sigue vivo en _BUILD_POOL (pool global de proceso) tras
+    # el timeout. Esperamos aqui a que termine para no dejar un hilo de fondo
+    # corriendo durante los tests siguientes: causo un crash nativo real
+    # (access violation) al colisionar con la carga de pyarrow.dataset en un
+    # test posterior (test_train_classifier.py), reproducido 3/3 veces.
+    time.sleep(SLEEP_S)
 
 
 def test_cached_no_cachea_errores():
