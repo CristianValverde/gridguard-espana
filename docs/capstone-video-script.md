@@ -238,17 +238,22 @@ human gate that the rest of the script only mentions in passing.
 
 **What to say:**
 
-> "It was built with Google ADK 2.3.0 and Gemini. Development leaned on a different code
-> assistant with its own IDE, already under an active subscription — the free tier of the
-> Gemini API was already used up, so every paid token was reserved for what actually needed it:
-> testing the agents against the real model, not planning or writing code. Every feature went
-> through a process of design → written spec → implementation plan → execution with independent
-> review at every step — not just 'code that works', but documented, traceable decisions. When
-> live validation revealed unexpected LLM behavior, we didn't ignore it: we corrected each
-> issue with evidence, not blind patches. What we're still polishing is documented too."
+> "It was built with Google ADK 2.3.0 and Gemini, following Spec-Driven Development as the
+> working framework: every feature got a written spec, an implementation plan, and execution
+> with independent review at every step — these folders are the paper trail, 8 specs and 13
+> plans, not just 'code that works'. Development leaned on a different code assistant with its
+> own IDE, already under an active subscription — the free tier of the Gemini API was already
+> used up, so every paid token was reserved for what actually needed it: testing the agents
+> against the real model, not planning or writing code. When live validation revealed unexpected
+> LLM behavior, we corrected each issue with evidence, not blind patches — what we're still
+> polishing is documented too."
 
-**On-screen visual:** the `docs/superpowers/specs/` and `docs/superpowers/plans/` folders (to
-show volume — 8 specs, 13 plans), or `MEMORIA.md` open at the findings section.
+**On-screen visual:** the specs/plans folders (to show volume — 8 specs, 13 plans), or
+`MEMORIA.md` open at the findings section. **Framing tip:** navigate *into*
+`docs/superpowers/specs/` or `.../plans/` before the screen recording starts, so what's visible
+is the list of dated spec/plan files, not a breadcrumb/title bar showing the parent
+`docs/superpowers/` path — the folder name itself would name the same skill framework we just
+agreed not to credit by name.
 
 ---
 
