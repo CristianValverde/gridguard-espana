@@ -168,8 +168,7 @@ normalisation → ML ensemble → Markov state → deterministic escalation → 
 skills) — see the "single most valuable bug" note above for why it didn't a few hours before
 this line was written. `config/model_registry.yaml` is the single source of truth for which
 Gemini model is used; if you see `MALFORMED_FUNCTION_CALL` or an empty result, check that the
-registry actually points at a currently-available model first (`python -c "from google import
-genai, os; print([m.name for m in genai.Client(api_key=os.environ['GOOGLE_API_KEY']).models.list()])"`).
+registry actually points at a currently-available model first (`python -c "import os; from google import genai; print([m.name for m in genai.Client(api_key=os.environ['GOOGLE_API_KEY']).models.list()])"`).
 
 ### Run the live agent evals (consumes real Gemini quota, ~10–25 min)
 
